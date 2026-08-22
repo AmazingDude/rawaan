@@ -39,6 +39,13 @@ Use the right skill instead of improvising:
 - Storage: simple per-patient note store per PRD §7 (SQLite or JSON files are fine; no vector DB unless retrieval quality demands it — we have a handful of notes per patient).
 - ASR via Whisper; keep the transcript attached to every generated note (provenance).
 
+## Branching & workflow
+
+- `main` always stays working — never push directly to it, never merge without typecheck/lint/build/tests all passing.
+- One branch per task: `feat/brain-retrieval`, `feat/seed-data`, `feat/query-ui`.
+- Before merging into `main`: run the full check (typecheck, lint, build, tests, and actually try the feature) — this is the same Definition of Done AGENTS.md already requires, just also applied before merging, not just before saying "done."
+- Get a quick look from Rehan or Aashir before merging into `main`, even if you're confident it's fine — a broken main costs more time than a 5-minute review.
+
 ## Definition of done
 
 A task is done when: typecheck passes, lint passes, build passes, the feature was actually exercised (manually or via a Playwright test), and the diff contains no unrelated changes.
