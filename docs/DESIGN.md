@@ -87,15 +87,15 @@ Never use coral for more than one button in the same viewport. If a screen needs
 - Approved: background `#e4f7ee` (sage), text `#1dbf73`
 - No supporting record: background `#ffede8` (peach), text `#a6432b` (darker coral-adjacent, for contrast — not the action coral itself)
 
-### Note Field Card
-**Role:** Each structured note field (chief complaint, history, symptoms, plan, etc.) in the review/edit screen
-`background: #ffffff; border-radius: 16px; padding: 20px; border: 1px solid #e0e0e0;`
-Label above in 14px/600 Charcoal. Editable text area below in 16px/400 Ink Black. The "uncertainties" field specifically uses `#ffede8` (Peach Wash) background instead of white, to visually flag it as needing extra clinician attention before approval.
+### Scribe Review Section
+**Role:** Group the structured note review into the three readable sections: **Subjective** (chief complaint, history, symptoms), **Assessment & Plan** (assessment, plan, medications), and **Follow-up & Notes** (follow-up, uncertainties).
+`background: #ffffff; border-radius: 20px; padding: 24px; border: 1px solid #e0e0e0;`
+Each section title is 20px/600 Charcoal. Use subtle `#e0e0e0` internal dividers between fields rather than a separate bordered card around every field. On wide viewports, pair naturally short fields in two columns; fields stack to one column on narrow viewports. Labels remain 14px/600 Charcoal, with editable text areas in 16px/400 Ink Black. The "uncertainties" field specifically uses a `#ffede8` (Peach Wash) surface to flag clinician attention, without any colored left accent.
 
 ### Step Card (Scribe workflow)
 **Role:** "Step 1: Enter consultation context" / "Step 2: Review and approve" — the two-column workflow container
 `background: #ffffff; border-radius: 20px; padding: 24px; border: 1px solid #e0e0e0;`
-Step label ("STEP 1") in 12px/600 uppercase Slate, tracked wide. Step title in 24px/600 Charcoal directly below. This is largely what exists today — the fix here is mainly typography and radius consistency, not a rebuild.
+Step label ("STEP 1") in 12px/600 uppercase Slate, tracked wide. Step title in 24px/600 Charcoal directly below. On desktop widths above the two-column breakpoint, Step 1 is `position: sticky` with a modest top offset so consultation context remains visible while reviewing the longer Step 2 form. Disable the sticky behavior at and below the single-column breakpoint.
 
 ### Brain Answer Card
 **Role:** Response to a clinician's question, when supporting notes exist
@@ -104,7 +104,7 @@ Answer text 16px/400 Ink Black. Below it, a row of small source citation chips (
 
 ### No-Supporting-Record Card
 **Role:** The explicit refusal state — must look visually distinct from a normal answer, not just a text difference
-`background: #ffede8 (Peach Wash); border-radius: 20px; padding: 24px; border-left: 4px solid #a6432b;`
+`background: #ffede8 (Peach Wash); border-radius: 20px; padding: 24px; border: 1px solid #a6432b;`
 Icon + "No record of that" in 16px/600, explanatory line in 14px/400 Slate below. This card should never contain a coral button or any action that looks like "generate an answer anyway."
 
 ### Source Citation Chip
@@ -123,8 +123,8 @@ Logo/wordmark left ("RAWAAN · PATIENT CONTEXT ENGINE" in 12px/600 uppercase Can
 
 ### Compliance Banner
 **Role:** The existing "Fictional demo data only..." disclosure banner
-`background: #d2f2e3 (Mint Wash); border-left: 4px solid #0a3922; padding: 16px 20px; border-radius: 12px;`
-Keep this — it's doing real work (both product-honesty and hackathon-judging-honesty). Just restyle to match the new card system instead of the current plain outline.
+`background: #d2f2e3 (Mint Wash); padding: 16px 20px; border-radius: 12px;`
+Keep this — it's doing real work (both product-honesty and hackathon-judging-honesty). Use a flat pastel fill only: no left-side accent bar, shadow, or generic alert treatment.
 
 ## Do's and Don'ts
 
@@ -137,6 +137,7 @@ Keep this — it's doing real work (both product-honesty and hackathon-judging-h
 
 ### Don't
 - Don't use box-shadow anywhere — surface color stepping only
+- Don't use colored left-border accent bars on banners, callouts, or note sections
 - Don't use coral decoratively, or on more than one button per screen
 - Don't let the No-Supporting-Record card look like a normal answer card with different text — the color/border difference must be immediate, at a glance, before reading
 - Don't push display type past 64px anywhere in the app — this is a working tool, not a marketing site

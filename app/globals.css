@@ -158,7 +158,6 @@ h2 {
 .compliance-banner {
   margin-bottom: 24px;
   padding: 16px 20px;
-  border-left: 4px solid var(--color-canopy-green);
   border-radius: var(--radius-inputs);
   color: var(--color-graphite);
   background: var(--color-mint-wash);
@@ -226,7 +225,7 @@ h2 {
 }
 
 .form-field,
-.note-field {
+.section-field {
   display: grid;
   gap: var(--element-gap);
   color: var(--color-charcoal);
@@ -335,7 +334,6 @@ textarea:focus {
 .message {
   margin: 0 var(--card-padding) 20px;
   padding: 14px 16px;
-  border-left: 4px solid var(--color-canopy-green);
   border-radius: var(--radius-inputs);
   color: var(--color-canopy-green);
   background: var(--color-mint-wash);
@@ -345,22 +343,51 @@ textarea:focus {
 
 .draft-fields {
   display: grid;
-  gap: 16px;
+  gap: 24px;
 }
 
-.note-field {
-  padding: 20px;
-  border: 1px solid var(--color-frost-gray);
-  border-radius: 16px;
-  background: var(--color-paper-white);
+.note-section {
+  display: grid;
+  gap: 12px;
 }
 
-.note-field.is-uncertainties {
+.note-section + .note-section {
+  padding-top: 24px;
+  border-top: 1px solid var(--color-frost-gray);
+}
+
+.note-section h3 {
+  margin: 0;
+  color: var(--color-charcoal);
+  font-size: var(--text-subheading);
+  font-weight: 600;
+  line-height: 1.33;
+}
+
+.note-section-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 20px;
+}
+
+.section-field {
+  padding: 16px 0;
+  border-top: 1px solid var(--color-frost-gray);
+}
+
+.section-field.is-full {
+  grid-column: 1 / -1;
+}
+
+.section-field.is-uncertainties {
+  margin-top: 4px;
+  padding: 16px;
+  border: 0;
+  border-radius: var(--radius-inputs);
   background: var(--color-peach-wash);
-  border-color: color-mix(in srgb, var(--color-coral-action) 34%, var(--color-frost-gray));
 }
 
-.note-field.is-uncertainties textarea {
+.section-field.is-uncertainties textarea {
   background: var(--color-paper-white);
 }
 
@@ -447,9 +474,21 @@ textarea:focus {
   }
 }
 
+@media (min-width: 901px) {
+  .transcript-panel {
+    position: sticky;
+    top: 24px;
+  }
+}
+
 @media (max-width: 900px) {
-  .workspace-grid {
+  .workspace-grid,
+  .note-section-fields {
     grid-template-columns: 1fr;
+  }
+
+  .section-field.is-full {
+    grid-column: auto;
   }
 
   .empty-state {

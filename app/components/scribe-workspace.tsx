@@ -25,18 +25,97 @@ type ListField =
 
 type TextField = "chief_complaint" | "follow_up";
 
-const listFields: { field: ListField; label: string }[] = [
-  { field: "history", label: "History discussed" },
-  { field: "symptoms", label: "Symptoms" },
-  { field: "assessment_discussed", label: "Assessment / observations discussed" },
-  { field: "plan_discussed", label: "Plan / next steps discussed" },
-  { field: "medications_mentioned", label: "Medications mentioned" },
-  { field: "uncertainties", label: "Uncertainties" },
-];
+type DraftField =
+  | {
+      field: TextField;
+      kind: "text";
+      label: string;
+      layout: "full" | "half";
+      rows: number;
+    }
+  | {
+      field: ListField;
+      kind: "list";
+      label: string;
+      layout: "full" | "half";
+      rows: number;
+    };
 
-const textFields: { field: TextField; label: string }[] = [
-  { field: "chief_complaint", label: "Chief complaint" },
-  { field: "follow_up", label: "Follow-up" },
+const draftSections: { fields: DraftField[]; id: string; title: string }[] = [
+  {
+    id: "subjective-fields",
+    title: "Subjective",
+    fields: [
+      {
+        field: "chief_complaint",
+        kind: "text",
+        label: "Chief complaint",
+        layout: "half",
+        rows: 2,
+      },
+      {
+        field: "history",
+        kind: "list",
+        label: "History discussed",
+        layout: "half",
+        rows: 3,
+      },
+      {
+        field: "symptoms",
+        kind: "list",
+        label: "Symptoms",
+        layout: "full",
+        rows: 3,
+      },
+    ],
+  },
+  {
+    id: "assessment-plan-fields",
+    title: "Assessment & Plan",
+    fields: [
+      {
+        field: "assessment_discussed",
+        kind: "list",
+        label: "Assessment / observations discussed",
+        layout: "half",
+        rows: 3,
+      },
+      {
+        field: "plan_discussed",
+        kind: "list",
+        label: "Plan / next steps discussed",
+        layout: "half",
+        rows: 3,
+      },
+      {
+        field: "medications_mentioned",
+        kind: "list",
+        label: "Medications mentioned",
+        layout: "full",
+        rows: 3,
+      },
+    ],
+  },
+  {
+    id: "follow-up-notes-fields",
+    title: "Follow-up & Notes",
+    fields: [
+      {
+        field: "follow_up",
+        kind: "text",
+        label: "Follow-up",
+        layout: "full",
+        rows: 3,
+      },
+      {
+        field: "uncertainties",
+        kind: "list",
+        label: "Uncertainties",
+        layout: "full",
+        rows: 3,
+      },
+    ],
+  },
 ];
 
 const initialForm: FormValues = {
@@ -221,30 +300,42 @@ export function ScribeWorkspace() {
 
           {draft ? (
             <div className="draft-fields">
-              {textFields.map(({ field, label }) => (
-                <label key={field} className="note-field">
-                  {label}
-                  <textarea
-                    value={draft[field]}
-                    onChange={(event) => updateDraftText(field, event.target.value)}
-                    rows={field === "chief_complaint" ? 2 : 3}
-                  />
-                </label>
-              ))}
-
-              {listFields.map(({ field, label }) => (
-                <label
-                  key={field}
-                  className={`note-field ${field === "uncertainties" ? "is-uncertainties" : ""}`}
+              {draftSections.map((section) => (
+                <section
+                  key={section.id}
+                  className="note-section"
+                  aria-labelledby={section.id}
                 >
-                  {label}
-                  <textarea
-                    value={draft[field].join("\n")}
-                    onChange={(event) => updateDraftList(field, event.target.value)}
-                    placeholder="One documented item per line"
-                    rows={3}
-                  />
-                </label>
+                  <h3 id={section.id}>{section.title}</h3>
+                  <div className="note-section-fields">
+                    {section.fields.map((field) => (
+                      <label
+                        key={field.field}
+                        className={`section-field is-${field.layout} ${field.field === "uncertainties" ? "is-uncertainties" : ""}`}
+                      >
+                        {field.label}
+                        <textarea
+                          value={
+                            field.kind === "text"
+                              ? draft[field.field]
+                              : draft[field.field].join("\n")
+                          }
+                          onChange={(event) =>
+                            field.kind === "text"
+                              ? updateDraftText(field.field, event.target.value)
+                              : updateDraftList(field.field, event.target.value)
+                          }
+                          placeholder={
+                            field.kind === "list"
+                              ? "One documented item per line"
+                              : undefined
+                          }
+                          rows={field.rows}
+                        />
+                      </label>
+                    ))}
+                  </div>
+                </section>
               ))}
 
               <details className="transcript-provenance">
