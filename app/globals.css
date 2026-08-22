@@ -1,0 +1,366 @@
+:root {
+  --ink: #15251f;
+  --muted-ink: #53645e;
+  --paper: #f7f7f1;
+  --panel: #ffffff;
+  --line: #d9e0da;
+  --brand: #145a43;
+  --brand-strong: #0f4936;
+  --brand-soft: #e0f1e7;
+  --amber-soft: #fff2d6;
+  --amber-ink: #845800;
+  --shadow: 0 18px 45px rgba(23, 49, 39, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--paper);
+}
+
+body {
+  margin: 0;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at top right, #e7f1eb 0, transparent 30rem),
+    var(--paper);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.page-shell {
+  width: min(1440px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 56px 0 72px;
+}
+
+.hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.eyebrow,
+.step-label {
+  margin: 0;
+  color: var(--brand);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+h1,
+h2,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  max-width: 700px;
+  margin: 8px 0 12px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.45rem, 5vw, 4.75rem);
+  line-height: 0.96;
+  letter-spacing: -0.045em;
+}
+
+h2 {
+  margin: 7px 0 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.55rem;
+  letter-spacing: -0.02em;
+}
+
+.hero-copy {
+  max-width: 620px;
+  margin-bottom: 0;
+  color: var(--muted-ink);
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+
+.safety-label,
+.status-chip {
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.safety-label {
+  padding: 11px 14px;
+  border: 1px solid #a4c9b5;
+  color: var(--brand-strong);
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.safety-notice {
+  margin-bottom: 24px;
+  padding: 15px 18px;
+  border-left: 4px solid var(--brand);
+  border-radius: 6px;
+  color: #345047;
+  background: var(--brand-soft);
+  line-height: 1.55;
+}
+
+.workspace-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.panel {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.panel-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px 24px 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.status-chip {
+  padding: 8px 10px;
+}
+
+.status-chip.neutral {
+  color: var(--muted-ink);
+  background: #eef1ef;
+}
+
+.status-chip.draft {
+  color: var(--amber-ink);
+  background: var(--amber-soft);
+}
+
+.form-grid,
+.transcript-field,
+.draft-fields {
+  padding: 24px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding-bottom: 0;
+}
+
+.form-grid label:last-child {
+  grid-column: 1 / -1;
+}
+
+label {
+  display: grid;
+  gap: 8px;
+  color: #2e423a;
+  font-size: 0.88rem;
+  font-weight: 750;
+}
+
+input,
+textarea {
+  width: 100%;
+  border: 1px solid #c8d3cc;
+  border-radius: 8px;
+  padding: 11px 12px;
+  color: var(--ink);
+  background: #fff;
+  font-size: 0.94rem;
+  font-weight: 400;
+  line-height: 1.5;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+textarea {
+  resize: vertical;
+}
+
+input:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(20, 90, 67, 0.14);
+}
+
+.panel-footer,
+.approval-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px 24px 24px;
+}
+
+.panel-footer {
+  border-top: 1px solid var(--line);
+}
+
+.source-note,
+.approval-bar p {
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 0.83rem;
+  line-height: 1.5;
+}
+
+.primary-button {
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 8px;
+  padding: 12px 16px;
+  color: #fff;
+  background: var(--brand);
+  font-weight: 800;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.primary-button:hover:not(:disabled) {
+  background: var(--brand-strong);
+  transform: translateY(-1px);
+}
+
+.message {
+  margin: 18px 24px 0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  color: #24473a;
+  background: #e8f4ed;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.draft-fields {
+  display: grid;
+  gap: 17px;
+}
+
+.transcript-provenance {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted-ink);
+  background: #fbfcfa;
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.transcript-provenance summary {
+  color: var(--ink);
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.transcript-provenance p {
+  margin: 12px 0 0;
+  white-space: pre-wrap;
+}
+
+.approval-bar {
+  margin: 2px -24px -24px;
+  border-top: 1px solid var(--line);
+  background: #fafcf9;
+}
+
+.approval-bar strong {
+  display: block;
+  margin-bottom: 3px;
+}
+
+.empty-state {
+  display: grid;
+  min-height: 500px;
+  place-items: center;
+  padding: 32px;
+  color: var(--muted-ink);
+  text-align: center;
+}
+
+.empty-state p {
+  max-width: 260px;
+  margin: 0;
+  line-height: 1.55;
+}
+
+.success-card {
+  margin: 0 24px 24px;
+  padding: 15px;
+  border: 1px solid #aad1b9;
+  border-radius: 8px;
+  color: #23503b;
+  background: #edf8f1;
+}
+
+.success-card p {
+  margin: 6px 0 0;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 900px) {
+  .workspace-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .empty-state {
+    min-height: 220px;
+  }
+}
+
+@media (max-width: 620px) {
+  .page-shell {
+    width: min(100% - 28px, 1440px);
+    padding: 30px 0 48px;
+  }
+
+  .hero,
+  .panel-heading,
+  .panel-footer,
+  .approval-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .safety-label {
+    align-self: flex-start;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-grid label:last-child {
+    grid-column: auto;
+  }
+
+  .primary-button {
+    width: 100%;
+  }
+}
