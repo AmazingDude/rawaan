@@ -133,14 +133,14 @@ export function ScribeWorkspace() {
         <div className="safety-label">Documentation support only</div>
       </header>
 
-      <section className="safety-notice" aria-label="Clinical safety notice">
+      <section className="safety-notice compliance-banner" aria-label="Clinical safety notice">
         <strong>Fictional demo data only.</strong> This tool records documentation
         discussed in the transcript. It does not diagnose, recommend treatment,
         or replace clinical judgment.
       </section>
 
       <section className="workspace-grid">
-        <section className="panel transcript-panel" aria-labelledby="transcript-title">
+        <section className="panel step-card transcript-panel" aria-labelledby="transcript-title">
           <div className="panel-heading">
             <div>
               <p className="step-label">STEP 1</p>
@@ -150,7 +150,7 @@ export function ScribeWorkspace() {
           </div>
 
           <div className="form-grid">
-            <label>
+            <label className="form-field">
               Fictional patient ID
               <input
                 value={form.patient_id}
@@ -158,7 +158,7 @@ export function ScribeWorkspace() {
                 placeholder="e.g. patient-amina-001"
               />
             </label>
-            <label>
+            <label className="form-field">
               Display name
               <input
                 value={form.patient_display_name}
@@ -168,7 +168,7 @@ export function ScribeWorkspace() {
                 placeholder="e.g. Amina Khan"
               />
             </label>
-            <label>
+            <label className="form-field">
               Consultation date
               <input
                 type="date"
@@ -180,7 +180,7 @@ export function ScribeWorkspace() {
             </label>
           </div>
 
-          <label className="transcript-field">
+          <label className="transcript-field form-field">
             Scripted or manually entered transcript
             <textarea
               value={form.transcript}
@@ -197,7 +197,7 @@ export function ScribeWorkspace() {
             </p>
             <button
               type="button"
-              className="primary-button"
+              className={draft ? "ghost-button" : "primary-button"}
               onClick={handleGenerate}
               disabled={isGenerating}
             >
@@ -206,7 +206,7 @@ export function ScribeWorkspace() {
           </div>
         </section>
 
-        <section className="panel review-panel" aria-labelledby="review-title">
+        <section className="panel step-card review-panel" aria-labelledby="review-title">
           <div className="panel-heading">
             <div>
               <p className="step-label">STEP 2</p>
@@ -222,7 +222,7 @@ export function ScribeWorkspace() {
           {draft ? (
             <div className="draft-fields">
               {textFields.map(({ field, label }) => (
-                <label key={field}>
+                <label key={field} className="note-field">
                   {label}
                   <textarea
                     value={draft[field]}
@@ -233,7 +233,10 @@ export function ScribeWorkspace() {
               ))}
 
               {listFields.map(({ field, label }) => (
-                <label key={field}>
+                <label
+                  key={field}
+                  className={`note-field ${field === "uncertainties" ? "is-uncertainties" : ""}`}
+                >
                   {label}
                   <textarea
                     value={draft[field].join("\n")}
@@ -256,7 +259,7 @@ export function ScribeWorkspace() {
                 </div>
                 <button
                   type="button"
-                  className="primary-button"
+                  className={approvedNote ? "ghost-button" : "primary-button"}
                   onClick={handleApprove}
                   disabled={isApproving || Boolean(approvedNote)}
                 >
