@@ -127,6 +127,11 @@ Shows note date + patient display name, e.g. "Aug 12, 2026 · Amina Khan". Click
 `background: #0a3922; color: #ffffff; padding: 12px 24px; font: 14px/500;`
 Always visible when a patient is selected. Shows patient ID + display name. This is a deliberate, slightly heavy-handed visual choice — the point is that a clinician (or a judge watching the demo) should never be able to forget which patient's context they're in.
 
+### Landing Hero
+**Role:** The root-route introduction to Rawaan. It provides a single, honest entry point to the working Scribe at `/scribe`.
+
+Use a full-viewport solid Canopy Green (`#0a3922`) surface with a three-part treated navigation line, an asymmetrically composed DM Sans headline, a concise explanation, one Coral **“Try the Demo”** link, and a restrained Transcript / Clinician review / Approved note sequence. The hero has no accounts, authentication controls, secondary CTA, box-shadow, gradient, fake product window, or stock imagery. Current implementation deliberately uses the solid-color fallback: omit the optional texture unless it remains subordinate to text at low opacity and passes screenshot review.
+
 ### Top Navigation Bar
 `background: #ffffff; border-bottom: 1px solid #e0e0e0; padding: 16px 24px;`
 Logo/wordmark left ("RAWAAN · PATIENT CONTEXT ENGINE" in 12px/600 uppercase Canopy Green — this already exists and is good, keep it). Nav/status right, no coral in the nav bar itself — coral is reserved for in-page primary actions only.

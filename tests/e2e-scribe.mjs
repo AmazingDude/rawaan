@@ -9,7 +9,7 @@ const browser = await chromium.launch({
 
 try {
   const page = await browser.newPage();
-  await page.goto("http://127.0.0.1:3000", { waitUntil: "networkidle" });
+  await page.goto("http://127.0.0.1:3000/scribe", { waitUntil: "networkidle" });
 
   await page.getByLabel("Fictional patient ID").fill("patient-amina-001");
   await page.getByLabel("Display name").fill("Amina Khan");

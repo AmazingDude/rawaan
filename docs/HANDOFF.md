@@ -2,7 +2,7 @@
 
 ## Current state
 
-Work continues on branch `design/system-and-landing`. The completed first-round Scribe design-system restyle is committed as `ad4e74b` (`style: apply Rawaan design system to Scribe UI`), and the second-round layout refinement is committed as `3415d20` (`style: refine Scribe review layout`). The third, Scribe-only review round is complete and awaiting user review. No landing page, route change, or Brain work has been started.
+Work continues locally on branch `design/system-and-landing`. The completed Scribe design work is committed through `c5140a2` (`style: keep Scribe primary actions coral`). The user has approved the Scribe rounds and requested the landing page next. Landing implementation is complete and validated in the current local landing commit: `/` is the Rawaan landing page, while the preserved documentation workflow is at `/scribe`. The combined pull request is explicitly deferred until the landing page is reviewed; therefore this design system is not yet available in `main` for Brain UI work.
 
 | Area | Current direction |
 |---|---|
@@ -11,7 +11,9 @@ Work continues on branch `design/system-and-landing`. The completed first-round 
 | Step 2 layout | Organize the existing note fields into Subjective, Assessment & Plan, and Follow-up & Notes sections, with dividers and responsive two-column field pairing. |
 | Step 1 layout | Keep the transcript card sticky above the 900px breakpoint and stacked normally at narrower widths. Fixed-viewport live-scroll verification confirmed it pins at a 24px top offset after scrolling. |
 | Third-round UX | Added explicit transcript-absence messaging, a visibly locked approved-note state, and a local-only “Start new consultation” reset action. |
-| Documentation | `docs/DESIGN.md` is being updated as the canonical reference for the no-accent, section-grouped, sticky layout and new Scribe states. |
+| Documentation | `docs/DESIGN.md` is the canonical reference for the no-accent, section-grouped, sticky layout, approved/empty Scribe states, and the landing hero. |
+| Landing route split | Root `/` becomes one dark Canopy Green Rawaan landing hero. Its single Coral “Try the Demo” action routes to `/scribe`; the existing Scribe flow remains otherwise unchanged. |
+| Branch process | Keep the combined design + landing PR local and deferred until the user reviews landing-page results. After the combined PR merges, the design system will be available for Brain UI work. |
 
 ## Constraints
 
@@ -27,6 +29,8 @@ The third-round implementation passed `npm run typecheck`, `npm run lint`, `npm 
 
 On this Windows machine, use `npm run build` followed by `npm run start` for browser exercises; the development server has previously served client chunks unreliably. The optional `PLAYWRIGHT_CHROMIUM_EXECUTABLE` variable can point to the installed local Chromium. Browser test data was reset to `data/notes.json` containing `[]`, and temporary servers and test artifacts were removed.
 
+The landing route split passed `npm run typecheck`, `npm run lint`, `npm run test` (3 files and 8 tests), and `npm run build`, which emitted both `/` and `/scribe`. A production browser check verified the root page’s single `/scribe` CTA, solid Canopy Green surface, absence of shadow/gradient, and responsive desktop/mobile layout. The updated production Scribe E2E passed on `/scribe`. One initial routed E2E timeout was traced to a stale development listener on port 3000; after stopping it and restarting `next start`, the flow passed unchanged.
+
 ## Next action
 
-Send fixed-scroll and state screenshots to the user, then pause for explicit approval. Do not begin landing-page work until that approval arrives.
+Present the local landing commit and screenshots for user review. Do not push, open a PR, or begin Brain work before the user’s next approval.

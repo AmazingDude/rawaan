@@ -1,5 +1,5 @@
-import { ScribeWorkspace } from "@/app/components/scribe-workspace";
+import { LandingPage } from "@/app/components/landing-page";
 
 export default function HomePage() {
-  return <ScribeWorkspace />;
+  return <LandingPage />;
 }

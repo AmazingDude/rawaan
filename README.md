@@ -26,7 +26,7 @@ The current generator is explicitly labeled **Local demo parser**. It extracts o
 | `npm run test` | Run schema, persistence, generator, and approval-flow unit tests. |
 | `npm run build` | Produce and validate the production build. |
 
-Open the local URL printed by `npm run dev`, typically `http://localhost:3000`.
+Open the local URL printed by `npm run dev`, typically `http://localhost:3000`. The root route is the Rawaan landing page; select **Try the Demo** or open `http://localhost:3000/scribe` directly to use the Scribe workflow.
 
 ## Architecture and data boundaries
 

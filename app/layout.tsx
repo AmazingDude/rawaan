@@ -11,8 +11,9 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  description: "Documentation-only consultation note capture for fictional demo patients.",
-  title: "Rawaan | Clinical Scribe",
+  description:
+    "A clinician-controlled patient context engine for fictional demo consultations.",
+  title: "Rawaan | Patient Context Engine",
 };
 
 export default function RootLayout({
