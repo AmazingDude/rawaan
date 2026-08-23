@@ -315,12 +315,12 @@ textarea:focus {
 }
 
 .primary-button:hover:not(:disabled) {
-  border-color: var(--color-canopy-green);
-  background: var(--color-canopy-green);
+  border-color: var(--color-coral-action);
+  background: color-mix(in srgb, var(--color-coral-action) 86%, var(--color-ink-black));
 }
 
 .primary-button:active:not(:disabled) {
-  background: var(--color-deep-teal);
+  background: color-mix(in srgb, var(--color-coral-action) 72%, var(--color-ink-black));
 }
 
 .ghost-button {
