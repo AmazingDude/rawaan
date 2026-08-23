@@ -208,6 +208,11 @@ h2 {
   background: var(--color-mint-wash);
 }
 
+.status-chip.approved {
+  color: var(--color-leaf-accent);
+  background: var(--color-sage-wash);
+}
+
 .form-grid,
 .transcript-field,
 .draft-fields {
@@ -389,6 +394,42 @@ textarea:focus {
 
 .section-field.is-uncertainties textarea {
   background: var(--color-paper-white);
+}
+
+.field-empty-state {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: var(--radius-icons);
+  font-size: var(--text-body-sm);
+  font-weight: 500;
+  line-height: 1.38;
+}
+
+.field-empty-state.is-explicit-none {
+  color: var(--color-canopy-green);
+  background: var(--color-sage-wash);
+}
+
+.field-empty-state.is-not-extracted {
+  color: var(--color-slate);
+  background: var(--color-cream);
+}
+
+.is-approved input:disabled,
+.is-approved textarea:disabled {
+  border-color: var(--color-frost-gray);
+  color: var(--color-graphite);
+  background: #f4f4f4;
+  cursor: default;
+  opacity: 1;
+}
+
+.is-approved textarea:disabled {
+  resize: none;
+}
+
+.is-approved .section-field.is-uncertainties textarea:disabled {
+  background: #f4f4f4;
 }
 
 .transcript-provenance {

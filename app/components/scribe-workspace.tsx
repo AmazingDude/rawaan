@@ -39,6 +39,7 @@ type DraftField =
       label: string;
       layout: "full" | "half";
       rows: number;
+      sourceLabel: string;
     };
 
 const draftSections: { fields: DraftField[]; id: string; title: string }[] = [
@@ -59,6 +60,7 @@ const draftSections: { fields: DraftField[]; id: string; title: string }[] = [
         label: "History discussed",
         layout: "half",
         rows: 3,
+        sourceLabel: "History",
       },
       {
         field: "symptoms",
@@ -66,6 +68,7 @@ const draftSections: { fields: DraftField[]; id: string; title: string }[] = [
         label: "Symptoms",
         layout: "full",
         rows: 3,
+        sourceLabel: "Symptoms",
       },
     ],
   },
@@ -79,6 +82,7 @@ const draftSections: { fields: DraftField[]; id: string; title: string }[] = [
         label: "Assessment / observations discussed",
         layout: "half",
         rows: 3,
+        sourceLabel: "Assessment discussed",
       },
       {
         field: "plan_discussed",
@@ -86,6 +90,7 @@ const draftSections: { fields: DraftField[]; id: string; title: string }[] = [
         label: "Plan / next steps discussed",
         layout: "half",
         rows: 3,
+        sourceLabel: "Plan discussed",
       },
       {
         field: "medications_mentioned",
@@ -93,6 +98,7 @@ const draftSections: { fields: DraftField[]; id: string; title: string }[] = [
         label: "Medications mentioned",
         layout: "full",
         rows: 3,
+        sourceLabel: "Medications mentioned",
       },
     ],
   },
@@ -113,6 +119,7 @@ const draftSections: { fields: DraftField[]; id: string; title: string }[] = [
         label: "Uncertainties",
         layout: "full",
         rows: 3,
+        sourceLabel: "Uncertainties",
       },
     ],
   },
@@ -132,6 +139,28 @@ function toLines(value: string): string[] {
     .filter(Boolean);
 }
 
+function getListFieldEmptyState(
+  values: string[],
+  rawTranscript: string,
+  sourceLabel: string,
+): "explicit-none" | "not-extracted" | null {
+  if (values.length > 0) {
+    return null;
+  }
+
+  const prefix = `${sourceLabel.toLowerCase()}:`;
+  const sourceValue = rawTranscript
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find((line) => line.toLowerCase().startsWith(prefix))
+    ?.slice(prefix.length)
+    .trim();
+
+  return /^(none|none mentioned|not mentioned|n\/a)$/i.test(sourceValue ?? "")
+    ? "explicit-none"
+    : "not-extracted";
+}
+
 export function ScribeWorkspace() {
   const [form, setForm] = useState<FormValues>(initialForm);
   const [draft, setDraft] = useState<NoteDraft | null>(null);
@@ -142,6 +171,7 @@ export function ScribeWorkspace() {
     approvedAt: string;
     noteId: string;
   } | null>(null);
+  const isApproved = Boolean(approvedNote);
 
   function updateForm(field: keyof FormValues, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -180,6 +210,13 @@ export function ScribeWorkspace() {
     );
   }
 
+  function handleStartNewConsultation() {
+    setForm(initialForm);
+    setDraft(null);
+    setMessage(null);
+    setApprovedNote(null);
+  }
+
   async function handleApprove() {
     if (!draft) {
       return;
@@ -200,7 +237,7 @@ export function ScribeWorkspace() {
   }
 
   return (
-    <main className="page-shell">
+    <main className={`page-shell ${isApproved ? "is-approved" : ""}`}>
       <header className="hero">
         <div>
           <p className="eyebrow">RAWAAN · PATIENT CONTEXT ENGINE</p>
@@ -235,6 +272,7 @@ export function ScribeWorkspace() {
                 value={form.patient_id}
                 onChange={(event) => updateForm("patient_id", event.target.value)}
                 placeholder="e.g. patient-amina-001"
+                disabled={isApproved}
               />
             </label>
             <label className="form-field">
@@ -245,6 +283,7 @@ export function ScribeWorkspace() {
                   updateForm("patient_display_name", event.target.value)
                 }
                 placeholder="e.g. Amina Khan"
+                disabled={isApproved}
               />
             </label>
             <label className="form-field">
@@ -255,6 +294,7 @@ export function ScribeWorkspace() {
                 onChange={(event) =>
                   updateForm("consultation_date", event.target.value)
                 }
+                disabled={isApproved}
               />
             </label>
           </div>
@@ -266,6 +306,7 @@ export function ScribeWorkspace() {
               onChange={(event) => updateForm("transcript", event.target.value)}
               placeholder={"For the local demo parser, use labelled lines such as:\nChief complaint: Persistent headache\nHistory: Headache for three days\nPlan discussed: Keep a symptom diary"}
               rows={14}
+              disabled={isApproved}
             />
           </label>
 
@@ -278,7 +319,7 @@ export function ScribeWorkspace() {
               type="button"
               className={draft ? "ghost-button" : "primary-button"}
               onClick={handleGenerate}
-              disabled={isGenerating}
+              disabled={isGenerating || isApproved}
             >
               {isGenerating ? "Creating draft…" : "Create structured draft"}
             </button>
@@ -291,8 +332,14 @@ export function ScribeWorkspace() {
               <p className="step-label">STEP 2</p>
               <h2 id="review-title">Review and approve</h2>
             </div>
-            <span className={`status-chip ${draft ? "draft" : "neutral"}`}>
-              {draft ? "Draft · clinician review required" : "No draft yet"}
+            <span
+              className={`status-chip ${isApproved ? "approved" : draft ? "draft" : "neutral"}`}
+            >
+              {isApproved
+                ? "Approved · saved"
+                : draft
+                  ? "Draft · clinician review required"
+                  : "No draft yet"}
             </span>
           </div>
 
@@ -308,32 +355,51 @@ export function ScribeWorkspace() {
                 >
                   <h3 id={section.id}>{section.title}</h3>
                   <div className="note-section-fields">
-                    {section.fields.map((field) => (
-                      <label
-                        key={field.field}
-                        className={`section-field is-${field.layout} ${field.field === "uncertainties" ? "is-uncertainties" : ""}`}
-                      >
-                        {field.label}
-                        <textarea
-                          value={
-                            field.kind === "text"
-                              ? draft[field.field]
-                              : draft[field.field].join("\n")
-                          }
-                          onChange={(event) =>
-                            field.kind === "text"
-                              ? updateDraftText(field.field, event.target.value)
-                              : updateDraftList(field.field, event.target.value)
-                          }
-                          placeholder={
-                            field.kind === "list"
-                              ? "One documented item per line"
-                              : undefined
-                          }
-                          rows={field.rows}
-                        />
-                      </label>
-                    ))}
+                    {section.fields.map((field) => {
+                      const emptyState =
+                        field.kind === "list"
+                          ? getListFieldEmptyState(
+                              draft[field.field],
+                              draft.raw_transcript,
+                              field.sourceLabel,
+                            )
+                          : null;
+
+                      return (
+                        <label
+                          key={field.field}
+                          className={`section-field is-${field.layout} ${field.field === "uncertainties" ? "is-uncertainties" : ""}`}
+                        >
+                          {field.label}
+                          {emptyState ? (
+                            <p className={`field-empty-state is-${emptyState}`}>
+                              {emptyState === "explicit-none"
+                                ? "None mentioned in transcript"
+                                : "No documented items extracted"}
+                            </p>
+                          ) : null}
+                          <textarea
+                            value={
+                              field.kind === "text"
+                                ? draft[field.field]
+                                : draft[field.field].join("\n")
+                            }
+                            onChange={(event) =>
+                              field.kind === "text"
+                                ? updateDraftText(field.field, event.target.value)
+                                : updateDraftList(field.field, event.target.value)
+                            }
+                            placeholder={
+                              field.kind === "list"
+                                ? "One documented item per line"
+                                : undefined
+                            }
+                            rows={field.rows}
+                            disabled={isApproved}
+                          />
+                        </label>
+                      );
+                    })}
                   </div>
                 </section>
               ))}
@@ -345,21 +411,31 @@ export function ScribeWorkspace() {
 
               <div className="approval-bar">
                 <div>
-                  <strong>Approval gate</strong>
-                  <p>Only the edited, approved note will be saved.</p>
+                  <strong>{isApproved ? "Note approved" : "Approval gate"}</strong>
+                  <p>
+                    {isApproved
+                      ? "The saved note is locked. Start a new consultation to continue."
+                      : "Only the edited, approved note will be saved."}
+                  </p>
                 </div>
-                <button
-                  type="button"
-                  className={approvedNote ? "ghost-button" : "primary-button"}
-                  onClick={handleApprove}
-                  disabled={isApproving || Boolean(approvedNote)}
-                >
-                  {approvedNote
-                    ? "Note approved"
-                    : isApproving
-                      ? "Saving approved note…"
-                      : "Approve and save"}
-                </button>
+                {isApproved ? (
+                  <button
+                    type="button"
+                    className="primary-button"
+                    onClick={handleStartNewConsultation}
+                  >
+                    Start new consultation
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="primary-button"
+                    onClick={handleApprove}
+                    disabled={isApproving}
+                  >
+                    {isApproving ? "Saving approved note…" : "Approve and save"}
+                  </button>
+                )}
               </div>
             </div>
           ) : (

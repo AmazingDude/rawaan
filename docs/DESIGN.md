@@ -92,6 +92,16 @@ Never use coral for more than one button in the same viewport. If a screen needs
 `background: #ffffff; border-radius: 20px; padding: 24px; border: 1px solid #e0e0e0;`
 Each section title is 20px/600 Charcoal. Use subtle `#e0e0e0` internal dividers between fields rather than a separate bordered card around every field. On wide viewports, pair naturally short fields in two columns; fields stack to one column on narrow viewports. Labels remain 14px/600 Charcoal, with editable text areas in 16px/400 Ink Black. The "uncertainties" field specifically uses a `#ffede8` (Peach Wash) surface to flag clinician attention, without any colored left accent.
 
+### Explicit Absence State
+**Role:** Distinguish a transcript that explicitly records an absence from a parser omission without changing the stored note schema.
+
+When a structured transcript line explicitly says `None`, `None mentioned`, `Not mentioned`, or `N/A`, render a small sage inset reading **“None mentioned in transcript”** above the empty review field. When the field is empty because no usable value was extracted, render a restrained cream inset reading **“No documented items extracted.”** Do not use placeholder text as the only indication of either state.
+
+### Approved Note Lock State
+**Role:** Make a saved note read unmistakably as read-only.
+
+After explicit approval, preserve the visible note content but disable all consultation and review controls. Use a quiet gray fill, muted text, default cursor, and no editable-looking focus or resize affordance for the disabled fields. Change the status pill to **“Approved · saved”** in Sage/Leaf. The action area should offer **“Start new consultation”**, which resets only local form and draft UI state; it must not alter persisted records or routing.
+
 ### Step Card (Scribe workflow)
 **Role:** "Step 1: Enter consultation context" / "Step 2: Review and approve" — the two-column workflow container
 `background: #ffffff; border-radius: 20px; padding: 24px; border: 1px solid #e0e0e0;`
