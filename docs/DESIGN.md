@@ -127,10 +127,17 @@ Shows note date + patient display name, e.g. "Aug 12, 2026 · Amina Khan". Click
 `background: #0a3922; color: #ffffff; padding: 12px 24px; font: 14px/500;`
 Always visible when a patient is selected. Shows patient ID + display name. This is a deliberate, slightly heavy-handed visual choice — the point is that a clinician (or a judge watching the demo) should never be able to forget which patient's context they're in.
 
-### Landing Hero
+### Landing Page
 **Role:** The root-route introduction to Rawaan. It provides a single, honest entry point to the working Scribe at `/scribe`.
 
-Use a full-viewport solid Canopy Green (`#0a3922`) surface with a three-part treated navigation line, an asymmetrically composed DM Sans headline, a concise explanation, one Coral **“Try the Demo”** link, and a restrained Transcript / Clinician review / Approved note sequence. The hero has no accounts, authentication controls, secondary CTA, box-shadow, gradient, fake product window, or stock imagery. Current implementation deliberately uses the solid-color fallback: omit the optional texture unless it remains subordinate to text at low opacity and passes screenshot review.
+#### Navigation Bar
+Use one horizontally aligned bar, vertically centered within the dark hero. The left lockup contains the **RAWAAN** wordmark with **Patient Context Engine** as a tightly spaced small-caps subtitle directly below it. The right side uses the existing `safety-label` pill treatment for **“Documentation support only”**. Do not distribute the lockup, subtitle, and disclosure as three unrelated floating text elements.
+
+#### Hero Column
+Use a solid Canopy Green (`#0a3922`) hero bounded to roughly 600–720px tall rather than an oversized `100vh` frame. Place the eyebrow, headline, body copy, and the one Coral **“Try the Demo”** link in one constrained left column, 560–640px wide. Use 12px from eyebrow to headline, 24px from headline to body, and 32px from body to CTA. The display headline must not exceed 64px and uses `-0.028em` letter spacing; one meaningful word may use Leaf Accent (`#1dbf73`) for emphasis. The hero has no accounts, authentication controls, secondary CTA, box-shadow, gradient, fake product window, or stock imagery.
+
+#### Pastel Workflow Section
+Place a Cream (`#faf7e8`) or Mint Wash section directly below the hero. Render **Transcript**, **Clinician review**, and **Approved note** as three connected Step Card-style items: each uses a small Status Pill-like numbered marker, a concise title, and one sentence of explanation. At wide widths a subtle horizontal connector visually relates the three steps; at narrow widths the cards stack without a decorative rail. Place the fictional-demo disclosure inside or immediately after this section, not alone at the base of the hero. Current implementation deliberately uses the solid-color hero fallback: omit the optional texture unless it remains subordinate to text at low opacity and passes screenshot review.
 
 ### Top Navigation Bar
 `background: #ffffff; border-bottom: 1px solid #e0e0e0; padding: 16px 24px;`
