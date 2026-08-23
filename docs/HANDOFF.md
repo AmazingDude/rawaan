@@ -2,7 +2,7 @@
 
 ## Current state
 
-Work continues locally on branch `design/system-and-landing`. The completed Scribe design work is committed through `c5140a2` (`style: keep Scribe primary actions coral`). The user has approved the Scribe rounds and requested the landing page next. The initial landing implementation is in the current local landing commit: `/` is the Rawaan landing page, while the preserved documentation workflow is at `/scribe`. The senior UI/UX review round is complete and validated locally: the navigation is a unified lockup plus safety-label pill, hero content is one bounded left column, and the Cream workflow section connects the product flow. The combined pull request remains explicitly deferred until this review round is approved; therefore this design system is not yet available in `main` for Brain UI work.
+Work continues locally on branch `design/system-and-landing`. The completed Scribe design work is committed through `c5140a2` (`style: keep Scribe primary actions coral`). The local typography round is complete and validated: Onest replaces DM Sans throughout the UI, while self-hosted Thestral Neue is scoped solely to the root landing page’s largest hero headline. The user has approved the Scribe rounds and requested the landing page next. The initial landing implementation is in the current local landing commit: `/` is the Rawaan landing page, while the preserved documentation workflow is at `/scribe`. The senior UI/UX review round is complete and validated locally: the navigation is a unified lockup plus safety-label pill, hero content is one bounded left column, and the Cream workflow section connects the product flow. The combined pull request remains explicitly deferred until this review round is approved; therefore this design system is not yet available in `main` for Brain UI work.
 
 | Area | Current direction |
 |---|---|
@@ -14,6 +14,7 @@ Work continues locally on branch `design/system-and-landing`. The completed Scri
 | Documentation | `docs/DESIGN.md` is the canonical reference for the no-accent, section-grouped, sticky layout, approved/empty Scribe states, and the landing hero. |
 | Landing route split | Root `/` remains a dark Canopy Green Rawaan hero with one Coral “Try the Demo” action to `/scribe`; the preserved Scribe flow remains otherwise unchanged. |
 | Landing review round | Completed locally: wordmark/subtitle lockup plus safety-label pill, bounded left hero column with Leaf-emphasized headline word, and connected Cream Transcript → Clinician review → Approved note section. |
+| Typography round | Completed locally: Onest replaces the UI/body system; OFL-licensed Thestral Neue is self-hosted and restricted to the one landing hero headline. |
 | Branch process | Keep the combined design + landing PR local and deferred until the user reviews landing-page results. After the combined PR merges, the design system will be available for Brain UI work. |
 
 ## Constraints
@@ -34,6 +35,8 @@ The initial landing route split passed `npm run typecheck`, `npm run lint`, `npm
 
 The reviewed landing refinement passed `npm run typecheck`, `npm run lint`, `npm run test` (3 files and 8 tests), and `npm run build`. A production browser assertion verified the unified navigation alignment, one-column hero alignment, 600–720px desktop hero height, Leaf headline emphasis, three workflow cards, one `/scribe` CTA, no mobile horizontal overflow, and the CTA navigation itself. The unchanged production Scribe E2E also passed. Desktop and mobile screenshot review found the requested navigation, hierarchy, and Cream workflow section rendered correctly. Test data was reset to `[]` and the temporary server was stopped.
 
+The typography update passed a fresh `npm run typecheck`, `npm run lint`, `npm run test` (3 files and 8 tests), and `npm run build`. A clean-port production browser exercise verified that Onest loads across the landing and Scribe UI, Thestral Neue loads only for the root landing hero headline, `/scribe` contains no landing headline, the root CTA still routes to `/scribe`, and both pages have no mobile horizontal overflow. The full production Scribe transcript → draft → edit → approve → persisted-record E2E also passed after the font change. Four desktop/mobile captures were reviewed, `data/notes.json` was reset to `[]`, and the temporary server/artifacts were removed.
+
 ## Next action
 
-Review the scoped refinement diff, create a local-only refinement commit, and present the updated desktop and mobile screenshots for user review. Do not push, open a PR, or begin Brain work before the user’s next approval.
+Review the scoped typography diff, create only a local commit, and present the desktop/mobile landing and Scribe evidence for user approval. Do not push, open a PR, merge, or begin Brain work before the user’s next approval.

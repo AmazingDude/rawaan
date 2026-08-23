@@ -1,13 +1,23 @@
 import type { Metadata } from "next";
-import { DM_Sans } from "next/font/google";
+import localFont from "next/font/local";
 import type { ReactNode } from "react";
 
 import "./globals.css";
 
-const dmSans = DM_Sans({
-  subsets: ["latin"],
-  variable: "--font-dm-sans",
-  weight: ["400", "500", "600", "700"],
+const onest = localFont({
+  display: "swap",
+  fallback: ["ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "sans-serif"],
+  src: "./fonts/onest-variable.ttf",
+  variable: "--font-onest",
+  weight: "400 700",
+});
+
+const thestralNeue = localFont({
+  display: "swap",
+  fallback: ["Georgia", "Times New Roman", "serif"],
+  src: "./fonts/thestral-neue-bold.woff2",
+  variable: "--font-thestral-neue",
+  weight: "700",
 });
 
 export const metadata: Metadata = {
@@ -21,7 +31,7 @@ export default function RootLayout({
 }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="en">
-      <body className={dmSans.variable}>{children}</body>
+      <body className={`${onest.variable} ${thestralNeue.variable}`}>{children}</body>
     </html>
   );
 }

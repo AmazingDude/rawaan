@@ -3,7 +3,7 @@
 
 **Theme:** light
 
-Rawaan uses a warm, clinically-confident visual system built around one anchor color: a deep forest green that already appears in the current app's headline treatment. Soft pastel card washes (mint, sky, cream, lilac) replace flat white/gray cards to create visual rhythm between sections without adding clutter. A single coral action color is reserved exclusively for the primary forward action on each screen (Create draft, Approve note, Ask a question) — so there is never ambiguity about what to click next. Typography is a single family (DM Sans) at a wide dynamic range, from small captions to large display headlines, giving the product an editorial, confident voice instead of a generic SaaS-template one. Components are flat and borderless — depth comes from color-surface stepping, not shadows — which keeps the interface calm and readable, appropriate for a tool clinicians will use during or right after a consultation.
+Rawaan uses a warm, clinically-confident visual system built around one anchor color: a deep forest green that already appears in the current app's headline treatment. Soft pastel card washes (mint, sky, cream, lilac) replace flat white/gray cards to create visual rhythm between sections without adding clutter. A single coral action color is reserved exclusively for the primary forward action on each screen (Create draft, Approve note, Ask a question) — so there is never ambiguity about what to click next. Typography uses Onest for every UI, form, navigation, and body-text role. Thestral Neue is the sole scoped exception: it appears only in the largest landing hero headline, creating one editorial moment without altering the working clinical interface. Components are flat and borderless — depth comes from color-surface stepping, not shadows — which keeps the interface calm and readable, appropriate for a tool clinicians will use during or right after a consultation.
 
 Optional: the abstract green/blue motion-blur imagery may be used as a subtle, low-opacity background texture behind the dark hero band only (see Imagery section) — decorative, never behind readable content.
 
@@ -31,8 +31,11 @@ Optional: the abstract green/blue motion-blur imagery may be used as a subtle, l
 
 ## Tokens — Typography
 
-**Font:** DM Sans everywhere — display headlines through UI captions. Fallback: Inter, Manrope.
-**Weights used:** 400 (body), 500 (UI/labels), 600 (headings/buttons), 700 (emphasis/large display)
+**UI/body font:** Onest [1] everywhere in the application and across landing-page navigation, eyebrow, body, CTA, workflow, labels, and controls. It is self-hosted from the official Google Fonts source under the SIL Open Font License (OFL).
+
+**Display Serif (landing hero only):** Thestral Neue [2] is reserved for the single largest headline, **“Notes that stay with the patient.”**, on the root landing hero. It is self-hosted under the OFL. No other landing copy, screen, field, button, status, or card may use it.
+
+**Weights used:** Onest 400 (body), 500 (UI/labels), 600 (headings/buttons), and 700 (emphasis); Thestral Neue 700 only for the scoped landing hero headline.
 **Letter spacing:** -0.028em at ≥52px, -0.019em at 32–48px, normal below that.
 
 | Role | Size | Line height | Weight | Token |
@@ -48,6 +51,11 @@ Optional: the abstract green/blue motion-blur imagery may be used as a subtle, l
 | display | 64px | 1.05 | 600 | `--text-display` |
 
 Note: this is intentionally toned down from the source system's 116px display size — Rawaan is a working clinical tool used inside a browser tab during appointments, not a marketing landing page, so headline sizes stay in the 32–64px range across the whole app, not just the homepage.
+
+### Font sources
+
+[1]: https://fonts.google.com/specimen/Onest "Onest — Google Fonts"
+[2]: https://xcicero.esad-gv.net/page/thestral/index.php "Thestral Neue — X Cicéro"
 
 ## Spacing & Shape
 
@@ -134,7 +142,7 @@ Always visible when a patient is selected. Shows patient ID + display name. This
 Use one horizontally aligned bar, vertically centered within the dark hero. The left lockup contains the **RAWAAN** wordmark with **Patient Context Engine** as a tightly spaced small-caps subtitle directly below it. The right side uses the existing `safety-label` pill treatment for **“Documentation support only”**. Do not distribute the lockup, subtitle, and disclosure as three unrelated floating text elements.
 
 #### Hero Column
-Use a solid Canopy Green (`#0a3922`) hero bounded to roughly 600–720px tall rather than an oversized `100vh` frame. Place the eyebrow, headline, body copy, and the one Coral **“Try the Demo”** link in one constrained left column, 560–640px wide. Use 12px from eyebrow to headline, 24px from headline to body, and 32px from body to CTA. The display headline must not exceed 64px and uses `-0.028em` letter spacing; one meaningful word may use Leaf Accent (`#1dbf73`) for emphasis. The hero has no accounts, authentication controls, secondary CTA, box-shadow, gradient, fake product window, or stock imagery.
+Use a solid Canopy Green (`#0a3922`) hero bounded to roughly 600–720px tall rather than an oversized `100vh` frame. Place the eyebrow, headline, body copy, and the one Coral **“Try the Demo”** link in one constrained left column, 560–640px wide. Use 12px from eyebrow to headline, 24px from headline to body, and 32px from body to CTA. The display headline must not exceed 64px, uses `-0.028em` letter spacing, and is the only location that uses Thestral Neue; one meaningful word may use Leaf Accent (`#1dbf73`) for emphasis. The hero has no accounts, authentication controls, secondary CTA, box-shadow, gradient, fake product window, or stock imagery.
 
 #### Pastel Workflow Section
 Place a Cream (`#faf7e8`) or Mint Wash section directly below the hero. Render **Transcript**, **Clinician review**, and **Approved note** as three connected Step Card-style items: each uses a small Status Pill-like numbered marker, a concise title, and one sentence of explanation. At wide widths a subtle horizontal connector visually relates the three steps; at narrow widths the cards stack without a decorative rail. Place the fictional-demo disclosure inside or immediately after this section, not alone at the base of the hero. Current implementation deliberately uses the solid-color hero fallback: omit the optional texture unless it remains subordinate to text at low opacity and passes screenshot review.
@@ -151,7 +159,7 @@ Keep this — it's doing real work (both product-honesty and hackathon-judging-h
 ## Do's and Don'ts
 
 ### Do
-- Use DM Sans at every size, 400–700 weight only — no second typeface, ever
+- Use Onest for all UI and body roles; use Thestral Neue only for the landing hero headline — do not introduce a third typeface
 - Reserve `#ff643b` coral for exactly one primary action per screen
 - Use the pastel wash rotation for card backgrounds instead of white/gray — mint for neutral/draft, sky for Brain answers, peach for warnings/no-record states, sage for success/approved
 - Keep all radii from the defined scale (8 / 12 / 16 / 20 / 40 / 9999px) — no ad-hoc values
@@ -163,6 +171,7 @@ Keep this — it's doing real work (both product-honesty and hackathon-judging-h
 - Don't use coral decoratively, or on more than one button per screen
 - Don't let the No-Supporting-Record card look like a normal answer card with different text — the color/border difference must be immediate, at a glance, before reading
 - Don't push display type past 64px anywhere in the app — this is a working tool, not a marketing site
+- Don't use Google Sans: it is Google’s proprietary in-house typeface and is not licensed for self-hosting or embedding
 - Don't introduce a second accent hue beyond Coral (action) and Leaf (success) — keep the palette disciplined
 
 ## Imagery
@@ -199,7 +208,8 @@ Single-column max-width 1120px container, centered, with 24px horizontal padding
   --color-paper-white: #ffffff;
 
   /* Typography */
-  --font-dm-sans: 'DM Sans', ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-ui: var(--font-onest), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: var(--font-thestral-neue), Georgia, "Times New Roman", serif; /* landing hero headline only */
   --text-caption: 12px;
   --text-body-sm: 14px;
   --text-body: 16px;
@@ -241,7 +251,8 @@ Single-column max-width 1120px container, centered, with 24px horizontal padding
   --color-lilac-wash: #fdf0ff;
   --color-cream: #faf7e8;
 
-  --font-dm-sans: 'DM Sans', ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-ui: var(--font-onest), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: var(--font-thestral-neue), Georgia, "Times New Roman", serif; /* landing hero headline only */
 
   --radius-cards: 20px;
   --radius-buttons: 40px;
