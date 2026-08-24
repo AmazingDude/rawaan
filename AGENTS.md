@@ -19,16 +19,16 @@ Read `docs/PRD.md` before writing any code. The PRD is the source of truth. If c
 
 Use the right skill instead of improvising:
 
-| Situation | Skill |
-|---|---|
-| Starting any feature or ambiguous task | `brainstorming` |
-| Multi-step work (anything > 1 file) | `writing-plans` + `planning-with-files` (keep plan in `plans/`) |
-| Before claiming ANY task done | `verification-before-completion` |
+| Situation                                     | Skill                                                                                                                            |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Starting any feature or ambiguous task        | `brainstorming`                                                                                                                  |
+| Multi-step work (anything > 1 file)           | `writing-plans` + `planning-with-files` (keep plan in `plans/`)                                                                  |
+| Before claiming ANY task done                 | `verification-before-completion`                                                                                                 |
 | Any bug, test failure, or unexpected behavior | `systematic-debugging` (reproduce → isolate → fix → verify; NEVER "fix" by deleting a failing assertion or try/catch-swallowing) |
-| Reviewing code (giving or receiving) | `code-review` + `requesting-code-review` |
-| Next.js App Router work | `nextjs-app-router-patterns` |
-| API route design | `api-design-principles` |
-| Testing the web UI end-to-end | `webapp-testing` (Playwright) |
+| Reviewing code (giving or receiving)          | `code-review` + `requesting-code-review`                                                                                         |
+| Next.js App Router work                       | `nextjs-app-router-patterns`                                                                                                     |
+| API route design                              | `api-design-principles`                                                                                                          |
+| Testing the web UI end-to-end                 | `webapp-testing` (Playwright)                                                                                                    |
 
 ## Stack conventions
 
@@ -45,6 +45,7 @@ Use the right skill instead of improvising:
 - One branch per task: `feat/brain-retrieval`, `feat/seed-data`, `feat/query-ui`.
 - Before merging into `main`: run the full check (typecheck, lint, build, tests, and actually try the feature) — this is the same Definition of Done AGENTS.md already requires, just also applied before merging, not just before saying "done."
 - Get a quick look from Rehan or Aashir before merging into `main`, even if you're confident it's fine — a broken main costs more time than a 5-minute review.
+- CI (typecheck/lint/test/build) runs automatically on every PR into main via GitHub Actions. E2E/browser testing remains a manual step before opening a PR, per the Definition of Done.
 
 ## Definition of done
 
