@@ -25,18 +25,104 @@ type ListField =
 
 type TextField = "chief_complaint" | "follow_up";
 
-const listFields: { field: ListField; label: string }[] = [
-  { field: "history", label: "History discussed" },
-  { field: "symptoms", label: "Symptoms" },
-  { field: "assessment_discussed", label: "Assessment / observations discussed" },
-  { field: "plan_discussed", label: "Plan / next steps discussed" },
-  { field: "medications_mentioned", label: "Medications mentioned" },
-  { field: "uncertainties", label: "Uncertainties" },
-];
+type DraftField =
+  | {
+      field: TextField;
+      kind: "text";
+      label: string;
+      layout: "full" | "half";
+      rows: number;
+    }
+  | {
+      field: ListField;
+      kind: "list";
+      label: string;
+      layout: "full" | "half";
+      rows: number;
+      sourceLabel: string;
+    };
 
-const textFields: { field: TextField; label: string }[] = [
-  { field: "chief_complaint", label: "Chief complaint" },
-  { field: "follow_up", label: "Follow-up" },
+const draftSections: { fields: DraftField[]; id: string; title: string }[] = [
+  {
+    id: "subjective-fields",
+    title: "Subjective",
+    fields: [
+      {
+        field: "chief_complaint",
+        kind: "text",
+        label: "Chief complaint",
+        layout: "half",
+        rows: 2,
+      },
+      {
+        field: "history",
+        kind: "list",
+        label: "History discussed",
+        layout: "half",
+        rows: 3,
+        sourceLabel: "History",
+      },
+      {
+        field: "symptoms",
+        kind: "list",
+        label: "Symptoms",
+        layout: "full",
+        rows: 3,
+        sourceLabel: "Symptoms",
+      },
+    ],
+  },
+  {
+    id: "assessment-plan-fields",
+    title: "Assessment & Plan",
+    fields: [
+      {
+        field: "assessment_discussed",
+        kind: "list",
+        label: "Assessment / observations discussed",
+        layout: "half",
+        rows: 3,
+        sourceLabel: "Assessment discussed",
+      },
+      {
+        field: "plan_discussed",
+        kind: "list",
+        label: "Plan / next steps discussed",
+        layout: "half",
+        rows: 3,
+        sourceLabel: "Plan discussed",
+      },
+      {
+        field: "medications_mentioned",
+        kind: "list",
+        label: "Medications mentioned",
+        layout: "full",
+        rows: 3,
+        sourceLabel: "Medications mentioned",
+      },
+    ],
+  },
+  {
+    id: "follow-up-notes-fields",
+    title: "Follow-up & Notes",
+    fields: [
+      {
+        field: "follow_up",
+        kind: "text",
+        label: "Follow-up",
+        layout: "full",
+        rows: 3,
+      },
+      {
+        field: "uncertainties",
+        kind: "list",
+        label: "Uncertainties",
+        layout: "full",
+        rows: 3,
+        sourceLabel: "Uncertainties",
+      },
+    ],
+  },
 ];
 
 const initialForm: FormValues = {
@@ -53,6 +139,28 @@ function toLines(value: string): string[] {
     .filter(Boolean);
 }
 
+function getListFieldEmptyState(
+  values: string[],
+  rawTranscript: string,
+  sourceLabel: string,
+): "explicit-none" | "not-extracted" | null {
+  if (values.length > 0) {
+    return null;
+  }
+
+  const prefix = `${sourceLabel.toLowerCase()}:`;
+  const sourceValue = rawTranscript
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find((line) => line.toLowerCase().startsWith(prefix))
+    ?.slice(prefix.length)
+    .trim();
+
+  return /^(none|none mentioned|not mentioned|n\/a)$/i.test(sourceValue ?? "")
+    ? "explicit-none"
+    : "not-extracted";
+}
+
 export function ScribeWorkspace() {
   const [form, setForm] = useState<FormValues>(initialForm);
   const [draft, setDraft] = useState<NoteDraft | null>(null);
@@ -63,6 +171,7 @@ export function ScribeWorkspace() {
     approvedAt: string;
     noteId: string;
   } | null>(null);
+  const isApproved = Boolean(approvedNote);
 
   function updateForm(field: keyof FormValues, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -101,6 +210,13 @@ export function ScribeWorkspace() {
     );
   }
 
+  function handleStartNewConsultation() {
+    setForm(initialForm);
+    setDraft(null);
+    setMessage(null);
+    setApprovedNote(null);
+  }
+
   async function handleApprove() {
     if (!draft) {
       return;
@@ -121,7 +237,7 @@ export function ScribeWorkspace() {
   }
 
   return (
-    <main className="page-shell">
+    <main className={`page-shell ${isApproved ? "is-approved" : ""}`}>
       <header className="hero">
         <div>
           <p className="eyebrow">RAWAAN · PATIENT CONTEXT ENGINE</p>
@@ -133,14 +249,14 @@ export function ScribeWorkspace() {
         <div className="safety-label">Documentation support only</div>
       </header>
 
-      <section className="safety-notice" aria-label="Clinical safety notice">
+      <section className="safety-notice compliance-banner" aria-label="Clinical safety notice">
         <strong>Fictional demo data only.</strong> This tool records documentation
         discussed in the transcript. It does not diagnose, recommend treatment,
         or replace clinical judgment.
       </section>
 
       <section className="workspace-grid">
-        <section className="panel transcript-panel" aria-labelledby="transcript-title">
+        <section className="panel step-card transcript-panel" aria-labelledby="transcript-title">
           <div className="panel-heading">
             <div>
               <p className="step-label">STEP 1</p>
@@ -150,15 +266,16 @@ export function ScribeWorkspace() {
           </div>
 
           <div className="form-grid">
-            <label>
+            <label className="form-field">
               Fictional patient ID
               <input
                 value={form.patient_id}
                 onChange={(event) => updateForm("patient_id", event.target.value)}
                 placeholder="e.g. patient-amina-001"
+                disabled={isApproved}
               />
             </label>
-            <label>
+            <label className="form-field">
               Display name
               <input
                 value={form.patient_display_name}
@@ -166,9 +283,10 @@ export function ScribeWorkspace() {
                   updateForm("patient_display_name", event.target.value)
                 }
                 placeholder="e.g. Amina Khan"
+                disabled={isApproved}
               />
             </label>
-            <label>
+            <label className="form-field">
               Consultation date
               <input
                 type="date"
@@ -176,17 +294,19 @@ export function ScribeWorkspace() {
                 onChange={(event) =>
                   updateForm("consultation_date", event.target.value)
                 }
+                disabled={isApproved}
               />
             </label>
           </div>
 
-          <label className="transcript-field">
+          <label className="transcript-field form-field">
             Scripted or manually entered transcript
             <textarea
               value={form.transcript}
               onChange={(event) => updateForm("transcript", event.target.value)}
               placeholder={"For the local demo parser, use labelled lines such as:\nChief complaint: Persistent headache\nHistory: Headache for three days\nPlan discussed: Keep a symptom diary"}
               rows={14}
+              disabled={isApproved}
             />
           </label>
 
@@ -197,23 +317,29 @@ export function ScribeWorkspace() {
             </p>
             <button
               type="button"
-              className="primary-button"
+              className={draft ? "ghost-button" : "primary-button"}
               onClick={handleGenerate}
-              disabled={isGenerating}
+              disabled={isGenerating || isApproved}
             >
               {isGenerating ? "Creating draft…" : "Create structured draft"}
             </button>
           </div>
         </section>
 
-        <section className="panel review-panel" aria-labelledby="review-title">
+        <section className="panel step-card review-panel" aria-labelledby="review-title">
           <div className="panel-heading">
             <div>
               <p className="step-label">STEP 2</p>
               <h2 id="review-title">Review and approve</h2>
             </div>
-            <span className={`status-chip ${draft ? "draft" : "neutral"}`}>
-              {draft ? "Draft · clinician review required" : "No draft yet"}
+            <span
+              className={`status-chip ${isApproved ? "approved" : draft ? "draft" : "neutral"}`}
+            >
+              {isApproved
+                ? "Approved · saved"
+                : draft
+                  ? "Draft · clinician review required"
+                  : "No draft yet"}
             </span>
           </div>
 
@@ -221,27 +347,61 @@ export function ScribeWorkspace() {
 
           {draft ? (
             <div className="draft-fields">
-              {textFields.map(({ field, label }) => (
-                <label key={field}>
-                  {label}
-                  <textarea
-                    value={draft[field]}
-                    onChange={(event) => updateDraftText(field, event.target.value)}
-                    rows={field === "chief_complaint" ? 2 : 3}
-                  />
-                </label>
-              ))}
+              {draftSections.map((section) => (
+                <section
+                  key={section.id}
+                  className="note-section"
+                  aria-labelledby={section.id}
+                >
+                  <h3 id={section.id}>{section.title}</h3>
+                  <div className="note-section-fields">
+                    {section.fields.map((field) => {
+                      const emptyState =
+                        field.kind === "list"
+                          ? getListFieldEmptyState(
+                              draft[field.field],
+                              draft.raw_transcript,
+                              field.sourceLabel,
+                            )
+                          : null;
 
-              {listFields.map(({ field, label }) => (
-                <label key={field}>
-                  {label}
-                  <textarea
-                    value={draft[field].join("\n")}
-                    onChange={(event) => updateDraftList(field, event.target.value)}
-                    placeholder="One documented item per line"
-                    rows={3}
-                  />
-                </label>
+                      return (
+                        <label
+                          key={field.field}
+                          className={`section-field is-${field.layout} ${field.field === "uncertainties" ? "is-uncertainties" : ""}`}
+                        >
+                          {field.label}
+                          {emptyState ? (
+                            <p className={`field-empty-state is-${emptyState}`}>
+                              {emptyState === "explicit-none"
+                                ? "None mentioned in transcript"
+                                : "No documented items extracted"}
+                            </p>
+                          ) : null}
+                          <textarea
+                            value={
+                              field.kind === "text"
+                                ? draft[field.field]
+                                : draft[field.field].join("\n")
+                            }
+                            onChange={(event) =>
+                              field.kind === "text"
+                                ? updateDraftText(field.field, event.target.value)
+                                : updateDraftList(field.field, event.target.value)
+                            }
+                            placeholder={
+                              field.kind === "list"
+                                ? "One documented item per line"
+                                : undefined
+                            }
+                            rows={field.rows}
+                            disabled={isApproved}
+                          />
+                        </label>
+                      );
+                    })}
+                  </div>
+                </section>
               ))}
 
               <details className="transcript-provenance">
@@ -251,21 +411,31 @@ export function ScribeWorkspace() {
 
               <div className="approval-bar">
                 <div>
-                  <strong>Approval gate</strong>
-                  <p>Only the edited, approved note will be saved.</p>
+                  <strong>{isApproved ? "Note approved" : "Approval gate"}</strong>
+                  <p>
+                    {isApproved
+                      ? "The saved note is locked. Start a new consultation to continue."
+                      : "Only the edited, approved note will be saved."}
+                  </p>
                 </div>
-                <button
-                  type="button"
-                  className="primary-button"
-                  onClick={handleApprove}
-                  disabled={isApproving || Boolean(approvedNote)}
-                >
-                  {approvedNote
-                    ? "Note approved"
-                    : isApproving
-                      ? "Saving approved note…"
-                      : "Approve and save"}
-                </button>
+                {isApproved ? (
+                  <button
+                    type="button"
+                    className="primary-button"
+                    onClick={handleStartNewConsultation}
+                  >
+                    Start new consultation
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="primary-button"
+                    onClick={handleApprove}
+                    disabled={isApproving}
+                  >
+                    {isApproving ? "Saving approved note…" : "Approve and save"}
+                  </button>
+                )}
               </div>
             </div>
           ) : (

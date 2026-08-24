@@ -66,7 +66,7 @@ export async function approveDraftAction(
 ): Promise<ApprovalActionResult> {
   try {
     const approvedNote = await scribeService.approve(candidate);
-    revalidatePath("/");
+    revalidatePath("/scribe");
 
     return {
       approvedAt: approvedNote.approved_at,

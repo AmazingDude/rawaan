@@ -1,0 +1,42 @@
+# Handoff
+
+## Current state
+
+Work continues locally on branch `design/system-and-landing`. The completed Scribe design work is committed through `c5140a2` (`style: keep Scribe primary actions coral`). The local typography round is complete and validated: Onest replaces DM Sans throughout the UI, while self-hosted Thestral Neue is scoped solely to the root landing page’s largest hero headline. The user has approved the Scribe rounds and requested the landing page next. The initial landing implementation is in the current local landing commit: `/` is the Rawaan landing page, while the preserved documentation workflow is at `/scribe`. The senior UI/UX review round is complete and validated locally: the navigation is a unified lockup plus safety-label pill, hero content is one bounded left column, and the Cream workflow section connects the product flow. The combined pull request remains explicitly deferred until this review round is approved; therefore this design system is not yet available in `main` for Brain UI work.
+
+| Area | Current direction |
+|---|---|
+| Scope | Preserve the existing transcript → draft → edit → approve → persist workflow; make presentation and layout changes only. |
+| Visual change | Remove colored left-border accent bars from banners and callouts; use flat pastel fills instead. |
+| Step 2 layout | Organize the existing note fields into Subjective, Assessment & Plan, and Follow-up & Notes sections, with dividers and responsive two-column field pairing. |
+| Step 1 layout | Keep the transcript card sticky above the 900px breakpoint and stacked normally at narrower widths. Fixed-viewport live-scroll verification confirmed it pins at a 24px top offset after scrolling. |
+| Third-round UX | Added explicit transcript-absence messaging, a visibly locked approved-note state, and a local-only “Start new consultation” reset action. |
+| Documentation | `docs/DESIGN.md` is the canonical reference for the no-accent, section-grouped, sticky layout, approved/empty Scribe states, and the landing hero. |
+| Landing route split | Root `/` remains a dark Canopy Green Rawaan hero with one Coral “Try the Demo” action to `/scribe`; the preserved Scribe flow remains otherwise unchanged. |
+| Landing review round | Completed locally: wordmark/subtitle lockup plus safety-label pill, bounded left hero column with Leaf-emphasized headline word, and connected Cream Transcript → Clinician review → Approved note section. |
+| Typography round | Completed locally: Onest replaces the UI/body system; OFL-licensed Thestral Neue is self-hosted and restricted to the one landing hero headline. |
+| Branch process | Keep the combined design + landing PR local and deferred until the user reviews landing-page results. After the combined PR merges, the design system will be available for Brain UI work. |
+
+## Constraints
+
+The labels, field names, schema, state management, Server Actions, accessibility roles, and test selectors must remain unchanged. The `inspo/` directory is an untracked reference asset and must remain untouched. The design system still prohibits shadows, decorative coral, unnecessary motion, and content hidden by animation.
+
+## Validation and environment notes
+
+The second-round implementation was validated with `npm run typecheck`, `npm run lint`, `npm run test` (3 files and 8 tests), and `npm run build`; every command passed. A production-browser capture exercised transcript → draft → edit → approve → persisted confirmation. It asserted that the desktop Step 1 card is sticky, the compliance and message callouts have no left border, and the 800px layout makes all grouped review fields full-width with Step 1 no longer sticky. The unchanged `tests/e2e-scribe.mjs` script also passed against the production build.
+
+The third-round sticky verification used separate 1440×900 viewport screenshots at scroll positions 0, 400px, and 800px rather than a stitched full-page capture. At 400px and 800px, Step 1 measured `position: sticky` with a 24px viewport top offset and rendered correctly. The prior detached full-page placement is a known capture artifact for sticky elements, not a live layout defect; do not use a stitched full-page image to assess sticky positioning.
+
+The third-round implementation passed `npm run typecheck`, `npm run lint`, `npm run test` (3 files and 8 tests), and `npm run build`. A production-browser exercise verified the explicit transcript-absence and parser-omission states, the locked approved-note controls, the approved status pill, the local-only reset to an empty consultation, and the fixed-scroll sticky measurements. The unchanged `tests/e2e-scribe.mjs` script also passed on the production build.
+
+On this Windows machine, use `npm run build` followed by `npm run start` for browser exercises; the development server has previously served client chunks unreliably. The optional `PLAYWRIGHT_CHROMIUM_EXECUTABLE` variable can point to the installed local Chromium. Browser test data was reset to `data/notes.json` containing `[]`, and temporary servers and test artifacts were removed.
+
+The initial landing route split passed `npm run typecheck`, `npm run lint`, `npm run test` (3 files and 8 tests), and `npm run build`, which emitted both `/` and `/scribe`. A production browser check verified the root page’s single `/scribe` CTA, solid Canopy Green surface, absence of shadow/gradient, and responsive desktop/mobile layout. The updated production Scribe E2E passed on `/scribe`. One initial routed E2E timeout was traced to a stale development listener on port 3000; after stopping it and restarting `next start`, the flow passed unchanged.
+
+The reviewed landing refinement passed `npm run typecheck`, `npm run lint`, `npm run test` (3 files and 8 tests), and `npm run build`. A production browser assertion verified the unified navigation alignment, one-column hero alignment, 600–720px desktop hero height, Leaf headline emphasis, three workflow cards, one `/scribe` CTA, no mobile horizontal overflow, and the CTA navigation itself. The unchanged production Scribe E2E also passed. Desktop and mobile screenshot review found the requested navigation, hierarchy, and Cream workflow section rendered correctly. Test data was reset to `[]` and the temporary server was stopped.
+
+The typography update passed a fresh `npm run typecheck`, `npm run lint`, `npm run test` (3 files and 8 tests), and `npm run build`. A clean-port production browser exercise verified that Onest loads across the landing and Scribe UI, Thestral Neue loads only for the root landing hero headline, `/scribe` contains no landing headline, the root CTA still routes to `/scribe`, and both pages have no mobile horizontal overflow. The full production Scribe transcript → draft → edit → approve → persisted-record E2E also passed after the font change. Four desktop/mobile captures were reviewed, `data/notes.json` was reset to `[]`, and the temporary server/artifacts were removed.
+
+## Next action
+
+Review the scoped typography diff, create only a local commit, and present the desktop/mobile landing and Scribe evidence for user approval. Do not push, open a PR, merge, or begin Brain work before the user’s next approval.

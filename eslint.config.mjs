@@ -9,6 +9,7 @@ export default defineConfig([
     ".agents/**",
     ".claude/**",
     ".next/**",
+    "inspo/**",
     "node_modules/**",
     "coverage/**",
   ]),
