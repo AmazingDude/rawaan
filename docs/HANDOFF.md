@@ -2,7 +2,7 @@
 
 ## Current state
 
-`main` contains the merged Rawaan design system, landing route split, typography update, and CI workflow. The active Scribe voice-input workstream is on `feat/voice-input-scribe`; Task 1 selected Groq's OpenAI-compatible `whisper-large-v3-turbo` transcription boundary, and Task 2 now contains only strict audio-validation contracts, a provider-agnostic validation module, and fake-provider unit tests. No `/api/transcribe` route, Groq adapter, secret, provider SDK, or live network call exists yet. The Brain retrieval plan remains a separate, review-only workstream.
+`main` contains the merged Rawaan design system, landing route split, typography update, and CI workflow. The active Scribe voice-input workstream is on `feat/voice-input-scribe`; Task 1 selected Groq's OpenAI-compatible `whisper-large-v3-turbo` transcription boundary, Task 2 added strict validation contracts and tests, and Task 3 now adds the server-only Groq adapter plus `POST /api/transcribe`. The endpoint accepts one completed `audio` upload, returns only the typed result union, and keeps provider failures/credentials out of its response. The Brain retrieval plan remains a separate, review-only workstream.
 
 | Area | Current direction |
 |---|---|
@@ -16,7 +16,8 @@
 | Landing review round | Completed locally: wordmark/subtitle lockup plus safety-label pill, bounded left hero column with Leaf-emphasized headline word, and connected Cream Transcript → Clinician review → Approved note section. |
 | Typography round | Completed locally: Onest replaces the UI/body system; OFL-licensed Thestral Neue is self-hosted and restricted to the one landing hero headline. |
 | Voice-input Task 2 | `lib/transcription/types.ts` defines the strict result/provider contracts; `lib/transcription/validate-audio.ts` enforces empty-file, supported-MIME, 25 MB, and blank-transcript safeguards with no browser globals or provider access. |
-| Branch process | `feat/voice-input-scribe` is published for review only. Task 3 is blocked pending explicit approval because it introduces the real server endpoint, provider adapter, `GROQ_API_KEY`, and potential network calls. |
+| Voice-input Task 3 | `app/api/transcribe/route.ts` validates one multipart `audio` field before delegation; `lib/transcription/groq-whisper.ts` is the server-only Groq adapter using `GROQ_API_KEY`, the documented OpenAI-compatible endpoint, and `whisper-large-v3-turbo`. |
+| Branch process | `feat/voice-input-scribe` is published for review only. Task 4 is blocked pending explicit approval because it introduces client-side microphone, `MediaRecorder`, consent, timer, and recording UI behavior. |
 
 ## Constraints
 
@@ -38,8 +39,10 @@ The reviewed landing refinement passed `npm run typecheck`, `npm run lint`, `npm
 
 The typography update passed a fresh `npm run typecheck`, `npm run lint`, `npm run test` (3 files and 8 tests), and `npm run build`. A clean-port production browser exercise verified that Onest loads across the landing and Scribe UI, Thestral Neue loads only for the root landing hero headline, `/scribe` contains no landing headline, the root CTA still routes to `/scribe`, and both pages have no mobile horizontal overflow. The full production Scribe transcript → draft → edit → approve → persisted-record E2E also passed after the font change. Four desktop/mobile captures were reviewed, `data/notes.json` was reset to `[]`, and the temporary server/artifacts were removed.
 
-Voice-input Task 2 passed focused validation (`tests/transcription-route.test.ts`: 6 tests), plus `npm run typecheck`, `npm run lint`, `npm run test` (4 files and 14 tests), and `npm run build`. The tests prove that empty files, unsupported MIME types, files above the 25 MB policy, and blank fake-provider text resolve safely before any real provider boundary. No endpoint, API key, network call, browser recording code, or Scribe draft/approval/persistence code was added.
+Voice-input Task 2 passed focused validation (`tests/transcription-route.test.ts`: 6 tests), plus `npm run typecheck`, `npm run lint`, `npm run test` (4 files and 14 tests), and `npm run build`. The tests prove that empty files, unsupported MIME types, files above the 25 MB policy, and blank fake-provider text resolve safely before any real provider boundary.
+
+Voice-input Task 3 extended the focused route tests to 9 fake-provider cases. `npm run typecheck`, `npm run lint`, `npm run test` (4 files and 17 tests), and `npm run build` all passed; the build emitted dynamic `/api/transcribe`. One throwaway production smoke test sent a public non-clinical WAV through the deployed route using the user-supplied local `GROQ_API_KEY` and received a non-empty success transcript. The key and raw provider response were never read, logged, or committed. Temporary audio, response, server logs, test scripts, and the port-3000 process were removed afterward.
 
 ## Next action
 
-Await explicit approval before Task 3 of `plans/2026-08-25-voice-input-scribe.md`. Do not add `/api/transcribe`, `lib/transcription/groq-whisper.ts`, any `GROQ_API_KEY`, provider SDK, real provider request, browser recording UI, or Brain changes until that gate is granted.
+Await explicit approval before Task 4 of `plans/2026-08-25-voice-input-scribe.md`. Do not add client microphone access, `MediaRecorder`, consent controls, a recording timer, transcription UI state, or any Brain changes until that gate is granted.
