@@ -9,3 +9,15 @@
 **Boundary for later ASR:** If live ASR later requires a Python-only or materially stronger Python implementation, introduce it as a small, standalone service behind a narrow API boundary. Do not restructure the Next.js application merely to add ASR.
 
 **Non-goals preserved:** The application does not diagnose, recommend treatment, answer from general medical knowledge, support multi-patient analytics, integrate with an EHR, or process real patient data.
+
+## 2026-08-25 — Use Groq Whisper for Scribe batch transcription
+
+**Decision:** The planned Scribe voice-input v1 will use Groq's OpenAI-compatible transcription endpoint, `https://api.groq.com/openai/v1/audio/transcriptions`, with model `whisper-large-v3-turbo`. The server-only provider adapter will read `GROQ_API_KEY` from `.env.local`; no key belongs in client code, source control, logs, or a `NEXT_PUBLIC_` variable.
+
+**Why:** The project already names Whisper as its ASR direction. Groq provides an OpenAI-compatible route, supports the `whisper-large-v3-turbo` model, and its published free-plan baseline is sufficient for a small hackathon demo: 20 requests per minute, 2,000 requests per day, 7,200 audio seconds per hour, and 28,800 audio seconds per day. These remain provider-published baseline limits rather than a guaranteed entitlement for every account; the account's current limits page is authoritative.
+
+**Audio policy:** The free-tier direct-upload limit is 25 MB. The endpoint documents direct support for `audio/webm` as well as FLAC, MP3, MP4, MPEG, MPGA, M4A, OGG, and WAV. Chrome desktop's typical `MediaRecorder` output, `audio/webm` with Opus, therefore needs no conversion in v1. The demo browser/OS support commitment is limited to the rehearsed environment, expected to be Chrome desktop; it is not a universal cross-browser guarantee.
+
+**Honesty and scope boundary:** Audio-to-text becomes real only after a configured Groq key is present. Structured-note generation remains the explicitly labelled Local demo parser. This decision authorizes documentation and later provider-adapter planning only; Task 2 contracts/validation and all implementation code still require a separate explicit go-ahead.
+
+**Sources:** [Groq Speech to Text](https://console.groq.com/docs/speech-to-text); [Groq Rate Limits](https://console.groq.com/docs/rate-limits).

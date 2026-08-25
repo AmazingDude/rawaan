@@ -8,7 +8,7 @@
 
 **Scope source:** `pasted_content_3.txt`; current Step 1 implementation: `app/components/scribe-workspace.tsx`; current transcript-to-draft boundary: `lib/llm/generate-note.ts`.
 
-**Decision Record:** Before any implementation code is written, the team must approve the transcription provider and record the selection in `DECISIONS.md`. The leading candidate is OpenAI Whisper because `AGENTS.md` already names Whisper for ASR, but no provider, endpoint path, model name, key, or SDK is approved by this plan alone.
+**Decision Record:** The provider is approved in `DECISIONS.md`: Groq's OpenAI-compatible transcription endpoint, `https://api.groq.com/openai/v1/audio/transcriptions`, using `whisper-large-v3-turbo`. The server-only adapter reads `GROQ_API_KEY` from `.env.local`. This decision does not authorize Task 2 or implementation; it records the selected provider boundary only.
 
 ## Global Constraints
 
@@ -20,6 +20,8 @@
 - The first real external API integration must keep its secret in `.env.local` only. Never expose the key in client code, browser requests, logs, test fixtures, commits, or error messages.
 - Permission denial, unsupported browser recording, offline state, upload failure, invalid provider response, and provider failure must preserve a usable textarea and show a clear inline fallback message. No state may leave the UI recording, transcribing, blocked, or silently failed.
 - Audio is handled only for the active browser interaction. v1 does not persist audio, retain `Blob` URLs after use, add storage, or add a patient-record audio field.
+- Groq accepts direct `webm` uploads, so the expected Chrome desktop `MediaRecorder` output (`audio/webm` with Opus) requires no conversion in v1. The supported demo environment is the rehearsed Chrome desktop browser/OS combination, not a universal cross-browser guarantee.
+- Groq's published free-plan baseline for `whisper-large-v3-turbo` is 20 RPM, 2,000 RPD, 7,200 audio seconds per hour, and 28,800 audio seconds per day; direct uploads are capped at 25 MB. The active account's limits page remains authoritative.
 - Follow `docs/DESIGN.md` and the existing Rawaan controls: no shadows, gradients, generic alert bars, or extra forward CTA treatment. The Record/Stop control is a stateful capture control, not a second product CTA.
 - Do not touch `feat/brain-retrieval`, Brain files, `data/seed/**`, or any Brain UI. Do not implement the Future / v2 item in this plan.
 
@@ -31,7 +33,7 @@
 | `app/components/scribe-workspace.tsx` | Preserves the manual transcript path and adds consent, record/stop, timer, transcription state, inline fallback messages, and safe insertion into `form.transcript`. |
 | `app/api/transcribe/route.ts` | Future same-origin, server-only `POST` endpoint that validates a completed audio upload and returns a validated transcript or a stable safe error. |
 | `lib/transcription/types.ts` | Shared strict contracts for client-visible transcription results, endpoint errors, and the server-only provider adapter. |
-| `lib/transcription/openai-whisper.ts` | Future provider adapter, created only after the decision gate approves OpenAI Whisper and its official API details. |
+| `lib/transcription/groq-whisper.ts` | Future server-only Groq adapter using the approved OpenAI-compatible transcription request/response shape and `GROQ_API_KEY`. |
 | `lib/transcription/validate-audio.ts` | Server-side size, MIME, and empty-file validation before the approved provider is called. |
 | `app/globals.css` | Rawaan styling for the consent row, recording indicator/timer, transcribing state, and flat inline fallback message. |
 | `tests/transcription-route.test.ts` | Endpoint validation, provider-success, and provider-failure tests with a fake provider; no live provider calls. |
@@ -99,15 +101,18 @@ If the clinician manually edits the textarea after Stop but before the transcrip
 
 ## Tasks
 
-### Task 1: Approve the real transcription boundary before writing code
+### Task 1: Record the approved Groq Whisper transcription boundary before writing code
 
-**Files:** Modify `DECISIONS.md` only after human approval. Do not create provider or UI code in this task.
+**Files:** Modify `DECISIONS.md` and this plan only. Do not create provider or UI code in this task.
 
-- [ ] Confirm whether v1 uses OpenAI Whisper or another transcription provider. Record the chosen provider, official documentation URL, current model/endpoint decision, supported input MIME types, maximum upload size, and the `.env.local` variable name in `DECISIONS.md`.
-- [ ] Confirm that the selected provider is the first real external integration and that the existing note-generation result remains labelled `local-demo`.
-- [ ] Confirm the provider adapter remains server-only and the browser sends the completed audio only to same-origin `/api/transcribe`.
-- [ ] Stop the workstream if this decision is not explicitly approved. Do not guess a provider SDK, model name, environment variable, file limit, or error payload.
-- [ ] Commit the decision record alone with `docs: approve Scribe transcription provider` only after approval.
+- [x] Record Groq's OpenAI-compatible transcription endpoint, `https://api.groq.com/openai/v1/audio/transcriptions`, and model `whisper-large-v3-turbo` in `DECISIONS.md`.
+- [x] Record `GROQ_API_KEY` as the `.env.local`-only server secret. Do not create, request, log, or commit a key.
+- [x] Record direct-upload MIME support: FLAC, MP3, MP4, MPEG, MPGA, M4A, OGG, WAV, and WebM; record the 25 MB free-tier upload limit and the published free-plan baseline of 20 RPM / 2,000 RPD.
+- [x] Confirm `audio/webm` is accepted directly by Groq, so Chrome desktop's expected `MediaRecorder` WebM/Opus output needs no v1 conversion step.
+- [x] Record that browser support is scoped to the rehearsed demo browser/OS, expected to be Chrome desktop, rather than a universal cross-browser guarantee.
+- [x] Confirm Groq transcription is the first real external integration while the existing note-generation result remains labelled `local-demo`.
+- [x] Confirm the provider adapter remains server-only and the browser sends the completed audio only to same-origin `/api/transcribe`.
+- [x] Commit only `DECISIONS.md` and this plan with `docs: approve Groq Whisper as Scribe transcription provider`, then stop for final human review before Task 2.
 
 ### Task 2: Define the strict transcription contracts and server validation boundary
 
@@ -126,9 +131,9 @@ If the clinician manually edits the textarea after Stop but before the transcrip
 - [ ] Implement only the validation module until all validation tests pass; do not add a live provider call yet.
 - [ ] Commit the contract, validator, and tests with `test(transcription): define audio validation boundary`.
 
-### Task 3: Add the approved server-side transcription endpoint and provider adapter
+### Task 3: Add the approved server-side transcription endpoint and Groq adapter
 
-**Files:** Create `app/api/transcribe/route.ts` and `lib/transcription/openai-whisper.ts` only if Task 1 selected OpenAI Whisper; otherwise create an adapter named for the approved provider. Modify `tests/transcription-route.test.ts`.
+**Files:** Create `app/api/transcribe/route.ts` and `lib/transcription/groq-whisper.ts`. Modify `tests/transcription-route.test.ts`.
 
 **Interfaces:**
 - `POST /api/transcribe` consumes a multipart `FormData` field named `audio` containing one completed recording.
@@ -139,7 +144,7 @@ If the clinician manually edits the textarea after Stop but before the transcrip
 - [ ] Write a failing route test where the fake provider throws and assert `{ ok: false, code: "transcription_failed" }` plus a user-safe message that directs the clinician to type or paste the transcript manually.
 - [ ] Write a failing route test proving that a validation failure does not call the fake provider.
 - [ ] Implement the route to parse exactly one `audio` field, validate it, delegate to the provider, trim the result, and return only the shared result union.
-- [ ] Implement the approved provider adapter using only the provider’s then-current official documented API. Read its key from `.env.local` through the server environment; do not export it, log it, or add it to a `NEXT_PUBLIC_` variable.
+- [ ] Implement the Groq adapter using the approved OpenAI-compatible transcription request/response shape and only Groq’s then-current official documented API. Read `GROQ_API_KEY` from `.env.local` through the server environment; do not export it, log it, or add it to a `NEXT_PUBLIC_` variable.
 - [ ] Run `npm run test -- tests/transcription-route.test.ts` and confirm all tests pass with no live API key or network call.
 - [ ] Commit route, adapter, and focused tests with `feat(scribe): add batch transcription endpoint`.
 
