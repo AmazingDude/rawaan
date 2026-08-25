@@ -329,9 +329,13 @@ h2 {
 }
 
 .capture-button.is-recording {
-  border-color: var(--color-recording-red);
-  color: var(--color-recording-red);
-  background: var(--color-paper-white);
+  border: none;
+  color: var(--color-paper-white);
+  background: var(--color-recording-red);
+}
+
+.capture-button.is-recording:hover:not(:disabled) {
+  background: var(--color-recording-red);
 }
 
 .capture-button:disabled {

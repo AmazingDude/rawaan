@@ -92,7 +92,7 @@ Never use coral for more than one button in the same viewport. If a screen needs
 ### Recording Stop Control
 **Role:** A stateful capture control that appears only while a fictional-demo recording is live.
 
-Use a Recording Red (`#e5484d`) outline for **“Stop recording”** and the matching indicator dot beside the visible timer. It is not a forward CTA: do not use Coral Action, shadows, gradients, or any other recording-red treatment outside this active state.
+Use a solid Recording Red (`#e5484d`) fill with white text and no border for **“Stop recording”**; retain the shared 40px pill radius and capture-button padding. Use the same token for the matching indicator dot beside the visible timer. It is not a forward CTA: do not use Coral Action, shadows, gradients, or any other recording-red treatment outside this active state.
 
 ### Status Pill
 **Role:** Draft / Approved / No supporting record — small state indicator on notes and answers
