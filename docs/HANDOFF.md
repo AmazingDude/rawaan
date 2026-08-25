@@ -2,7 +2,7 @@
 
 ## Current state
 
-Work continues locally on branch `design/system-and-landing`. The completed Scribe design work is committed through `c5140a2` (`style: keep Scribe primary actions coral`). The local typography round is complete and validated: Onest replaces DM Sans throughout the UI, while self-hosted Thestral Neue is scoped solely to the root landing page’s largest hero headline. The user has approved the Scribe rounds and requested the landing page next. The initial landing implementation is in the current local landing commit: `/` is the Rawaan landing page, while the preserved documentation workflow is at `/scribe`. The senior UI/UX review round is complete and validated locally: the navigation is a unified lockup plus safety-label pill, hero content is one bounded left column, and the Cream workflow section connects the product flow. The combined pull request remains explicitly deferred until this review round is approved; therefore this design system is not yet available in `main` for Brain UI work.
+`main` contains the merged Rawaan design system, landing route split, typography update, and CI workflow. The active Scribe voice-input workstream is on `feat/voice-input-scribe`; Task 1 selected Groq's OpenAI-compatible `whisper-large-v3-turbo` transcription boundary, and Task 2 now contains only strict audio-validation contracts, a provider-agnostic validation module, and fake-provider unit tests. No `/api/transcribe` route, Groq adapter, secret, provider SDK, or live network call exists yet. The Brain retrieval plan remains a separate, review-only workstream.
 
 | Area | Current direction |
 |---|---|
@@ -15,7 +15,8 @@ Work continues locally on branch `design/system-and-landing`. The completed Scri
 | Landing route split | Root `/` remains a dark Canopy Green Rawaan hero with one Coral “Try the Demo” action to `/scribe`; the preserved Scribe flow remains otherwise unchanged. |
 | Landing review round | Completed locally: wordmark/subtitle lockup plus safety-label pill, bounded left hero column with Leaf-emphasized headline word, and connected Cream Transcript → Clinician review → Approved note section. |
 | Typography round | Completed locally: Onest replaces the UI/body system; OFL-licensed Thestral Neue is self-hosted and restricted to the one landing hero headline. |
-| Branch process | Keep the combined design + landing PR local and deferred until the user reviews landing-page results. After the combined PR merges, the design system will be available for Brain UI work. |
+| Voice-input Task 2 | `lib/transcription/types.ts` defines the strict result/provider contracts; `lib/transcription/validate-audio.ts` enforces empty-file, supported-MIME, 25 MB, and blank-transcript safeguards with no browser globals or provider access. |
+| Branch process | `feat/voice-input-scribe` is published for review only. Task 3 is blocked pending explicit approval because it introduces the real server endpoint, provider adapter, `GROQ_API_KEY`, and potential network calls. |
 
 ## Constraints
 
@@ -37,6 +38,8 @@ The reviewed landing refinement passed `npm run typecheck`, `npm run lint`, `npm
 
 The typography update passed a fresh `npm run typecheck`, `npm run lint`, `npm run test` (3 files and 8 tests), and `npm run build`. A clean-port production browser exercise verified that Onest loads across the landing and Scribe UI, Thestral Neue loads only for the root landing hero headline, `/scribe` contains no landing headline, the root CTA still routes to `/scribe`, and both pages have no mobile horizontal overflow. The full production Scribe transcript → draft → edit → approve → persisted-record E2E also passed after the font change. Four desktop/mobile captures were reviewed, `data/notes.json` was reset to `[]`, and the temporary server/artifacts were removed.
 
+Voice-input Task 2 passed focused validation (`tests/transcription-route.test.ts`: 6 tests), plus `npm run typecheck`, `npm run lint`, `npm run test` (4 files and 14 tests), and `npm run build`. The tests prove that empty files, unsupported MIME types, files above the 25 MB policy, and blank fake-provider text resolve safely before any real provider boundary. No endpoint, API key, network call, browser recording code, or Scribe draft/approval/persistence code was added.
+
 ## Next action
 
-Review the scoped typography diff, create only a local commit, and present the desktop/mobile landing and Scribe evidence for user approval. Do not push, open a PR, merge, or begin Brain work before the user’s next approval.
+Await explicit approval before Task 3 of `plans/2026-08-25-voice-input-scribe.md`. Do not add `/api/transcribe`, `lib/transcription/groq-whisper.ts`, any `GROQ_API_KEY`, provider SDK, real provider request, browser recording UI, or Brain changes until that gate is granted.
