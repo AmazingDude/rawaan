@@ -1,12 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   approveDraftAction,
   generateDraftAction,
 } from "@/app/actions";
 import type { NoteDraft } from "@/lib/notes/schema";
+import type { TranscriptionResult } from "@/lib/transcription/types";
+import {
+  VoiceCaptureController,
+  isRecordControlDisabled,
+  resolveTranscriptPlacement,
+  type VoiceCaptureState,
+} from "@/lib/transcription/voice-recorder";
 
 type FormValues = {
   consultation_date: string;
@@ -132,6 +139,56 @@ const initialForm: FormValues = {
   transcript: "",
 };
 
+const initialVoiceState: VoiceCaptureState = {
+  elapsedSeconds: 0,
+  fallbackMessage: null,
+  phase: "idle",
+};
+
+function formatElapsedSeconds(elapsedSeconds: number): string {
+  const minutes = Math.floor(elapsedSeconds / 60)
+    .toString()
+    .padStart(2, "0");
+  const seconds = (elapsedSeconds % 60).toString().padStart(2, "0");
+
+  return `${minutes}:${seconds}`;
+}
+
+function isTranscriptionResult(value: unknown): value is TranscriptionResult {
+  if (typeof value !== "object" || value === null || !("ok" in value)) {
+    return false;
+  }
+
+  if (value.ok === true) {
+    return "transcript" in value && typeof value.transcript === "string";
+  }
+
+  return (
+    value.ok === false &&
+    "code" in value &&
+    typeof value.code === "string" &&
+    "message" in value &&
+    typeof value.message === "string"
+  );
+}
+
+async function requestTranscription(audio: File): Promise<TranscriptionResult> {
+  const formData = new FormData();
+  formData.append("audio", audio);
+
+  const response = await fetch("/api/transcribe", {
+    body: formData,
+    method: "POST",
+  });
+  const result: unknown = await response.json();
+
+  if (!isTranscriptionResult(result)) {
+    throw new Error("The transcription response was invalid.");
+  }
+
+  return result;
+}
+
 function toLines(value: string): string[] {
   return value
     .split("\n")
@@ -171,10 +228,78 @@ export function ScribeWorkspace() {
     approvedAt: string;
     noteId: string;
   } | null>(null);
+  const [hasRecordingConsent, setHasRecordingConsent] = useState(false);
+  const [pendingTranscript, setPendingTranscript] = useState<string | null>(null);
+  const [voiceState, setVoiceState] = useState<VoiceCaptureState>(initialVoiceState);
+  const currentTranscriptRef = useRef(form.transcript);
+  const transcriptAtStopRef = useRef("");
+  const [voiceController, setVoiceController] =
+    useState<VoiceCaptureController | null>(null);
   const isApproved = Boolean(approvedNote);
+
+  useEffect(() => {
+    currentTranscriptRef.current = form.transcript;
+  }, [form.transcript]);
+
+  useEffect(() => {
+    const controller = new VoiceCaptureController({
+      clearScheduledInterval: (intervalId) => window.clearInterval(intervalId),
+      createAudioFile: (parts, name, type) => new File(parts, name, { type }),
+      createRecorder: (stream) => new MediaRecorder(stream as MediaStream),
+      getUserMedia: () => navigator.mediaDevices.getUserMedia({ audio: true }),
+      isOnline: () => navigator.onLine,
+      isRecorderSupported: () =>
+        typeof MediaRecorder !== "undefined" &&
+        typeof navigator !== "undefined" &&
+        Boolean(navigator.mediaDevices?.getUserMedia),
+      onStateChange: setVoiceState,
+      onTranscript: (transcribedText) => {
+        const placement = resolveTranscriptPlacement({
+          currentTranscript: currentTranscriptRef.current,
+          transcriptAtStop: transcriptAtStopRef.current,
+          transcribedText,
+        });
+
+        setForm((current) => ({ ...current, transcript: placement.transcript }));
+        setPendingTranscript(placement.pendingTranscript);
+      },
+      requestTranscription,
+      scheduleInterval: (callback, milliseconds) =>
+        window.setInterval(callback, milliseconds),
+    });
+
+    setVoiceController(controller);
+
+    return () => controller.reset();
+  }, []);
 
   function updateForm(field: keyof FormValues, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function handleStartRecording() {
+    void voiceController?.start(hasRecordingConsent);
+  }
+
+  function handleStopRecording() {
+    transcriptAtStopRef.current = currentTranscriptRef.current;
+    void voiceController?.stop();
+  }
+
+  function handleUseTranscribedText() {
+    if (!pendingTranscript) {
+      return;
+    }
+
+    updateForm("transcript", pendingTranscript);
+    setPendingTranscript(null);
+  }
+
+  function resetVoiceCapture() {
+    voiceController?.reset();
+    setHasRecordingConsent(false);
+    setPendingTranscript(null);
+    transcriptAtStopRef.current = "";
   }
 
   function updateDraftText(field: TextField, value: string) {
@@ -211,6 +336,7 @@ export function ScribeWorkspace() {
   }
 
   function handleStartNewConsultation() {
+    resetVoiceCapture();
     setForm(initialForm);
     setDraft(null);
     setMessage(null);
@@ -299,6 +425,63 @@ export function ScribeWorkspace() {
             </label>
           </div>
 
+          <section className="voice-capture" aria-labelledby="voice-capture-title">
+            <div className="voice-capture-heading">
+              <div>
+                <p className="voice-capture-kicker">Optional demo capture</p>
+                <h3 id="voice-capture-title">Record one complete consultation</h3>
+              </div>
+              {voiceState.phase === "recording" ? (
+                <p className="recording-indicator" role="status">
+                  Recording {formatElapsedSeconds(voiceState.elapsedSeconds)}
+                </p>
+              ) : null}
+            </div>
+            <p className="voice-capture-copy">
+              This sends one completed fictional-demo recording for transcription after you stop. You can always type or paste the transcript below.
+            </p>
+            <label className="consent-control">
+              <input
+                checked={hasRecordingConsent}
+                disabled={isApproved || voiceState.phase !== "idle"}
+                onChange={(event) => setHasRecordingConsent(event.target.checked)}
+                type="checkbox"
+              />
+              Patient consented to recording
+            </label>
+            <div className="voice-capture-actions">
+              <button
+                aria-live="polite"
+                className={`capture-button ${voiceState.phase === "recording" ? "is-recording" : ""}`}
+                disabled={
+                  isApproved ||
+                  !voiceController ||
+                  (voiceState.phase === "recording"
+                    ? false
+                    : isRecordControlDisabled(hasRecordingConsent, voiceState))
+                }
+                onClick={
+                  voiceState.phase === "recording"
+                    ? handleStopRecording
+                    : handleStartRecording
+                }
+                type="button"
+              >
+                {voiceState.phase === "recording" ? "Stop recording" : "Record consultation"}
+              </button>
+              {voiceState.phase === "transcribing" ? (
+                <p className="transcribing-status" role="status">
+                  Transcribing…
+                </p>
+              ) : null}
+            </div>
+            {voiceState.fallbackMessage ? (
+              <p className="voice-fallback" role="alert">
+                {voiceState.fallbackMessage}
+              </p>
+            ) : null}
+          </section>
+
           <label className="transcript-field form-field">
             Scripted or manually entered transcript
             <textarea
@@ -309,6 +492,22 @@ export function ScribeWorkspace() {
               disabled={isApproved}
             />
           </label>
+
+          {pendingTranscript ? (
+            <div className="transcript-replacement" role="status">
+              <p>
+                A completed transcription is ready. Your manual edits were kept.
+              </p>
+              <button
+                className="ghost-button"
+                disabled={isApproved}
+                onClick={handleUseTranscribedText}
+                type="button"
+              >
+                Use transcribed text
+              </button>
+            </div>
+          ) : null}
 
           <div className="panel-footer">
             <p className="source-note">

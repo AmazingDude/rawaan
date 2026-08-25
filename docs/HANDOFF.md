@@ -2,11 +2,11 @@
 
 ## Current state
 
-`main` contains the merged Rawaan design system, landing route split, typography update, and CI workflow. The active Scribe voice-input workstream is on `feat/voice-input-scribe`; Task 1 selected Groq's OpenAI-compatible `whisper-large-v3-turbo` transcription boundary, Task 2 added strict validation contracts and tests, and Task 3 now adds the server-only Groq adapter plus `POST /api/transcribe`. The endpoint accepts one completed `audio` upload, returns only the typed result union, and keeps provider failures/credentials out of its response. The Brain retrieval plan remains a separate, review-only workstream.
+`main` contains the merged Rawaan design system, landing route split, typography update, and CI workflow. The active Scribe voice-input workstream is on `feat/voice-input-scribe`; Task 1 selected Groq's OpenAI-compatible `whisper-large-v3-turbo` transcription boundary, Task 2 added strict validation contracts and tests, Task 3 added the server-only Groq adapter plus `POST /api/transcribe`, and Task 4 now adds an additive consent-gated batch recorder beside the manual textarea. `lib/transcription/voice-recorder.ts` isolates browser-independent lifecycle and transcript-race logic for mocked testing; the client component owns browser-only media access and posts a single completed recording to the typed route. The Brain retrieval plan remains a separate, review-only workstream.
 
 | Area | Current direction |
 |---|---|
-| Scope | Preserve the existing transcript → draft → edit → approve → persist workflow; make presentation and layout changes only. |
+| Scope | Preserve the existing transcript → draft → edit → approve → persist workflow and the always-usable manual transcript path; Task 4 adds only consent-gated batch recording beside it. |
 | Visual change | Remove colored left-border accent bars from banners and callouts; use flat pastel fills instead. |
 | Step 2 layout | Organize the existing note fields into Subjective, Assessment & Plan, and Follow-up & Notes sections, with dividers and responsive two-column field pairing. |
 | Step 1 layout | Keep the transcript card sticky above the 900px breakpoint and stacked normally at narrower widths. Fixed-viewport live-scroll verification confirmed it pins at a 24px top offset after scrolling. |
@@ -17,7 +17,8 @@
 | Typography round | Completed locally: Onest replaces the UI/body system; OFL-licensed Thestral Neue is self-hosted and restricted to the one landing hero headline. |
 | Voice-input Task 2 | `lib/transcription/types.ts` defines the strict result/provider contracts; `lib/transcription/validate-audio.ts` enforces empty-file, supported-MIME, 25 MB, and blank-transcript safeguards with no browser globals or provider access. |
 | Voice-input Task 3 | `app/api/transcribe/route.ts` validates one multipart `audio` field before delegation; `lib/transcription/groq-whisper.ts` is the server-only Groq adapter using `GROQ_API_KEY`, the documented OpenAI-compatible endpoint, and `whisper-large-v3-turbo`. |
-| Branch process | `feat/voice-input-scribe` is published for review only. Task 4 is blocked pending explicit approval because it introduces client-side microphone, `MediaRecorder`, consent, timer, and recording UI behavior. |
+| Voice-input Task 4 | The Scribe client now has UI-only recording consent, a secondary Record/Stop control, visible recording timer and transcribing state, direct success population of the existing textarea, an explicit replacement action for a post-stop manual-edit race, and manual-friendly fallbacks. Browser APIs remain scoped to client code; one completed file is posted to `/api/transcribe` only after Stop. |
+| Branch process | `feat/voice-input-scribe` is published for review only. Task 4 is complete and awaiting review; Task 5 remains blocked pending explicit approval. |
 
 ## Constraints
 
@@ -43,6 +44,10 @@ Voice-input Task 2 passed focused validation (`tests/transcription-route.test.ts
 
 Voice-input Task 3 extended the focused route tests to 9 fake-provider cases. `npm run typecheck`, `npm run lint`, `npm run test` (4 files and 17 tests), and `npm run build` all passed; the build emitted dynamic `/api/transcribe`. One throwaway production smoke test sent a public non-clinical WAV through the deployed route using the user-supplied local `GROQ_API_KEY` and received a non-empty success transcript. The key and raw provider response were never read, logged, or committed. Temporary audio, response, server logs, test scripts, and the port-3000 process were removed afterward.
 
+Voice-input Task 4 began with a deliberate RED test run because the focused recorder helper did not yet exist. The new `tests/scribe-voice-state.test.ts` uses only mocked media, timer, and network boundaries; it covers consent gating, timer/track-stop/single-file lifecycle, manual-edit-after-Stop race protection, reset discarding a delayed prior-consultation result, successful placement, permission denial, unsupported browser, offline, and endpoint failure. The focused suite passed 9 tests. The final full validation loop passed: `npm run typecheck`, `npm run lint`, `npm run test` (5 files and 26 tests), and `npm run build`.
+
+A production-browser capture ran against `npm run start` with a mocked `MediaRecorder`, mocked `getUserMedia`, and an intercepted `/api/transcribe` response; it made exactly one mocked transcription request and no live Groq request. Reviewed screenshots show the required consent-unchecked/disabled Record, recording timer, Transcribing…, successful textarea population, and permission-denied fallback states. The manual textarea remained visible in every capture. Screenshot copies are retained outside the repository; the temporary server, `.test-logs`, and port-3000 listener were removed. No note was approved or persisted during this Task 4 capture.
+
 ## Next action
 
-Await explicit approval before Task 4 of `plans/2026-08-25-voice-input-scribe.md`. Do not add client microphone access, `MediaRecorder`, consent controls, a recording timer, transcription UI state, or any Brain changes until that gate is granted.
+Await explicit approval before Task 5 of `plans/2026-08-25-voice-input-scribe.md`. Do not modify the existing E2E scripts, add voice E2E integration, update README documentation, or begin any Brain work until that gate is granted.
