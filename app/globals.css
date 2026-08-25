@@ -2,6 +2,7 @@
   --color-canopy-green: #0a3922;
   --color-coral-action: #ff643b;
   --color-leaf-accent: #1dbf73;
+  --color-recording-red: #e5484d;
   --color-deep-teal: #003642;
   --color-ink-black: #000000;
   --color-charcoal: #333333;
@@ -328,9 +329,9 @@ h2 {
 }
 
 .capture-button.is-recording {
-  border-color: var(--color-coral-action);
-  color: var(--color-coral-action);
-  background: var(--color-peach-wash);
+  border-color: var(--color-recording-red);
+  color: var(--color-recording-red);
+  background: var(--color-paper-white);
 }
 
 .capture-button:disabled {
@@ -352,7 +353,7 @@ h2 {
   height: 8px;
   margin-right: 7px;
   border-radius: 50%;
-  background: var(--color-coral-action);
+  background: var(--color-recording-red);
   content: "";
 }
 

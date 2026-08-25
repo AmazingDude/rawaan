@@ -14,6 +14,7 @@ Optional: the abstract green/blue motion-blur imagery may be used as a subtle, l
 | Canopy Green | `#0a3922` | `--color-canopy-green` | Hero/header background, primary heading color on light surfaces — the dominant brand anchor |
 | Coral Action | `#ff643b` | `--color-coral-action` | The ONE primary action color: Create draft, Approve, Ask. Never used decoratively |
 | Leaf Accent | `#1dbf73` | `--color-leaf-accent` | Success states ("Approved", "Saved"), positive status pills, focus rings |
+| Recording Red | `#e5484d` | `--color-recording-red` | **Active-recording state only** — the Stop control and recording-indicator dot while capture is in progress. Not a general accent color and not a second CTA color. |
 | Deep Teal | `#003642` | `--color-deep-teal` | Secondary outline accent for tags/dividers — never promote to CTA |
 | Ink Black | `#000000` | `--color-ink-black` | Primary body text, strong borders |
 | Charcoal | `#333333` | `--color-charcoal` | Headings on light/pastel surfaces |
@@ -87,6 +88,11 @@ Never use coral for more than one button in the same viewport. If a screen needs
 ### Ghost Outline Button
 **Role:** Secondary action beside a primary — "Cancel", "Edit again", "Back"
 `background: transparent; border: 1px solid #000000; color: #000000; font: 16px/500; padding: 12px 24px; border-radius: 40px;`
+
+### Recording Stop Control
+**Role:** A stateful capture control that appears only while a fictional-demo recording is live.
+
+Use a Recording Red (`#e5484d`) outline for **“Stop recording”** and the matching indicator dot beside the visible timer. It is not a forward CTA: do not use Coral Action, shadows, gradients, or any other recording-red treatment outside this active state.
 
 ### Status Pill
 **Role:** Draft / Approved / No supporting record — small state indicator on notes and answers
@@ -172,7 +178,7 @@ Keep this — it's doing real work (both product-honesty and hackathon-judging-h
 - Don't let the No-Supporting-Record card look like a normal answer card with different text — the color/border difference must be immediate, at a glance, before reading
 - Don't push display type past 64px anywhere in the app — this is a working tool, not a marketing site
 - Don't use Google Sans: it is Google’s proprietary in-house typeface and is not licensed for self-hosting or embedding
-- Don't introduce a second accent hue beyond Coral (action) and Leaf (success) — keep the palette disciplined
+- Don't introduce accent hues beyond Coral (primary action), Leaf (success), and the strictly active-recording-only Recording Red — keep the palette disciplined
 
 ## Imagery
 
