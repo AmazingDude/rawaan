@@ -28,6 +28,10 @@ function isMissingFileError(error: unknown): error is NodeJS.ErrnoException {
 
 export function createNoteRepository(storagePath: string) {
   return {
+    async listAll(): Promise<ApprovedNote[]> {
+      return readNotes(storagePath);
+    },
+
     async listByPatient(patientId: string): Promise<ApprovedNote[]> {
       const notes = await readNotes(storagePath);
       return notes.filter((note) => note.patient_id === patientId);

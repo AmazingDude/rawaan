@@ -52,6 +52,14 @@ A production-browser capture ran against `npm run start` with a mocked `MediaRec
 
 Voice-input Task 5 passed `npm run typecheck`, `npm run lint`, `npm run test` (5 files and 26 tests), and `npm run build`. Production browser exercises ran only against `npm run start` with the local Playwright Chromium path. The new `tests/e2e-scribe-voice.mjs` passed with a mocked `MediaRecorder`, mocked `getUserMedia`, and intercepted `/api/transcribe`: a delayed completed transcript showed `Transcribing…` without partial text, then populated the existing textarea and completed draft → edit → approval → persistence; permission-denied and endpoint-failure cases each retained a usable textarea and completed the manual flow. The unchanged `tests/e2e-scribe.mjs` also passed. Browser-created fictional notes were reset by restoring `data/notes.json` to `[]`; temporary server/log artifacts were removed and port 3000 was cleared. The final Recording Red screenshot confirms the exact `#e5484d` solid Stop fill with white text and matching timer dot; it is retained outside the repository for review.
 
+## Brain checkpoint
+
+Tasks 2 and 3 add deterministic lexical ranking and patient-scoped, approved-only retrieval. The ranker is injected into retrieval tests so the patient-isolation boundary is verified before ranking, and the repository exposes `listAll()` for future read-only retrieval wiring. No Task 4 or Task 5 work was started.
+
+On 2026-08-26, `feat/brain-retrieval` was rebased onto `origin/main` at `f6d73f9`, bringing in the merged voice-input Scribe work while retaining the two deterministic Brain commits. One `docs/HANDOFF.md` conflict was resolved by preserving both the voice-input validation record and this Brain checkpoint. Task 2 is now `23d7c0e` (`feat(brain): add lexical relevance ranking`); Task 3 retains the approved message `feat(brain): add patient-isolated approved-note retrieval` and includes this rebase record.
+
+Post-rebase validation passed: `npm run typecheck`, `npm run lint`, `npm run test` (8 files, 39 tests), and `npm run build`, which emitted `/api/transcribe` as a dynamic route alongside `/` and `/scribe`. The focused Brain query-safety, ranking, and retrieval suites also passed together (3 files, 13 tests); `tests/brain-retrieval.test.ts` still passed all 4 cases, including the pre-ranking patient-isolation spy and draft exclusion.
+
 ## Next action
 
-The authorized voice-input plan is complete. Await review of the Recording Red screenshot and explicit authorization before pushing the local Task 5 commit or opening a PR. Do not begin any Brain work without separate approval.
+The voice-input work is merged to `main`. Complete the authorized Brain sync and validation only; do not start Task 4 or Task 5. Provider selection and API-key ownership remain an explicit approval gate for Aashir, who owns the provider and answer-generation files.
