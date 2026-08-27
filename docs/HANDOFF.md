@@ -54,7 +54,7 @@ Voice-input Task 5 passed `npm run typecheck`, `npm run lint`, `npm run test` (5
 
 ## Brain checkpoint
 
-Tasks 2 and 3 add deterministic lexical ranking and patient-scoped, approved-only retrieval. The ranker is injected into retrieval tests so the patient-isolation boundary is verified before ranking, and the repository exposes `listAll()` for future read-only retrieval wiring. Task 4 adds the reviewed Groq Chat Completions provider boundary only; Task 5 answer generation has not started.
+Tasks 2 and 3 add deterministic lexical ranking and patient-scoped, approved-only retrieval. The ranker is injected into retrieval tests so the patient-isolation boundary is verified before ranking, and the repository exposes `listAll()` for future read-only retrieval wiring. Task 4 adds the reviewed Groq Chat Completions provider boundary, and Task 5 adds the versioned evidence-only prompt plus citation-validating answer-generation boundary. Task 6 orchestration has not started.
 
 On 2026-08-26, `feat/brain-retrieval` was rebased onto `origin/main` at `f6d73f9`, bringing in the merged voice-input Scribe work while retaining the two deterministic Brain commits. One `docs/HANDOFF.md` conflict was resolved by preserving both the voice-input validation record and this Brain checkpoint. Task 2 is now `23d7c0e` (`feat(brain): add lexical relevance ranking`); Task 3 retains the approved message `feat(brain): add patient-isolated approved-note retrieval` and includes this rebase record.
 
@@ -64,6 +64,10 @@ Task 4 implements `lib/llm/provider.ts` with the typed `LlmCompletionProvider` i
 
 This provider boundary is implemented pending Aashir's confirmation and is reviewable/handoff-ready, not a unilateral final decision on his Task 5 prompt and answer-generation ownership.
 
+Task 5 adds `lib/llm/prompts/brain-answer.ts` with the exact versioned evidence-only system prompt and `lib/brain/answer-generation.ts` with `generateGroundedAnswer`. It serializes only the retrieved question plus `noteId`, consultation date, and excerpts; parses the provider response as JSON; validates `{ answer, cited_note_ids }` with Zod; rejects citations not present in the retrieved evidence; rejects citations paired with an empty answer; and maps valid citations to their exact evidence dates. `tests/brain-answer-generation.test.ts` uses provider doubles only and proves that a `no_supporting_record` branch is a compile-time type error, a made-up citation is rejected rather than returned, and supported sources map to exact retrieved dates. The optional Groq `response_format: { type: "json_object" }` enhancement was intentionally skipped: Task 4's established `LlmCompletionProvider.complete({ system, user })` interface does not expose per-call request options, and changing that interface would expand the already-committed provider contract. Task 5 retains the plan's prompt instruction, `JSON.parse`, Zod validation, and citation-rejection defence in depth.
+
+Fresh Task 5 validation passed: `npm run typecheck`, `npm run lint`, `npm run test` (10 files, 46 tests), and `npm run build`. The focused answer-generation suite passed all 3 tests with no live Groq call.
+
 ## Next action
 
-The voice-input work is merged to `main`, and Brain Task 4 is reviewable on `feat/brain-retrieval`. Do not start Task 5 prompt or answer-generation work unless Aashir confirms he is building it or the user explicitly authorizes solo continuation. No live Groq call is required or authorized for Task 4.
+The voice-input work is merged to `main`, and Brain Tasks 4 and 5 are reviewable on `feat/brain-retrieval`. Do not start Task 6 orchestration or Server Actions until explicitly authorized; that wiring joins query safety, retrieval, and generation into the live query path. No live Groq call was required or made for Tasks 4 or 5.
