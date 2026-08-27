@@ -5,12 +5,21 @@ import { join } from "node:path";
 import { revalidatePath } from "next/cache";
 import { ZodError } from "zod";
 
+import { queryPatientRecord } from "@/lib/actions/brain";
 import { createScribeService } from "@/lib/actions/scribe";
+import type { BrainResponse } from "@/lib/brain/types";
+import {
+  createLlmProviderFromEnv,
+  type LlmCompletionProvider,
+} from "@/lib/llm/provider";
+import { createNoteRepository } from "@/lib/notes/repository";
 import { type NoteDraft } from "@/lib/notes/schema";
 
+const notesStoragePath = join(process.cwd(), "data", "notes.json");
 const scribeService = createScribeService({
-  storagePath: join(process.cwd(), "data", "notes.json"),
+  storagePath: notesStoragePath,
 });
+const noteRepository = createNoteRepository(notesStoragePath);
 
 type ActionFailure = {
   message: string;
@@ -31,6 +40,14 @@ type ApprovalActionSuccess = {
 
 export type DraftActionResult = DraftActionSuccess | ActionFailure;
 export type ApprovalActionResult = ApprovalActionSuccess | ActionFailure;
+export type BrainActionResult =
+  | { ok: true; response: BrainResponse }
+  | ActionFailure;
+
+export type BrainPatient = {
+  displayName: string;
+  patientId: string;
+};
 
 function toFailure(error: unknown): ActionFailure {
   if (error instanceof ZodError) {
@@ -76,4 +93,53 @@ export async function approveDraftAction(
   } catch (error) {
     return toFailure(error);
   }
+}
+
+function createLazyBrainProvider(): LlmCompletionProvider {
+  return {
+    async complete(input) {
+      return createLlmProviderFromEnv({
+        GROQ_API_KEY: process.env.GROQ_API_KEY,
+        LLM_MODEL: process.env.LLM_MODEL,
+      }).complete(input);
+    },
+  };
+}
+
+export async function queryPatientRecordAction(
+  patientId: string,
+  question: string,
+): Promise<BrainActionResult> {
+  try {
+    const notes = await noteRepository.listAll();
+    const response = await queryPatientRecord({
+      patientId,
+      question,
+      notes,
+      provider: createLazyBrainProvider(),
+    });
+
+    return { ok: true, response };
+  } catch {
+    return {
+      ok: false,
+      message: "The Brain could not answer right now. Try again.",
+    };
+  }
+}
+
+export async function listBrainPatientsAction(): Promise<BrainPatient[]> {
+  const notes = await noteRepository.listAll();
+  const patients = new Map<string, string>();
+
+  for (const note of notes) {
+    if (!patients.has(note.patient_id)) {
+      patients.set(note.patient_id, note.patient_display_name);
+    }
+  }
+
+  return [...patients].map(([patientId, displayName]) => ({
+    patientId,
+    displayName,
+  }));
 }
