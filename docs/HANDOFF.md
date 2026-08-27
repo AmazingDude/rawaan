@@ -54,12 +54,16 @@ Voice-input Task 5 passed `npm run typecheck`, `npm run lint`, `npm run test` (5
 
 ## Brain checkpoint
 
-Tasks 2 and 3 add deterministic lexical ranking and patient-scoped, approved-only retrieval. The ranker is injected into retrieval tests so the patient-isolation boundary is verified before ranking, and the repository exposes `listAll()` for future read-only retrieval wiring. No Task 4 or Task 5 work was started.
+Tasks 2 and 3 add deterministic lexical ranking and patient-scoped, approved-only retrieval. The ranker is injected into retrieval tests so the patient-isolation boundary is verified before ranking, and the repository exposes `listAll()` for future read-only retrieval wiring. Task 4 adds the reviewed Groq Chat Completions provider boundary only; Task 5 answer generation has not started.
 
 On 2026-08-26, `feat/brain-retrieval` was rebased onto `origin/main` at `f6d73f9`, bringing in the merged voice-input Scribe work while retaining the two deterministic Brain commits. One `docs/HANDOFF.md` conflict was resolved by preserving both the voice-input validation record and this Brain checkpoint. Task 2 is now `23d7c0e` (`feat(brain): add lexical relevance ranking`); Task 3 retains the approved message `feat(brain): add patient-isolated approved-note retrieval` and includes this rebase record.
 
 Post-rebase validation passed: `npm run typecheck`, `npm run lint`, `npm run test` (8 files, 39 tests), and `npm run build`, which emitted `/api/transcribe` as a dynamic route alongside `/` and `/scribe`. The focused Brain query-safety, ranking, and retrieval suites also passed together (3 files, 13 tests); `tests/brain-retrieval.test.ts` still passed all 4 cases, including the pre-ranking patient-isolation spy and draft exclusion.
 
+Task 4 implements `lib/llm/provider.ts` with the typed `LlmCompletionProvider` interface, the server-only `createLlmProviderFromEnv` factory, and a Groq OpenAI-compatible Chat Completions adapter. It reads only `GROQ_API_KEY` with an optional `LLM_MODEL` override defaulting to `openai/gpt-oss-120b`, sends non-streaming requests with a 30-second abort signal, retries one network failure, and validates `choices[0].message.content`. `.env.example` contains commented placeholders only. `tests/llm-provider.test.ts` uses mocked fetch only and covers missing configuration, default request shape, explicit model override, timeout, and one retry; it makes no live provider call. Fresh Task 4 validation passed: `npm run typecheck`, `npm run lint`, `npm run test` (9 files, 43 tests), and `npm run build`.
+
+This provider boundary is implemented pending Aashir's confirmation and is reviewable/handoff-ready, not a unilateral final decision on his Task 5 prompt and answer-generation ownership.
+
 ## Next action
 
-The voice-input work is merged to `main`. Complete the authorized Brain sync and validation only; do not start Task 4 or Task 5. Provider selection and API-key ownership remain an explicit approval gate for Aashir, who owns the provider and answer-generation files.
+The voice-input work is merged to `main`, and Brain Task 4 is reviewable on `feat/brain-retrieval`. Do not start Task 5 prompt or answer-generation work unless Aashir confirms he is building it or the user explicitly authorizes solo continuation. No live Groq call is required or authorized for Task 4.
