@@ -284,3 +284,9 @@ Implemented the 3-step post-recording workflow:
 ## Next action
 
 All changes are validated with `typecheck` (`tsc --noEmit`), `lint` (`eslint .`), `test` (`vitest run` - 55 passed), and `build` (`next build`). Ready for PR review.
+
+## Seed-data checkpoint
+
+`feat/seed-data` adds `data/seed/demo-patients.json`: eight strictly fictional approved notes for three patients (two visits for `patient-amina-001`, three for `patient-hassan-002`, three for `patient-sara-003`). `data/seed/demo-questions.md` identifies deliberately absent facts and the expected supported, no-record, general-medical-refusal, and treatment-refusal rehearsal outcomes. `data/seed/load-demo-seed.mjs` is the only explicit loader; `npm run seed:demo` copies the JSON fixture to the live store on demand and `npm run seed:reset` restores it to exactly `[]`. Product code does not import the seed data.
+
+The loader was exercised successfully, wrote eight notes, and reset cleanly. `tests/demo-seed.test.ts` validates the exact approved-note schema plus the three-patient/two-to-three-note distribution. Rebased onto current `main` and merged; full validation passed. Keep the live store empty except during an intentional demo rehearsal, then immediately run `npm run seed:reset`.

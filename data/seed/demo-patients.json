@@ -1,0 +1,200 @@
+[
+  {
+    "id": "note-amina-001-2026-01-14",
+    "patient_id": "patient-amina-001",
+    "patient_display_name": "Fictional Amina Bashir",
+    "consultation_date": "2026-01-14",
+    "chief_complaint": "Recurring afternoon headaches.",
+    "history": [
+      "Headaches became more frequent during a demanding examination period.",
+      "Amina associated episodes with long screen sessions and missed lunches."
+    ],
+    "symptoms": ["frontal headache", "neck stiffness", "afternoon fatigue"],
+    "assessment_discussed": [
+      "The clinician documented the headache pattern and possible routine triggers."
+    ],
+    "plan_discussed": [
+      "Keep a headache and routine diary for two weeks.",
+      "Take regular screen and hydration breaks during study sessions."
+    ],
+    "medications_mentioned": [],
+    "follow_up": "Review the diary at the next fictional consultation.",
+    "uncertainties": ["Frequency between study weeks was not yet clear."],
+    "raw_transcript": "Fictional patient Amina Bashir described afternoon frontal headaches after long screen sessions during examinations. She also described neck stiffness and missed lunches. The clinician discussed keeping a headache and routine diary, hydration breaks, and screen breaks.",
+    "approval_status": "approved",
+    "approved_at": "2026-01-14T10:30:00.000Z"
+  },
+  {
+    "id": "note-amina-001-2026-02-11",
+    "patient_id": "patient-amina-001",
+    "patient_display_name": "Fictional Amina Bashir",
+    "consultation_date": "2026-02-11",
+    "chief_complaint": "Headache follow-up.",
+    "history": [
+      "The diary showed fewer headache days after adding regular breaks.",
+      "One late-night study session was followed by another frontal headache."
+    ],
+    "symptoms": ["occasional frontal headache", "improved neck stiffness"],
+    "assessment_discussed": [
+      "The clinician documented improvement after the routine changes."
+    ],
+    "plan_discussed": [
+      "Continue the diary and regular study breaks.",
+      "Discuss workload planning at a later fictional visit if episodes increase."
+    ],
+    "medications_mentioned": [],
+    "follow_up": "Return after the next examination block if headaches increase.",
+    "uncertainties": ["The diary did not establish every trigger."],
+    "raw_transcript": "Fictional patient Amina Bashir said the diary showed fewer headache days after regular breaks. She described one frontal headache after a late-night study session. The clinician documented the improvement and discussed continuing the diary and breaks.",
+    "approval_status": "approved",
+    "approved_at": "2026-02-11T11:15:00.000Z"
+  },
+  {
+    "id": "note-hassan-002-2026-01-22",
+    "patient_id": "patient-hassan-002",
+    "patient_display_name": "Fictional Hassan Ali",
+    "consultation_date": "2026-01-22",
+    "chief_complaint": "Persistent dry cough.",
+    "history": [
+      "Dry cough began ten days earlier after several family members had seasonal colds.",
+      "Hassan reported that warm drinks felt soothing in the evening."
+    ],
+    "symptoms": ["dry cough", "scratchy throat", "interrupted sleep"],
+    "assessment_discussed": [
+      "The clinician documented the duration, home context, and reported sleep disruption."
+    ],
+    "plan_discussed": [
+      "Track whether the cough changes over the coming week.",
+      "Use the agreed comfort measures discussed in the consultation."
+    ],
+    "medications_mentioned": [],
+    "follow_up": "Fictional follow-up planned in one week if the cough persists.",
+    "uncertainties": ["No clear daily pattern had been established."],
+    "raw_transcript": "Fictional patient Hassan Ali described a dry cough for ten days and a scratchy throat after seasonal colds in the household. He said warm drinks felt soothing and the cough interrupted sleep. The clinician documented the history and discussed tracking changes over the next week.",
+    "approval_status": "approved",
+    "approved_at": "2026-01-22T09:45:00.000Z"
+  },
+  {
+    "id": "note-hassan-002-2026-01-30",
+    "patient_id": "patient-hassan-002",
+    "patient_display_name": "Fictional Hassan Ali",
+    "consultation_date": "2026-01-30",
+    "chief_complaint": "Cough follow-up.",
+    "history": [
+      "Hassan described the cough as less frequent than the prior week.",
+      "Sleep was less interrupted on most nights."
+    ],
+    "symptoms": ["less frequent dry cough", "improved sleep"],
+    "assessment_discussed": ["The clinician documented the reported improvement."],
+    "plan_discussed": [
+      "Continue the agreed tracking plan.",
+      "Return if the pattern changes or concerns increase."
+    ],
+    "medications_mentioned": [],
+    "follow_up": "No routine fictional follow-up date was set.",
+    "uncertainties": ["The cause of the original cough was not established in these notes."],
+    "raw_transcript": "Fictional patient Hassan Ali said his dry cough was less frequent and his sleep was less interrupted than the previous week. The clinician documented the improvement and discussed continuing the agreed tracking plan.",
+    "approval_status": "approved",
+    "approved_at": "2026-01-30T14:00:00.000Z"
+  },
+  {
+    "id": "note-hassan-002-2026-03-18",
+    "patient_id": "patient-hassan-002",
+    "patient_display_name": "Fictional Hassan Ali",
+    "consultation_date": "2026-03-18",
+    "chief_complaint": "Seasonal nasal congestion.",
+    "history": [
+      "Nasal congestion and sneezing returned during a dusty week.",
+      "Hassan reported that the earlier dry cough had resolved."
+    ],
+    "symptoms": ["nasal congestion", "sneezing", "watery eyes"],
+    "assessment_discussed": [
+      "The clinician documented the seasonal timing and reported symptom pattern."
+    ],
+    "plan_discussed": [
+      "Keep a short symptom and environment log.",
+      "Review the log at a later fictional consultation if symptoms recur."
+    ],
+    "medications_mentioned": [],
+    "follow_up": "Follow up only if the congestion returns or worsens.",
+    "uncertainties": ["No single environmental trigger was confirmed."],
+    "raw_transcript": "Fictional patient Hassan Ali described nasal congestion, sneezing, and watery eyes during a dusty week. He said the earlier dry cough had resolved. The clinician documented the seasonal pattern and discussed a short symptom and environment log.",
+    "approval_status": "approved",
+    "approved_at": "2026-03-18T13:20:00.000Z"
+  },
+  {
+    "id": "note-sara-003-2026-02-05",
+    "patient_id": "patient-sara-003",
+    "patient_display_name": "Fictional Sara Majeed",
+    "consultation_date": "2026-02-05",
+    "chief_complaint": "Difficulty falling asleep.",
+    "history": [
+      "Difficulty falling asleep started during a two-week project deadline.",
+      "Sara described late-evening laptop work and racing thoughts about deadlines."
+    ],
+    "symptoms": ["difficulty falling asleep", "morning tiredness", "racing thoughts"],
+    "assessment_discussed": [
+      "The clinician documented the timing of sleep difficulty and workload context."
+    ],
+    "plan_discussed": [
+      "Discuss a consistent wind-down routine and earlier end to laptop work.",
+      "Keep a short sleep and workload diary."
+    ],
+    "medications_mentioned": [],
+    "follow_up": "Review the sleep diary at a later fictional visit.",
+    "uncertainties": ["The notes do not establish every contributor to the sleep change."],
+    "raw_transcript": "Fictional patient Sara Majeed described difficulty falling asleep for two weeks during a project deadline. She described late-evening laptop work, racing thoughts about deadlines, and morning tiredness. The clinician documented the context and discussed a wind-down routine and a sleep diary.",
+    "approval_status": "approved",
+    "approved_at": "2026-02-05T15:10:00.000Z"
+  },
+  {
+    "id": "note-sara-003-2026-02-26",
+    "patient_id": "patient-sara-003",
+    "patient_display_name": "Fictional Sara Majeed",
+    "consultation_date": "2026-02-26",
+    "chief_complaint": "Sleep and workload follow-up.",
+    "history": [
+      "Sara described falling asleep more easily on nights with an earlier laptop stop time.",
+      "Morning tiredness continued after unusually late project meetings."
+    ],
+    "symptoms": ["improved sleep onset", "occasional morning tiredness"],
+    "assessment_discussed": [
+      "The clinician documented the relationship Sara observed between routine and sleep onset."
+    ],
+    "plan_discussed": [
+      "Continue the sleep and workload diary.",
+      "Keep the earlier laptop stop time where practical."
+    ],
+    "medications_mentioned": [],
+    "follow_up": "Return after the project period for another fictional review.",
+    "uncertainties": ["The diary covered only part of the deadline period."],
+    "raw_transcript": "Fictional patient Sara Majeed said she fell asleep more easily when she stopped laptop work earlier. She still described morning tiredness after very late project meetings. The clinician documented the pattern and discussed continuing the sleep and workload diary.",
+    "approval_status": "approved",
+    "approved_at": "2026-02-26T16:00:00.000Z"
+  },
+  {
+    "id": "note-sara-003-2026-04-09",
+    "patient_id": "patient-sara-003",
+    "patient_display_name": "Fictional Sara Majeed",
+    "consultation_date": "2026-04-09",
+    "chief_complaint": "Daytime fatigue follow-up.",
+    "history": [
+      "Sara described fewer difficult nights after the project deadline ended.",
+      "She continued to notice fatigue after nights with shorter sleep."
+    ],
+    "symptoms": ["occasional daytime fatigue", "fewer difficult nights"],
+    "assessment_discussed": [
+      "The clinician documented the improvement after the deadline period and remaining fatigue pattern."
+    ],
+    "plan_discussed": [
+      "Continue the agreed sleep routine.",
+      "Bring an updated diary to a later fictional consultation if fatigue persists."
+    ],
+    "medications_mentioned": [],
+    "follow_up": "No fixed fictional follow-up date was set.",
+    "uncertainties": ["The notes do not quantify sleep duration."],
+    "raw_transcript": "Fictional patient Sara Majeed described fewer difficult nights after her project deadline ended. She still noticed daytime fatigue after shorter nights. The clinician documented the improvement and discussed continuing the agreed sleep routine.",
+    "approval_status": "approved",
+    "approved_at": "2026-04-09T12:40:00.000Z"
+  }
+]

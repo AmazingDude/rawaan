@@ -6,6 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "seed:demo": "node data/seed/load-demo-seed.mjs",
+    "seed:reset": "node data/seed/load-demo-seed.mjs --reset",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run"
