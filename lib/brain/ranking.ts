@@ -6,7 +6,7 @@ export const RELEVANCE_THRESHOLD = 0.25;
 const STOP_WORDS = new Set([
   "has", "have", "the", "a", "an", "is", "was", "been", "before", "this",
   "that", "patient", "she", "he", "they", "their", "any", "ever", "mentioned",
-  "did", "does", "what", "of", "in", "on", "with", "for", "to", "and", "i",
+  "reported", "did", "does", "what", "of", "in", "on", "with", "for", "to", "and", "i",
 ]);
 
 function tokenize(text: string): string[] {
