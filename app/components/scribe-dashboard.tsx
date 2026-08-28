@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowUpRight, ChevronDown, MoreVertical } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -439,7 +440,7 @@ export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
               <span className="record-circle-icon" />
             </div>
             <span className="action-card-arrow" aria-hidden="true">
-              ↗
+              <ArrowUpRight size={16} />
             </span>
           </div>
           <div className="action-card-body">
@@ -474,7 +475,7 @@ export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
               </svg>
             </div>
             <span className="action-card-arrow" aria-hidden="true">
-              ↗
+              <ArrowUpRight size={16} />
             </span>
           </div>
           <div className="action-card-body">
@@ -512,7 +513,7 @@ export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
               </svg>
             </div>
             <span className="action-card-arrow" aria-hidden="true">
-              ↗
+              <ArrowUpRight size={16} />
             </span>
           </div>
           <div className="action-card-body">
@@ -580,7 +581,9 @@ export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
               <line x1="12" x2="12" y1="3" y2="15" />
             </svg>
             Upload
-            <span className="dropdown-arrow">▼</span>
+            <span className="dropdown-arrow">
+              <ChevronDown size={14} />
+            </span>
           </button>
         </div>
       </section>
@@ -627,7 +630,7 @@ export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
                 className="session-item-menu"
                 type="button"
               >
-                ⋮
+                <MoreVertical size={16} />
               </button>
             </div>
           </div>

@@ -1,3 +1,4 @@
+import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 
 import { listBrainPatientsAction } from "@/app/actions";
@@ -76,7 +77,8 @@ export default async function ClientsPage() {
                   Start Session
                 </Link>
                 <Link className="secondary-button" href="/rawaan-ai">
-                  Query with Brain ↗
+                  Query with Brain
+                  <ArrowUpRight aria-hidden="true" size={14} />
                 </Link>
               </div>
             </article>

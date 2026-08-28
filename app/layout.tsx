@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import type { ReactNode } from "react";
 
@@ -24,6 +24,12 @@ export const metadata: Metadata = {
   description:
     "A clinician-controlled patient context engine for fictional demo consultations.",
   title: "Rawaan | Patient Context Engine",
+};
+
+export const viewport: Viewport = {
+  initialScale: 1,
+  viewportFit: "cover",
+  width: "device-width",
 };
 
 export default function RootLayout({

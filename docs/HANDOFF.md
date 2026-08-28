@@ -178,6 +178,21 @@ Verified in a production browser (`npm run build` then `npm run start`): with an
 
 No modifications to `lib/brain/`, `lib/llm/`, or `lib/notes/`.
 
+## Mobile & UI polish checkpoint
+
+Branch: `feat/brain-chat-ui`. A review pass over the workspace UI fixed the mobile and polish issues raised after Task 2:
+
+- **Icon library instead of emoji:** installed `lucide-react` (verified the exact icons exist in the installed version before use). Replaced emoji/raw glyphs: Learn Rawaan module icons (🎙️🛡️ → Mic/Brain/ShieldCheck/Zap in pastel circles), Rawaan AI notice 🧠 → Brain and citation 📄 → FileText, Clients "Query with Brain ↗" → ArrowUpRight, and the Scribe dashboard ↗/▼/⋮ → ArrowUpRight/ChevronDown/MoreVertical.
+- **No button underlines:** `.primary-button`/`.ghost-button`/`.secondary-button` now set `text-decoration: none` and are centered inline-flex containers, so anchor-rendered buttons no longer show the default underline.
+- **Single-line buttons on phones:** buttons get `white-space: nowrap` and the `.wireframe-header` now wraps, so "+ New Consultation" drops to its own line instead of folding into two lines at phone width.
+- **White scrollbar with reserved space:** `html` and `.workspace-content-pane` set `scrollbar-gutter: stable` plus a light `scrollbar-color`/`::-webkit-scrollbar` treatment (white track, frost-gray thumb) so content no longer shifts when the scrollbar appears.
+- **No click focus ring on sidebar tabs:** anchors get `a:focus { outline: none }` while `a:focus-visible` retains the leaf ring, so mouse/touch clicks show no transient ring but keyboard focus stays accessible.
+- **Notch safe-area:** root layout exports `viewport` with `viewportFit: "cover"`; `.workspace-shell` and `.landing-hero` add `padding-top: env(safe-area-inset-top)` so notched iPhones get top padding and the green hero extends under the notch.
+
+Verified with production-browser captures at a 390×844 iPhone viewport across `/clients`, `/learn-rawaan`, `/rawaan-ai`, and `/record`: buttons render on one line with no underline, lucide icons replace all emoji, and each page stacks without horizontal overflow. Temporary captures, script, server, and logs were removed; `data/notes.json` remained `[]`.
+
+Validation: `npm run typecheck`, `npm run lint`, `npm run test` (14 files, 74 tests), and `npm run build` all passed.
+
 ## Next action
 
-Task 2 complete and pushed to `feat/brain-chat-ui` (roster implementation plus the follow-up `force-dynamic` correctness fix). Ready for Task 3: build the stateless Brain chat into the existing Rawaan AI wireframe page.
+Task 2 plus the mobile/UI polish pass are complete and pushed to `feat/brain-chat-ui`. Ready for Task 3: build the stateless Brain chat into the existing Rawaan AI wireframe page.

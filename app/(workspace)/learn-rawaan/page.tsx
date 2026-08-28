@@ -1,8 +1,9 @@
+import { Brain, Mic, ShieldCheck, Zap } from "lucide-react";
 import Link from "next/link";
 
 const guideModules = [
   {
-    icon: "🎙️",
+    icon: Mic,
     title: "1. Consultation Scribe",
     description:
       "Capture consultation audio or type transcripts to generate structured SOAP-style clinical notes. Every draft requires explicit clinician review and approval before persisting.",
@@ -13,7 +14,7 @@ const guideModules = [
     ],
   },
   {
-    icon: "🧠",
+    icon: Brain,
     title: "2. Patient Context Brain",
     description:
       "Ask natural-language questions about past consultations. Answers are strictly grounded in retrieved approved notes with zero hallucination.",
@@ -24,7 +25,7 @@ const guideModules = [
     ],
   },
   {
-    icon: "🛡️",
+    icon: ShieldCheck,
     title: "3. Safety Guardrails & Non-Goals",
     description:
       "Rawaan is an administrative and documentation assistant, not a diagnostic or treatment prescription system.",
@@ -35,7 +36,7 @@ const guideModules = [
     ],
   },
   {
-    icon: "⚡",
+    icon: Zap,
     title: "4. Best Practices & Workflow Tips",
     description:
       "Maximize documentation speed in high-volume clinics and therapy sessions.",
@@ -66,10 +67,14 @@ export default function LearnRawaanPage() {
       </header>
 
       <section className="learn-grid">
-        {guideModules.map((module) => (
+        {guideModules.map((module) => {
+          const ModuleIcon = module.icon;
+          return (
           <article className="learn-module-card" key={module.title}>
             <div className="module-header">
-              <span className="module-icon">{module.icon}</span>
+              <span className="module-icon">
+                <ModuleIcon aria-hidden="true" size={20} />
+              </span>
               <h3 className="module-title">{module.title}</h3>
             </div>
             <p className="module-desc">{module.description}</p>
@@ -79,7 +84,8 @@ export default function LearnRawaanPage() {
               ))}
             </ul>
           </article>
-        ))}
+          );
+        })}
       </section>
 
       <section className="learn-cta-card">

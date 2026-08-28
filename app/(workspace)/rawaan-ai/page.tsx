@@ -1,3 +1,4 @@
+import { Brain, FileText } from "lucide-react";
 import Link from "next/link";
 
 export default function RawaanAiPage() {
@@ -15,7 +16,9 @@ export default function RawaanAiPage() {
       </header>
 
       <div className="wireframe-notice-banner">
-        <span className="notice-icon">🧠</span>
+        <span className="notice-icon">
+          <Brain aria-hidden="true" size={20} />
+        </span>
         <p>
           <strong>UI Wireframe Mode:</strong> The server-side Brain engine (retrieval,
           safety gate & citation verification) is built in <code>lib/brain/</code>. Full
@@ -89,10 +92,12 @@ export default function RawaanAiPage() {
               <span className="citations-label">Source Notes Cited (Strict provenance):</span>
               <div className="citation-tags">
                 <span className="citation-tag">
-                  📄 Note #note-chest-001 · 2026-06-01
+                  <FileText aria-hidden="true" size={14} />
+                  Note #note-chest-001 · 2026-06-01
                 </span>
                 <span className="citation-tag">
-                  📄 Note #note-followup-002 · 2026-07-15
+                  <FileText aria-hidden="true" size={14} />
+                  Note #note-followup-002 · 2026-07-15
                 </span>
               </div>
             </div>
