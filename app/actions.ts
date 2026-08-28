@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { ZodError } from "zod";
 
 import { queryPatientRecord } from "@/lib/actions/brain";
+import { deriveRosterSummary } from "@/lib/actions/roster";
 import { createScribeService } from "@/lib/actions/scribe";
 import type { BrainResponse } from "@/lib/brain/types";
 import {
@@ -59,6 +60,8 @@ export type BrainActionResult =
 export type BrainPatient = {
   displayName: string;
   patientId: string;
+  approvedNoteCount: number;
+  mostRecentConsultationDate: string;
 };
 
 function toFailure(error: unknown): ActionFailure {
@@ -132,18 +135,7 @@ export async function queryPatientRecordAction(
 
 export async function listBrainPatientsAction(): Promise<BrainPatient[]> {
   const notes = await noteRepository.listAll();
-  const patients = new Map<string, string>();
-
-  for (const note of notes) {
-    if (!patients.has(note.patient_id)) {
-      patients.set(note.patient_id, note.patient_display_name);
-    }
-  }
-
-  return [...patients].map(([patientId, displayName]) => ({
-    patientId,
-    displayName,
-  }));
+  return deriveRosterSummary(notes);
 }
 
 export type ClientRecord = {

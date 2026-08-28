@@ -91,6 +91,177 @@ The application now features a persistent sidebar workspace layout with exactly 
 - **Learn Rawaan** (`/learn-rawaan`): UI wireframe for clinical documentation guidelines and safety principles.
 - The root landing page (`/`) "Try the Demo" button links directly to `/record`, and `/scribe` redirects to `/record`.
 
+## Brain Chat UI — Task 1 checkpoint
+
+Branch: `feat/brain-chat-ui`. Task 1 of `plans/2026-08-28-brain-chat-and-roster.md` is complete.
+
+**What was done:**
+
+Task 1 confirmed the existing action contracts (`queryPatientRecordAction`, `listBrainPatientsAction` in `app/actions.ts`; `queryPatientRecord` in `lib/actions/brain.ts`) and extracted the UI-safe boundaries following the plan's TDD order.
+
+The roster investigation found that `listBrainPatientsAction` returned only `patientId` and `displayName` — insufficient for the Task 2 roster UI which requires `approvedNoteCount` and `mostRecentConsultationDate`. As directed by the plan ("stop and propose a reviewed action-contract extension before implementation"), this was addressed within Task 1 by:
+
+1. Creating `lib/actions/roster.ts` with the pure `deriveRosterSummary(notes: ApprovedNote[]): RosterPatient[]` helper. It iterates approved notes once, accumulating count and lexicographically latest consultation date per patient. No imports from `lib/brain`, `lib/llm`, or any provider code.
+2. Extending `BrainPatient` in `app/actions.ts` with `approvedNoteCount: number` and `mostRecentConsultationDate: string`.
+3. Replacing the inline Map loop in `listBrainPatientsAction` with a `deriveRosterSummary` call — same approved-note source, now returning the full roster shape.
+
+**Tests written RED first, then GREEN:**
+
+`tests/brain-action-contracts.test.ts` — 14 tests covering:
+- Supported `BrainActionResult` shape: `ok: true` with answer and typed sources array.
+- No-record `BrainActionResult` shape: `ok: true` with `status: "no_supporting_record"`, exact message and reason.
+- Refused (treatment): `ok: true` with `status: "refused"`, `reason: "treatment_or_medication"`, exact safety message.
+- Refused (general_medical): distinct reason field is a distinct render state.
+- Action-level error: `ok: false` with a safe non-technical message — asserts no provider/key/model info leaks.
+- Provider isolation: refusal path and no-record path each assert the provider was never invoked.
+- `deriveRosterSummary`: one entry per distinct patient, correct counts, latest date, displayName preservation, empty-array case, single-note case.
+- `BrainPatient` compile-time shape: `approvedNoteCount` and `mostRecentConsultationDate` are now required fields.
+
+**Validation output (2026-08-28):**
+
+- Focused suite: 14/14 passed.
+- Full suite: 13 files, 69 tests — all passed (up from 55 tests before Task 1).
+- `npm run typecheck`: passed (no output).
+- `npm run lint`: passed (exit 0, no output).
+- `npm run build`: passed. Routes emitted: `/`, `/_not-found`, `/api/transcribe` (dynamic), `/clients`, `/learn-rawaan`, `/rawaan-ai`, `/record` (dynamic), `/scribe`.
+
+No modifications to `lib/brain/`, `lib/llm/`, or `lib/notes/`.
+
+## Brain Chat UI — Task 2 checkpoint
+
+Branch: `feat/brain-chat-ui`. Task 2 of `plans/2026-08-28-brain-chat-and-roster.md` is complete.
+
+**What was done:**
+
+Replaced the hardcoded `demoClients` wireframe in `app/(workspace)/clients/page.tsx` with a live roster derived from `listBrainPatientsAction()`. The page is now an async server component that calls the typed Server Action directly.
+
+Removed:
+- The entire `demoClients` array (invented age, status, complaint, appointment data).
+- The "WIREFRAME VIEW" badge.
+- The "UI Wireframe Mode" notice banner.
+- The disabled search input and hardcoded filter pills ("All Clients (4)", "Active (3)", "Follow-up (1)").
+- The status badge (no invented "Active"/"Follow-up required" states).
+- The "Recorded focus" complaint box (no invented primary complaint data).
+
+Added:
+- Honest empty state when no approved notes exist: cream-background card with link to `/record`.
+- Each card shows only approved-note-derived fields: display name, patient ID, approved note count, most recent consultation date.
+- Avatar initials derived from `displayName`.
+- Links to `/record` ("Start Session") and `/rawaan-ai` ("Query with Brain") preserved on every card.
+
+CSS: added `.roster-empty-state`, `.roster-empty-title`, `.roster-empty-body`, `.roster-empty-link` to `app/globals.css` using design system tokens (cream background, charcoal heading, slate body, canopy green link). No shadows, no new accent colors.
+
+**Tests:**
+
+`tests/brain-roster.test.ts` — 5 tests covering:
+- Empty store produces empty roster.
+- Each `BrainPatient` has exactly four approved-note-derived keys (no invented fields).
+- Multiple notes per patient aggregate count and latest date correctly.
+- Distinct patients appear as separate entries.
+- Compile-time type check: `deriveRosterSummary` accepts only `ApprovedNote[]`.
+
+**Dynamic-rendering fix (found during the production-browser exercise):**
+
+The initial Task 2 implementation left `/clients` statically prerendered (`○ Static`), so the roster baked in whatever approved notes existed at build time and would not show a patient approved during a live demo session until a rebuild. This is a correctness defect for a live roster, not just a stylistic choice.
+
+Fix: added `export const dynamic = "force-dynamic";` to `app/(workspace)/clients/page.tsx`. Per the Next 16 route-segment-config docs bundled in `node_modules/next/dist/docs/`, `force-dynamic` forces per-request rendering. `/clients` now builds as `ƒ (Dynamic)`.
+
+Verified in a production browser (`npm run build` then `npm run start`): with an empty store `/clients` renders the honest empty state; after writing fictional approved notes to `data/notes.json` the same running server (no rebuild) immediately renders the roster with correct names, patient IDs, approved-note counts, and most-recent consultation dates. `data/notes.json` was then restored to `[]` and the temporary server/log artifacts removed.
+
+**Validation output (2026-08-28):**
+
+- Focused suite: 5/5 passed.
+- Full suite: 14 files, 74 tests — all passed (up from 69 after Task 1).
+- `npm run typecheck`: passed.
+- `npm run lint`: passed.
+- `npm run build`: passed. `/clients` emitted as `ƒ (Dynamic)`.
+
+No modifications to `lib/brain/`, `lib/llm/`, or `lib/notes/`.
+
+## Mobile & UI polish checkpoint
+
+Branch: `feat/brain-chat-ui`. A review pass over the workspace UI fixed the mobile and polish issues raised after Task 2:
+
+- **Icon library instead of emoji:** installed `lucide-react` (verified the exact icons exist in the installed version before use). Replaced emoji/raw glyphs: Learn Rawaan module icons (🎙️🛡️ → Mic/Brain/ShieldCheck/Zap in pastel circles), Rawaan AI notice 🧠 → Brain and citation 📄 → FileText, Clients "Query with Brain ↗" → ArrowUpRight, and the Scribe dashboard ↗/▼/⋮ → ArrowUpRight/ChevronDown/MoreVertical.
+- **No button underlines:** `.primary-button`/`.ghost-button`/`.secondary-button` now set `text-decoration: none` and are centered inline-flex containers, so anchor-rendered buttons no longer show the default underline.
+- **Single-line buttons on phones:** buttons get `white-space: nowrap` and the `.wireframe-header` now wraps, so "+ New Consultation" drops to its own line instead of folding into two lines at phone width.
+- **White scrollbar with reserved space:** `html` and `.workspace-content-pane` set `scrollbar-gutter: stable` plus a light `scrollbar-color`/`::-webkit-scrollbar` treatment (white track, frost-gray thumb) so content no longer shifts when the scrollbar appears.
+- **No click focus ring on sidebar tabs:** anchors get `a:focus { outline: none }` while `a:focus-visible` retains the leaf ring, so mouse/touch clicks show no transient ring but keyboard focus stays accessible.
+- **Notch safe-area:** root layout exports `viewport` with `viewportFit: "cover"`; `.workspace-shell` and `.landing-hero` add `padding-top: env(safe-area-inset-top)` so notched iPhones get top padding and the green hero extends under the notch.
+
+Verified with production-browser captures at a 390×844 iPhone viewport across `/clients`, `/learn-rawaan`, `/rawaan-ai`, and `/record`: buttons render on one line with no underline, lucide icons replace all emoji, and each page stacks without horizontal overflow. Temporary captures, script, server, and logs were removed; `data/notes.json` remained `[]`.
+
+Validation: `npm run typecheck`, `npm run lint`, `npm run test` (14 files, 74 tests), and `npm run build` all passed.
+
+## Brain Chat UI — Task 3 checkpoint
+
+Branch: `feat/brain-chat-ui`. Task 3 of `plans/2026-08-28-brain-chat-and-roster.md` is complete.
+
+**What was done:**
+
+Built the stateless Brain chat into the Rawaan AI page. The static wireframe mockup (disabled select, sample chips, hardcoded answer) was replaced with a live interactive boundary while preserving the page heading and the "Documentation support only" safety label.
+
+- `app/components/brain-chat-state.ts` — pure, browser-independent state machine: `initialBrainChatState`, `brainChatReducer` (select-patient resets the thread, set-draft, submit-start, append-entry, new-chat clears only in-memory entries), and `runBrainChatQuery` which calls the injected Server Action with ONLY `(patientId, question)` and maps the result verbatim onto a timestamped entry. No React, no browser, no `lib/brain` runtime imports (type-only).
+- `app/components/brain-chat.tsx` — client component. Loads patients via `listBrainPatientsAction()`, renders the patient selector, the dark Patient Context Header, the thread, and the input row. Calls only the typed Server Actions (`queryPatientRecordAction`, `listBrainPatientsAction`); never imports `lib/brain`/`lib/llm`/`lib/notes` runtime code. Distinct render states: supported (Sky Wash + citation chips), no-record (Peach Wash + border), refused (cream + teal border), action error (neutral). "New chat" clears client memory only.
+- `app/(workspace)/rawaan-ai/page.tsx` — now composes `<BrainChat />` under the preserved heading/safety label.
+- CSS — Brain chat styles using design tokens (flat pastel surfaces, no shadows).
+
+**Tests (written RED first, then GREEN):** `tests/brain-chat.test.ts` — 11 tests: initial state, select-patient thread reset, set-draft, submit-start, append-entry, new-chat, and verbatim mapping of supported/no-record/refused/error; plus the isolation regression proving three sequential turns each pass only `(patientId, question)` with no prior-turn content.
+
+**Production browser exercise (live Groq):** selected the fictional patient; treatment question → refused card; unrecorded vital → no-record card; documented symptom → supported card with the exact returned citation `2026-06-01 · fictional-note-amina-1`; "New chat" cleared 3 entries to 0. Screenshot review confirmed the three states are visually distinct. `data/notes.json` restored to `[]`; temp script/screenshots/server removed.
+
+**Validation:** `npm run typecheck`, `npm run lint`, `npm run test` (15 files, 85 tests), `npm run build` all passed.
+
+No modifications to `lib/brain/`, `lib/llm/`, or `lib/notes/`.
+
+## Brain Chat UI — Task 4 checkpoint
+
+Branch: `feat/brain-chat-ui`. Task 4 of `plans/2026-08-28-brain-chat-and-roster.md` is complete.
+
+**What was done:**
+
+Added fixed retrieval-only quick-action chips above the chat input.
+
+- `app/components/brain-quick-actions.tsx` — exports `BRAIN_QUICK_ACTIONS` (`as const`, the three approved templates verbatim) and a presentational `BrainQuickActions` chip row. Chips are plain buttons that call `onAsk(action.question)`; there is no LLM that generates or rewrites labels/questions.
+- `app/components/brain-chat.tsx` — refactored submission into a shared `submitQuestion(question)` used by both the manual form and the chips, so chips and manual input share the same patient ID and stateless action path. Chips render only when a patient is selected and are disabled while submitting.
+- CSS — `.brain-quick-actions` / `.brain-quick-action-chip` mint-wash pills, no shadows.
+
+**Pre-implementation wording check (required by the plan):** all three templates classify as `record_query` via `classifyQuerySafety` (no treatment/general-medical refusal). Ranker tokens `plan/discussed/documented/visits/symptoms/follow-up` are live (non-stop-word), so retrieval strength depends on note content; a chip honestly renders `no_supporting_record` when there is no lexical match. The approved wording was kept verbatim (the plan forbids unilateral dynamic filtering).
+
+**Tests (RED first, then GREEN):** extended `tests/brain-chat.test.ts` with 4 quick-action tests: exact approved templates, every chip is a record query, a chip submits only its exact question through the same path, and a chip no-record result does not alter the next manual turn.
+
+**Production browser exercise (live Groq):** three chips render; clicking "Recall follow-up" submitted the exact question and returned a supported answer "Follow-up in two weeks." with citation `2026-06-01 · fictional-note-amina-1`. `data/notes.json` restored to `[]`; temp script/screenshot/server removed.
+
+**Validation:** `npm run typecheck`, `npm run lint`, `npm run test` (15 files, 89 tests), `npm run build` all passed.
+
+No modifications to `lib/brain/`, `lib/llm/`, or `lib/notes/`.
+
+## Brain Chat UI — Task 5 checkpoint
+
+Branch: `feat/brain-chat-ui`. Task 5 of `plans/2026-08-28-brain-chat-and-roster.md` is complete.
+
+**What was done:**
+
+Created `tests/e2e-brain.mjs`, a production-browser E2E in the same style as `tests/e2e-scribe.mjs`. It seeds fictional approved notes (backing up and restoring `data/notes.json` in a `finally`), then against `npm run start` verifies the full demo matrix on `/rawaan-ai`:
+
+1. Supported question → answer card whose citation chip contains the exact source date `2026-06-01`.
+2. Deliberately absent fact → `no_supporting_record` card.
+3. Treatment question → refused card.
+4. General-medical question → a second, distinct refused card (2 refusal cards total).
+5. "New chat" clears the in-memory thread (0 entries) without touching persisted notes.
+6. A later supported question renders independently after the reset.
+
+Run with `PLAYWRIGHT_CHROMIUM_EXECUTABLE` pointed at the local Chrome (bundled browser not installed). Output: `supported with source date: 2026-06-01 · fictional-note-amina-1`, `no-record: OK`, `treatment refused: OK`, `general-medical refused (distinct): OK`, `new chat cleared thread: OK`, `later supported independent: OK`, `Brain E2E flow passed.`
+
+**Validation:** `npm run test` (15 files, 89 tests), `npm run typecheck`, `npm run lint` (0 errors / 0 warnings after removing an unused locator), and `npm run build` all passed. `data/notes.json` restored to `[]`; temporary server/logs removed.
+
+**Design reference review:** the `inspo/` screenshots (Klarify/Ease Health) confirm the workspace pattern already implemented — sidebar + pastel action cards + pill buttons on desktop; top bar + stacked full-width actions on mobile. A hamburger-collapsed sidebar on mobile is a possible future enhancement and is intentionally out of scope for this plan. `inspo/` remains an untracked reference asset.
+
+**Review gate:** Per the plan, this branch may open a PR only after Rehan/Aashir cross-review plus one teammate review, with the full validation loop passing. All five tasks are now implemented and validated; `main` is untouched.
+
+## Next action
+
+All five Brain chat/roster tasks are complete and pushed to `feat/brain-chat-ui`. Awaiting the plan's cross-review before opening a PR into `main`.
 ## Post-Recording Workflow & Interactive AI Overview (2026-08-28)
 
 Implemented the 3-step post-recording workflow:
@@ -113,4 +284,3 @@ Implemented the 3-step post-recording workflow:
 ## Next action
 
 All changes are validated with `typecheck` (`tsc --noEmit`), `lint` (`eslint .`), `test` (`vitest run` - 55 passed), and `build` (`next build`). Ready for PR review.
-
