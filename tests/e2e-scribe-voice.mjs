@@ -104,7 +104,7 @@ async function configureVoicePage() {
     });
   });
 
-  await page.goto("http://127.0.0.1:3000/scribe", { waitUntil: "networkidle" });
+  await page.goto("http://127.0.0.1:3000/record", { waitUntil: "networkidle" });
   await expect(page.getByText("Current mode: Local demo parser")).toBeVisible();
 
   return page;

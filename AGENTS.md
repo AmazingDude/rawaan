@@ -55,3 +55,13 @@ A task is done when: typecheck passes, lint passes, build passes, the feature wa
 
 - 6-day build (22–27 Aug). Speed matters, but a broken demo costs more than a missing feature. When in doubt: fewer features, all working.
 - Demo day success criteria are in PRD §10 — especially the "system declines when asked about something not in any note" moment. That is the money shot. Protect it.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

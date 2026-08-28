@@ -82,6 +82,15 @@ Known limitation: this `reported` stop-word correction closes the observed insta
 
 Fresh Task 7 validation passed: `npm run typecheck`, `npm run lint`, `npm run test` (12 files, 55 tests), and `npm run build`. The full suite includes all Brain, Scribe, and consent-gated voice-input tests. Browser E2E for the Brain is still deferred exactly as planned until Dev2’s query UI lands on `feat/query-ui`; Task 7’s integration coverage is the current merge gate.
 
+## Sidebar Architecture & 4-Page Redesign
+
+The application now features a persistent sidebar workspace layout with exactly 4 navigation destinations matching the reference design:
+- **Record / Scribe** (`/record`): Fully functional and connected to the backend. Features the top 3 action cards ("Record virtual session", "Record in-person", "Record a summary"), search pill, empty note / upload actions, timeline header, recent sessions list, and the integrated consultation scribe capture/review/approval engine.
+- **Clients** (`/clients`): UI wireframe for patient rosters, status tags, and consultation history.
+- **Rawaan AI** (`/rawaan-ai`): UI wireframe for patient-isolated queries, safety refusal states, and grounded citation cards.
+- **Learn Rawaan** (`/learn-rawaan`): UI wireframe for clinical documentation guidelines and safety principles.
+- The root landing page (`/`) "Try the Demo" button links directly to `/record`, and `/scribe` redirects to `/record`.
+
 ## Next action
 
-All seven Brain tasks are now complete and reviewable on `feat/brain-retrieval`. This branch is ready for **Rehan/Aashir cross-review plus one teammate** before a pull request is opened into `main`. Do not push, open a pull request, rebase, merge, begin Brain UI work, or alter `data/seed/**` until that review gate is explicitly cleared.
+All changes are validated with `typecheck`, `lint`, `test`, and `build`. Ready for user review.

@@ -33,7 +33,7 @@ The recording consent checkbox is a **UI-only demo gate**, not stored consent ev
 | `npm run test` | Run schema, persistence, generator, and approval-flow unit tests. |
 | `npm run build` | Produce and validate the production build. |
 
-Open the local URL printed by `npm run dev`, typically `http://localhost:3000`. The root route is the Rawaan landing page; select **Try the Demo** or open `http://localhost:3000/scribe` directly to use the Scribe workflow.
+Open the local URL printed by `npm run dev`, typically `http://localhost:3000`. The root route is the Rawaan landing page; select **Try the Demo** or open `http://localhost:3000/record` directly to access the sidebar workspace (Record, Clients, Rawaan AI, and Learn Rawaan).
 
 ### Local transcription setup
 
