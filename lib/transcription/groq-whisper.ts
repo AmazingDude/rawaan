@@ -27,6 +27,11 @@ export function createGroqWhisperProvider(): TranscriptionProvider {
       formData.append("file", audio);
       formData.append("model", GROQ_WHISPER_MODEL);
       formData.append("response_format", "json");
+      formData.append(
+        "prompt",
+        "Clinical consultation in Urdu and English. Transcribe conversation and medical terms accurately.",
+      );
+      formData.append("temperature", "0");
 
       const response = await fetch(GROQ_TRANSCRIPTIONS_URL, {
         method: "POST",

@@ -28,23 +28,14 @@ The Scribe vertical slice is implemented as a Next.js App Router + TypeScript ap
 | `npm run build` | Passed: Next.js 16.3.2 production build compiled and generated routes. |
 | `git diff --check` | Passed with no whitespace errors. |
 
-## 2026-08-28 — Sidebar Architecture & 4 Dedicated Feature Pages Implementation Complete
+## 2026-08-28 — Post-Recording Workflow, Client Assignment & AI Overview Workspace Complete
 
-- Scaffolded the persistent Next.js workspace layout at `app/(workspace)/layout.tsx` and sidebar navigation at `app/components/workspace-sidebar.tsx`.
-- Ensured the sidebar contains only the 4 specified items with clinic header `Aashir's Clinic`:
-  1. Record / Scribe (`/record`)
-  2. Clients (`/clients`)
-  3. Rawaan AI (`/rawaan-ai`)
-  4. Learn Rawaan (`/learn-rawaan`)
-- Created the fully functional `app/(workspace)/record/page.tsx` and `app/components/scribe-dashboard.tsx` with top 3 action cards, search bar, "+ Create empty note", "Upload", timeline date, recent sessions list, and the integrated consultation scribe capture/review/approval flow.
-- Created wireframe pages for `Clients` (`/clients`), `Rawaan AI` (`/rawaan-ai`), and `Learn Rawaan` (`/learn-rawaan`).
-- Updated landing page demo CTA to point to `/record` and added `/scribe` redirect to `/record`.
-- Updated `app/globals.css` with responsive styling for the sidebar, action cards, search bar, timeline, and wireframes.
-- Updated documentation (`docs/PRD.md`, `docs/HANDOFF.md`, `README.md`).
-- Validated with strict TypeScript (`tsc --noEmit`), ESLint (`eslint .`), unit/integration test suite (`vitest run` - 55 passed), and production build (`next build` - all static & dynamic routes generated).
+- Implemented the 3-step post-recording workflow:
+  1. `AssignSessionModal`: Displays recording waveform, title `Rawaan-MM.DD.YY`, searchable client selector, and `Delete Recording` / `Next` actions.
+  2. `Create A New Client View`: Inline form with First Name, Last Name, Email, and Client Mobile Number (replacing pronouns).
+  3. `SessionWorkspaceView`: Complete clinician document workspace with 7 navigation tabs (`Notes`, `Client`, `Treatment Plan`, `Transcript`, `Session Information`, `Mindmap`, `Reflection Questions`), full structured clinical note with narrative `Summary` and `Session Topics`, and an interactive **AI Overview** chat assistant pre-loaded with note context (`📄 [Client] - Note (BASE)`).
+- Added `modifyNoteAction` and LLM note transformation engine (`modifyNoteWithAi`) supporting real-time rewrites (paragraph format, de-identification/remove names, summarize key clinical points).
+- Updated database schemas in `supabase/schema.sql` and `lib/notes/schema.ts` with `first_name`, `last_name`, `email`, `mobile_number`, and note `summary`.
+- Updated seed data in `data/notes.json` with narrative summaries and client details.
+- Validated with strict TypeScript (`tsc --noEmit`), ESLint (`eslint .`), Vitest test suite (55 passed), and production build (`next build`).
 
-The browser test was run against `next start` because the Windows Next.js development server returned 403 for client chunks in the browser harness. The production server returned HTTP 200 and completed the full flow. The test-generated note was removed afterwards, restoring `data/notes.json` to an empty array.
-
-## Deferred configuration
-
-No LLM provider key is configured or used in this slice. The UI identifies its output as a local demo parser rather than an LLM response. A later provider integration must remain in `lib/llm/`, load its secret from `.env.local`, validate its output against the existing schema, and retain the manual transcript safety path.

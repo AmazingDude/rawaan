@@ -262,3 +262,25 @@ Run with `PLAYWRIGHT_CHROMIUM_EXECUTABLE` pointed at the local Chrome (bundled b
 ## Next action
 
 All five Brain chat/roster tasks are complete and pushed to `feat/brain-chat-ui`. Awaiting the plan's cross-review before opening a PR into `main`.
+## Post-Recording Workflow & Interactive AI Overview (2026-08-28)
+
+Implemented the 3-step post-recording workflow:
+1. **Assign Session Modal (`app/components/assign-session-modal.tsx`):**
+   - Displays recording card with waveform, title (`Rawaan-MM.DD.YY`), subtitle `In-Person Recording`, and green checkmark.
+   - Searchable client dropdown with inline `+ Create New` trigger.
+   - Actions: `Delete Recording` (red) and `Next` (dark teal, disabled until client selected).
+2. **Create A New Client View:**
+   - Client First Name, Client Last Name, Email (Optional), and Client Mobile Number (Optional - replacing pronouns).
+   - Instant client creation and auto-selection via Server Action (`createClientAction`).
+3. **Session Note Workspace (`app/components/session-workspace-view.tsx`):**
+   - **7 Top Tabs:** `Notes` (active), `Client`, `Treatment Plan`, `Transcript`, `Session Information`, `Mindmap`, `Reflection Questions`.
+   - **Clinical Document View (Left):** Sub-toolbar (`BASE ⌄`, `Detailed ⌄`, AI Polish, Copy, Export, UK Flag, Lock, `Share ⌄`, Plant icon 🌱), Narrative **Summary** with inline copy button, **Session Topics** (*Medical History Documentation* with structured bullet points), and Approve & Save bar.
+   - **Interactive AI Overview Chat (Right):** Quick suggestion pills (`Change to paragraph format`, `Remove all names`, `Summarize key clinical points`), loaded context badge (`📄 [Patient] - Note (BASE)`), real-time chat input with Server Action `modifyNoteAction` that updates the note document in real time.
+4. **Database & Schema Updates:**
+   - Added `first_name`, `last_name`, `email`, `mobile_number` to `patients` table and `summary` to `notes` table.
+   - Seed data in `data/notes.json` populated with narrative summaries and client contact details.
+   - LLM generator in `lib/llm/generate-note.ts` updated with `modifyNoteWithAi` and prompt in `lib/llm/prompts/note-generation.ts`.
+
+## Next action
+
+All changes are validated with `typecheck` (`tsc --noEmit`), `lint` (`eslint .`), `test` (`vitest run` - 55 passed), and `build` (`next build`). Ready for PR review.
