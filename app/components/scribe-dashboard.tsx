@@ -3,147 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 
 import {
-  approveDraftAction,
   generateDraftAction,
+  listClientsAction,
+  type ClientRecord,
 } from "@/app/actions";
+import { AssignSessionModal } from "@/app/components/assign-session-modal";
+import { RecordSessionModal } from "@/app/components/record-session-modal";
+import { SessionWorkspaceView } from "@/app/components/session-workspace-view";
 import type { ApprovedNote, NoteDraft } from "@/lib/notes/schema";
 import type { TranscriptionResult } from "@/lib/transcription/types";
-import {
-  VoiceCaptureController,
-  isRecordControlDisabled,
-  resolveTranscriptPlacement,
-  type VoiceCaptureState,
-} from "@/lib/transcription/voice-recorder";
-
-type FormValues = {
-  consultation_date: string;
-  patient_display_name: string;
-  patient_id: string;
-  transcript: string;
-};
-
-type ListField =
-  | "history"
-  | "symptoms"
-  | "assessment_discussed"
-  | "plan_discussed"
-  | "medications_mentioned"
-  | "uncertainties";
-
-type TextField = "chief_complaint" | "follow_up";
-
-type DraftField =
-  | {
-      field: TextField;
-      kind: "text";
-      label: string;
-      layout: "full" | "half";
-      rows: number;
-    }
-  | {
-      field: ListField;
-      kind: "list";
-      label: string;
-      layout: "full" | "half";
-      rows: number;
-      sourceLabel: string;
-    };
-
-const draftSections: { fields: DraftField[]; id: string; title: string }[] = [
-  {
-    id: "subjective-fields",
-    title: "Subjective",
-    fields: [
-      {
-        field: "chief_complaint",
-        kind: "text",
-        label: "Chief complaint",
-        layout: "half",
-        rows: 2,
-      },
-      {
-        field: "history",
-        kind: "list",
-        label: "History discussed",
-        layout: "half",
-        rows: 3,
-        sourceLabel: "History",
-      },
-      {
-        field: "symptoms",
-        kind: "list",
-        label: "Symptoms",
-        layout: "full",
-        rows: 3,
-        sourceLabel: "Symptoms",
-      },
-    ],
-  },
-  {
-    id: "assessment-plan-fields",
-    title: "Assessment & Plan",
-    fields: [
-      {
-        field: "assessment_discussed",
-        kind: "list",
-        label: "Assessment / observations discussed",
-        layout: "half",
-        rows: 3,
-        sourceLabel: "Assessment discussed",
-      },
-      {
-        field: "plan_discussed",
-        kind: "list",
-        label: "Plan / next steps discussed",
-        layout: "half",
-        rows: 3,
-        sourceLabel: "Plan discussed",
-      },
-      {
-        field: "medications_mentioned",
-        kind: "list",
-        label: "Medications mentioned",
-        layout: "full",
-        rows: 3,
-        sourceLabel: "Medications mentioned",
-      },
-    ],
-  },
-  {
-    id: "follow-up-notes-fields",
-    title: "Follow-up & Notes",
-    fields: [
-      {
-        field: "follow_up",
-        kind: "text",
-        label: "Follow-up",
-        layout: "full",
-        rows: 3,
-      },
-      {
-        field: "uncertainties",
-        kind: "list",
-        label: "Uncertainties",
-        layout: "full",
-        rows: 3,
-        sourceLabel: "Uncertainties",
-      },
-    ],
-  },
-];
-
-const initialForm: FormValues = {
-  consultation_date: "2026-08-22",
-  patient_display_name: "",
-  patient_id: "",
-  transcript: "",
-};
-
-const initialVoiceState: VoiceCaptureState = {
-  elapsedSeconds: 0,
-  fallbackMessage: null,
-  phase: "idle",
-};
 
 interface RecentSession {
   date: string;
@@ -154,41 +22,23 @@ interface RecentSession {
   time: string;
 }
 
-const defaultSessions: RecentSession[] = [
-  {
-    id: "example-session-1",
-    patientName: "Example Session",
-    summary: "Session between Carl Rogers and Gloria",
-    date: "Thursday August 27, 2026",
-    time: "9:18 PM",
-  },
-];
-
-function formatElapsedSeconds(elapsedSeconds: number): string {
-  const minutes = Math.floor(elapsedSeconds / 60)
-    .toString()
-    .padStart(2, "0");
-  const seconds = (elapsedSeconds % 60).toString().padStart(2, "0");
-
-  return `${minutes}:${seconds}`;
+interface ScribeDashboardProps {
+  initialNotes?: ApprovedNote[];
 }
 
-function isTranscriptionResult(value: unknown): value is TranscriptionResult {
-  if (typeof value !== "object" || value === null || !("ok" in value)) {
-    return false;
+function formatSessionTime(isoString?: string): string {
+  if (!isoString) return "9:18 PM";
+  try {
+    const date = new Date(isoString);
+    if (isNaN(date.getTime())) return "Recent";
+    const hours = date.getUTCHours();
+    const minutes = date.getUTCMinutes().toString().padStart(2, "0");
+    const ampm = hours >= 12 ? "PM" : "AM";
+    const formattedHours = hours % 12 || 12;
+    return `${formattedHours}:${minutes} ${ampm}`;
+  } catch {
+    return "Recent";
   }
-
-  if (value.ok === true) {
-    return "transcript" in value && typeof value.transcript === "string";
-  }
-
-  return (
-    value.ok === false &&
-    "code" in value &&
-    typeof value.code === "string" &&
-    "message" in value &&
-    typeof value.message === "string"
-  );
 }
 
 async function requestTranscription(audio: File): Promise<TranscriptionResult> {
@@ -199,301 +49,205 @@ async function requestTranscription(audio: File): Promise<TranscriptionResult> {
     body: formData,
     method: "POST",
   });
-  const result: unknown = await response.json();
 
-  if (!isTranscriptionResult(result)) {
-    throw new Error("The transcription response was invalid.");
+  const payload: unknown = await response.json();
+  if (!response.ok) {
+    return {
+      code: "transcription_failed",
+      message:
+        typeof payload === "object" && payload !== null && "message" in payload
+          ? String((payload as { message?: unknown }).message)
+          : "Transcription request failed",
+      ok: false,
+    };
   }
 
-  return result;
-}
-
-function toLines(value: string): string[] {
-  return value
-    .split("\n")
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
-
-function getListFieldEmptyState(
-  values: string[],
-  rawTranscript: string,
-  sourceLabel: string,
-): "explicit-none" | "not-extracted" | null {
-  if (values.length > 0) {
-    return null;
-  }
-
-  const prefix = `${sourceLabel.toLowerCase()}:`;
-  const sourceValue = rawTranscript
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .find((line) => line.toLowerCase().startsWith(prefix))
-    ?.slice(prefix.length)
-    .trim();
-
-  return /^(none|none mentioned|not mentioned|n\/a)$/i.test(sourceValue ?? "")
-    ? "explicit-none"
-    : "not-extracted";
-}
-
-interface ScribeDashboardProps {
-  initialNotes?: ApprovedNote[];
+  return payload as TranscriptionResult;
 }
 
 export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
-  const [form, setForm] = useState<FormValues>(initialForm);
-  const [draft, setDraft] = useState<NoteDraft | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isApproving, setIsApproving] = useState(false);
-  const [approvedNote, setApprovedNote] = useState<{
-    approvedAt: string;
-    noteId: string;
-  } | null>(null);
-  const [hasRecordingConsent, setHasRecordingConsent] = useState(false);
-  const [pendingTranscript, setPendingTranscript] = useState<string | null>(null);
-  const [voiceState, setVoiceState] = useState<VoiceCaptureState>(initialVoiceState);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeSessionMode, setActiveSessionMode] = useState<string | null>(null);
+  const [clients, setClients] = useState<ClientRecord[]>([]);
   const [recentSessions, setRecentSessions] = useState<RecentSession[]>(() => {
     if (initialNotes.length > 0) {
       return initialNotes.map((note) => ({
+        date: note.consultation_date,
         id: note.id,
-        patientName: note.patient_display_name,
-        summary: note.chief_complaint || `Session with ${note.patient_display_name}`,
-        date: "Thursday August 27, 2026",
-        time: new Date(note.approved_at).toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
         note,
+        patientName: note.patient_display_name,
+        summary: note.chief_complaint || note.summary || "Consultation note",
+        time: formatSessionTime(note.approved_at),
       }));
     }
-    return defaultSessions;
-  });
-
-  const currentTranscriptRef = useRef(form.transcript);
-  const transcriptAtStopRef = useRef("");
-  const studioRef = useRef<HTMLElement | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [voiceController, setVoiceController] =
-    useState<VoiceCaptureController | null>(null);
-  const isApproved = Boolean(approvedNote);
-
-  useEffect(() => {
-    currentTranscriptRef.current = form.transcript;
-  }, [form.transcript]);
-
-  useEffect(() => {
-    const controller = new VoiceCaptureController({
-      clearScheduledInterval: (intervalId) => window.clearInterval(intervalId),
-      createAudioFile: (parts, name, type) => new File(parts, name, { type }),
-      createRecorder: (stream) => new MediaRecorder(stream as MediaStream),
-      getUserMedia: () => navigator.mediaDevices.getUserMedia({ audio: true }),
-      isOnline: () => navigator.onLine,
-      isRecorderSupported: () =>
-        typeof MediaRecorder !== "undefined" &&
-        typeof navigator !== "undefined" &&
-        Boolean(navigator.mediaDevices?.getUserMedia),
-      onStateChange: setVoiceState,
-      onTranscript: (transcribedText) => {
-        const placement = resolveTranscriptPlacement({
-          currentTranscript: currentTranscriptRef.current,
-          transcriptAtStop: transcriptAtStopRef.current,
-          transcribedText,
-        });
-
-        setForm((current) => ({ ...current, transcript: placement.transcript }));
-        setPendingTranscript(placement.pendingTranscript);
+    return [
+      {
+        date: "Thursday August 27, 2026",
+        id: "example-session-1",
+        patientName: "Example Session",
+        summary: "Session between Carl Rogers and Gloria",
+        time: "9:18 PM",
       },
-      requestTranscription,
-      scheduleInterval: (callback, milliseconds) =>
-        window.setInterval(callback, milliseconds),
+    ];
+  });
+  const [notification, setNotification] = useState<string | null>(null);
+
+  // Workflow State Modals & Workspace Views
+  const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [pendingRecording, setPendingRecording] = useState<{
+    consultationDate: string;
+    transcript: string;
+  } | null>(null);
+  const [activeWorkspaceDraft, setActiveWorkspaceDraft] = useState<
+    NoteDraft | ApprovedNote | null
+  >(null);
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Load clients list
+  useEffect(() => {
+    void listClientsAction().then((res) => {
+      setClients(res);
     });
-
-    setVoiceController(controller);
-
-    return () => controller.reset();
   }, []);
 
-  function updateForm(field: keyof FormValues, value: string) {
-    setForm((current) => ({ ...current, [field]: value }));
+  // Step 1: Recording stops -> Open Assign Session Modal (Picture 1)
+  function handleRecordingComplete(data: {
+    consultationDate: string;
+    patientDisplayName: string;
+    patientId: string;
+    transcript: string;
+  }) {
+    setIsRecordModalOpen(false);
+    setPendingRecording({
+      consultationDate: data.consultationDate,
+      transcript: data.transcript,
+    });
+    setIsAssignModalOpen(true);
   }
 
-  function handleStartRecording() {
-    void voiceController?.start(hasRecordingConsent);
-  }
-
-  function handleStopRecording() {
-    transcriptAtStopRef.current = currentTranscriptRef.current;
-    void voiceController?.stop();
-  }
-
-  function handleUseTranscribedText() {
-    if (!pendingTranscript) {
-      return;
-    }
-
-    updateForm("transcript", pendingTranscript);
-    setPendingTranscript(null);
-  }
-
-  function resetVoiceCapture() {
-    voiceController?.reset();
-    setHasRecordingConsent(false);
-    setPendingTranscript(null);
-    transcriptAtStopRef.current = "";
-  }
-
-  function updateDraftText(field: TextField, value: string) {
-    setDraft((current) => (current ? { ...current, [field]: value } : current));
-  }
-
-  function updateDraftList(field: ListField, value: string) {
-    setDraft((current) =>
-      current ? { ...current, [field]: toLines(value) } : current,
-    );
-  }
-
-  async function handleGenerate() {
-    setIsGenerating(true);
-    setApprovedNote(null);
-    setMessage(null);
+  // Step 2: Client chosen in Assign Session Modal -> Generate Draft & Open Workspace View (Picture 3)
+  async function handleAssignClient(client: ClientRecord) {
+    if (!pendingRecording) return;
+    setIsAssignModalOpen(false);
+    setNotification("Generating structured clinical note with AI Overview…");
 
     const result = await generateDraftAction({
-      ...form,
-      transcript: form.transcript,
+      consultation_date: pendingRecording.consultationDate,
+      email: client.email,
+      first_name: client.firstName,
+      last_name: client.lastName,
+      mobile_number: client.mobileNumber,
+      patient_display_name: client.displayName,
+      patient_id: client.patientId,
+      transcript: pendingRecording.transcript,
     });
 
-    setIsGenerating(false);
-
-    if (!result.ok) {
-      setMessage(result.message);
-      return;
+    if (result.ok) {
+      setActiveWorkspaceDraft(result.draft);
+      setNotification(null);
+    } else {
+      setNotification(result.message);
     }
-
-    setDraft(result.draft);
-    setMessage(
-      "Draft created with the local demo parser. Review every field before approval.",
-    );
-  }
-
-  function handleStartNewConsultation(presetMode?: string) {
-    resetVoiceCapture();
-    setForm(initialForm);
-    setDraft(null);
-    setMessage(null);
-    setApprovedNote(null);
-    if (presetMode) {
-      setActiveSessionMode(presetMode);
-      if (presetMode === "In-Person Session") {
-        setHasRecordingConsent(true);
-      }
-    }
-    studioRef.current?.scrollIntoView({ behavior: "smooth" });
   }
 
   function handleSelectSession(session: RecentSession) {
-    resetVoiceCapture();
-    setMessage(null);
-
     if (session.note) {
-      setForm({
-        consultation_date: session.note.consultation_date,
-        patient_display_name: session.note.patient_display_name,
-        patient_id: session.note.patient_id,
-        transcript: session.note.raw_transcript,
-      });
-      setDraft({
-        ...session.note,
-        approval_status: "draft",
-      });
-      setApprovedNote({
-        approvedAt: session.note.approved_at,
-        noteId: session.note.id,
-      });
-      setMessage("Loaded approved note from local record.");
+      setActiveWorkspaceDraft(session.note);
     } else if (session.id === "example-session-1") {
-      const exampleTranscript = `Chief complaint: Seeking therapeutic clarity and personal authenticity
-History: Tension between maternal obligations and personal independence
-Symptoms: Emotional conflict and mild anxiety
-Assessment discussed: Therapist used unconditional positive regard and reflective exploration
-Plan discussed: Continue weekly exploration of personal congruence and authentic choices
-Medications mentioned: None mentioned
-Follow up: Return in one week
-Uncertainties: Specific childhood antecedents to independence anxiety were not explored`;
-
-      setForm({
+      const demoDraft: ApprovedNote = {
+        approval_status: "approved",
+        approved_at: "2026-08-27T18:20:00.000Z",
+        assessment_discussed: [
+          "Therapist applied unconditional positive regard and reflective exploration",
+        ],
+        chief_complaint:
+          "Therapy session exploring personal congruence and independence",
         consultation_date: "2026-08-27",
+        email: "gloria@example.com",
+        first_name: "Gloria",
+        follow_up: "Next session in one week",
+        history: [
+          "Feeling tension between maternal obligations and personal identity",
+        ],
+        id: "example-session-1",
+        last_name: "Rogers",
+        medications_mentioned: [],
+        mobile_number: "+1 555 0192834",
         patient_display_name: "Gloria",
         patient_id: "patient-gloria-001",
-        transcript: exampleTranscript,
-      });
-      setApprovedNote(null);
-      setDraft(null);
-      setMessage("Loaded Carl Rogers & Gloria example consultation script.");
+        plan_discussed: [
+          "Weekly reflective journaling on authentic personal choices",
+          "Continue exploratory therapy",
+        ],
+        raw_transcript:
+          "Chief complaint: Therapy session on congruence and independence\nHistory: Tension between motherhood and personal identity\nSymptoms: Emotional conflict; mild anxiety\nAssessment discussed: Reflective exploration of internal standards\nPlan discussed: Weekly journaling; continue therapy\nMedications mentioned: None mentioned\nFollow up: Next session in one week\nUncertainties: Childhood roots not yet explored",
+        summary:
+          "This transcript documents an exploratory psychotherapy session addressing emotional conflict between familial expectations and personal autonomy. Client reflected on internal versus external validation. Agreed to weekly journaling and ongoing counseling.",
+        symptoms: [
+          "Emotional conflict",
+          "Mild anxiety regarding personal decisions",
+        ],
+        uncertainties: [
+          "Early childhood antecedents to independence anxiety not yet explored",
+        ],
+      };
+      setActiveWorkspaceDraft(demoDraft);
     }
+  }
 
-    studioRef.current?.scrollIntoView({ behavior: "smooth" });
+  function handleApproveSuccess(savedNote: ApprovedNote) {
+    const newSession: RecentSession = {
+      date: savedNote.consultation_date,
+      id: savedNote.id,
+      note: savedNote,
+      patientName: savedNote.patient_display_name,
+      summary: savedNote.chief_complaint || savedNote.summary || "Approved consultation note",
+      time: formatSessionTime(savedNote.approved_at),
+    };
+
+    setRecentSessions((prev) => [newSession, ...prev]);
+    setNotification("Approved note saved to patient record.");
   }
 
   async function handleFileUpload(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    setNotification("Processing uploaded file…");
+
+    let transcript = "";
     if (file.type.startsWith("audio/")) {
-      setMessage("Uploading audio and requesting transcription…");
-      try {
-        const result = await requestTranscription(file);
-        if (result.ok) {
-          updateForm("transcript", result.transcript);
-          setMessage("Audio transcribed successfully. Enter patient info to create draft.");
-        } else {
-          setMessage(result.message);
-        }
-      } catch {
-        setMessage("Audio transcription failed. Try pasting the transcript manually.");
+      setNotification("Transcribing audio file with Whisper Large v3…");
+      const res = await requestTranscription(file);
+      if (res.ok) {
+        transcript = res.transcript;
+      } else {
+        setNotification(res.message);
+        return;
       }
     } else {
-      const text = await file.text();
-      updateForm("transcript", text);
-      setMessage("Transcript loaded from uploaded file.");
+      transcript = await file.text();
     }
 
-    studioRef.current?.scrollIntoView({ behavior: "smooth" });
+    setPendingRecording({
+      consultationDate: new Date().toISOString().slice(0, 10),
+      transcript,
+    });
+    setIsAssignModalOpen(true);
   }
 
-  async function handleApprove() {
-    if (!draft) {
-      return;
-    }
-
-    setIsApproving(true);
-    setMessage(null);
-    const result = await approveDraftAction(draft);
-    setIsApproving(false);
-
-    if (!result.ok) {
-      setMessage(result.message);
-      return;
-    }
-
-    setApprovedNote(result);
-    setMessage("Approved note saved to the demo-only local record.");
-
-    const newSession: RecentSession = {
-      id: result.noteId,
-      patientName: form.patient_display_name || form.patient_id,
-      summary: draft.chief_complaint || "Approved consultation note",
-      date: "Thursday August 27, 2026",
-      time: new Date(result.approvedAt).toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    };
-    setRecentSessions((prev) => [newSession, ...prev]);
+  // If viewing a note workspace (Picture 3), render full Session Workspace View!
+  if (activeWorkspaceDraft) {
+    return (
+      <SessionWorkspaceView
+        draft={activeWorkspaceDraft}
+        onApprove={handleApproveSuccess}
+        onBack={() => setActiveWorkspaceDraft(null)}
+      />
+    );
   }
+
 
   const filteredSessions = recentSessions.filter(
     (s) =>
@@ -503,11 +257,25 @@ Uncertainties: Specific childhood antecedents to independence anxiety were not e
 
   return (
     <div className="dashboard-layout">
+      {notification ? (
+        <div className="dashboard-notification-banner" role="status">
+          <span>{notification}</span>
+          <button
+            aria-label="Dismiss notification"
+            className="btn-dismiss-banner"
+            onClick={() => setNotification(null)}
+            type="button"
+          >
+            ✕
+          </button>
+        </div>
+      ) : null}
+
       {/* Recording Option Action Cards */}
       <section className="action-cards-grid" aria-label="Recording options">
         <button
           className="action-card"
-          onClick={() => handleStartNewConsultation("In-Person Session")}
+          onClick={() => setIsRecordModalOpen(true)}
           type="button"
         >
           <div className="action-card-top">
@@ -542,7 +310,7 @@ Uncertainties: Specific childhood antecedents to independence anxiety were not e
 
         <button
           className="action-card"
-          onClick={() => handleStartNewConsultation("Session Summary")}
+          onClick={() => setIsRecordModalOpen(true)}
           type="button"
         >
           <div className="action-card-top">
@@ -579,7 +347,7 @@ Uncertainties: Specific childhood antecedents to independence anxiety were not e
         </button>
       </section>
 
-      {/* Search & Actions Bar matching reference */}
+      {/* Search & Actions Bar */}
       <section className="search-actions-bar">
         <div className="search-pill-wrapper">
           <svg
@@ -616,7 +384,7 @@ Uncertainties: Specific childhood antecedents to independence anxiety were not e
           />
           <button
             className="btn-create-empty"
-            onClick={() => handleStartNewConsultation()}
+            onClick={() => setIsRecordModalOpen(true)}
             type="button"
           >
             <span className="btn-plus">+</span> Create empty note
@@ -694,7 +462,9 @@ Uncertainties: Specific childhood antecedents to independence anxiety were not e
               </div>
             </div>
             <div className="session-item-right">
-              <span className="session-item-time">{session.time}</span>
+              <span className="session-item-time" suppressHydrationWarning>
+                {session.time}
+              </span>
               <button
                 aria-label={`Options for ${session.patientName}`}
                 className="session-item-menu"
@@ -711,301 +481,31 @@ Uncertainties: Specific childhood antecedents to independence anxiety were not e
         ))}
       </section>
 
-      {/* Active Consultation Scribe Studio Workspace */}
-      <section
-        className={`scribe-studio ${isApproved ? "is-approved" : ""}`}
-        ref={studioRef}
-      >
-        <div className="studio-heading">
-          <div>
-            <span className="eyebrow">
-              {activeSessionMode ? activeSessionMode.toUpperCase() : "CONSULTATION SCRIBE STUDIO"}
-            </span>
-            <h2 className="studio-title">Capture & Structured Note Generator</h2>
-          </div>
-          <div className="safety-label">Documentation support only</div>
-        </div>
+      {/* In-Person Recording Modal */}
+      <RecordSessionModal
+        initialClients={clients}
+        isOpen={isRecordModalOpen}
+        onClose={() => setIsRecordModalOpen(false)}
+        onComplete={handleRecordingComplete}
+        requestTranscription={requestTranscription}
+      />
 
-        <div className="safety-notice compliance-banner" aria-label="Clinical safety notice">
-          <strong>Fictional demo data only.</strong> This tool records documentation
-          discussed in the transcript. It does not diagnose, recommend treatment,
-          or replace clinical judgment.
-        </div>
-
-        <div className="workspace-grid">
-          {/* STEP 1: Transcript & Recording Panel */}
-          <section className="panel step-card transcript-panel" aria-labelledby="transcript-title">
-            <div className="panel-heading">
-              <div>
-                <p className="step-label">STEP 1</p>
-                <h2 id="transcript-title">Enter consultation context</h2>
-              </div>
-              <span className="status-chip neutral">Manual transcript</span>
-            </div>
-
-            <div className="form-grid">
-              <label className="form-field">
-                Fictional patient ID
-                <input
-                  value={form.patient_id}
-                  onChange={(event) => updateForm("patient_id", event.target.value)}
-                  placeholder="e.g. patient-amina-001"
-                  disabled={isApproved}
-                />
-              </label>
-              <label className="form-field">
-                Display name
-                <input
-                  value={form.patient_display_name}
-                  onChange={(event) =>
-                    updateForm("patient_display_name", event.target.value)
-                  }
-                  placeholder="e.g. Amina Khan"
-                  disabled={isApproved}
-                />
-              </label>
-              <label className="form-field">
-                Consultation date
-                <input
-                  type="date"
-                  value={form.consultation_date}
-                  onChange={(event) =>
-                    updateForm("consultation_date", event.target.value)
-                  }
-                  disabled={isApproved}
-                />
-              </label>
-            </div>
-
-            <section className="voice-capture" aria-labelledby="voice-capture-title">
-              <div className="voice-capture-heading">
-                <div>
-                  <p className="voice-capture-kicker">Optional demo capture</p>
-                  <h3 id="voice-capture-title">Record one complete consultation</h3>
-                </div>
-                {voiceState.phase === "recording" ? (
-                  <p className="recording-indicator" role="status">
-                    Recording {formatElapsedSeconds(voiceState.elapsedSeconds)}
-                  </p>
-                ) : null}
-              </div>
-              <p className="voice-capture-copy">
-                This sends one completed fictional-demo recording for transcription after you stop. You can always type or paste the transcript below.
-              </p>
-              <label className="consent-control">
-                <input
-                  checked={hasRecordingConsent}
-                  disabled={isApproved || voiceState.phase !== "idle"}
-                  onChange={(event) => setHasRecordingConsent(event.target.checked)}
-                  type="checkbox"
-                />
-                Patient consented to recording
-              </label>
-              <div className="voice-capture-actions">
-                <button
-                  aria-live="polite"
-                  className={`capture-button ${voiceState.phase === "recording" ? "is-recording" : ""}`}
-                  disabled={
-                    isApproved ||
-                    !voiceController ||
-                    (voiceState.phase === "recording"
-                      ? false
-                      : isRecordControlDisabled(hasRecordingConsent, voiceState))
-                  }
-                  onClick={
-                    voiceState.phase === "recording"
-                      ? handleStopRecording
-                      : handleStartRecording
-                  }
-                  type="button"
-                >
-                  {voiceState.phase === "recording" ? "Stop recording" : "Record consultation"}
-                </button>
-                {voiceState.phase === "transcribing" ? (
-                  <p className="transcribing-status" role="status">
-                    Transcribing…
-                  </p>
-                ) : null}
-              </div>
-              {voiceState.fallbackMessage ? (
-                <p className="voice-fallback" role="alert">
-                  {voiceState.fallbackMessage}
-                </p>
-              ) : null}
-            </section>
-
-            <label className="transcript-field form-field">
-              Scripted or manually entered transcript
-              <textarea
-                value={form.transcript}
-                onChange={(event) => updateForm("transcript", event.target.value)}
-                placeholder={"For the local demo parser, use labelled lines such as:\nChief complaint: Persistent headache\nHistory: Headache for three days\nPlan discussed: Keep a symptom diary"}
-                rows={14}
-                disabled={isApproved}
-              />
-            </label>
-
-            {pendingTranscript ? (
-              <div className="transcript-replacement" role="status">
-                <p>
-                  A completed transcription is ready. Your manual edits were kept.
-                </p>
-                <button
-                  className="ghost-button"
-                  disabled={isApproved}
-                  onClick={handleUseTranscribedText}
-                  type="button"
-                >
-                  Use transcribed text
-                </button>
-              </div>
-            ) : null}
-
-            <div className="panel-footer">
-              <p className="source-note">
-                Current mode: <strong>Local demo parser</strong>. No LLM provider is
-                connected for this slice.
-              </p>
-              <button
-                type="button"
-                className={draft ? "ghost-button" : "primary-button"}
-                onClick={handleGenerate}
-                disabled={isGenerating || isApproved}
-              >
-                {isGenerating ? "Creating draft…" : "Create structured draft"}
-              </button>
-            </div>
-          </section>
-
-          {/* STEP 2: Review & Approval Panel */}
-          <section className="panel step-card review-panel" aria-labelledby="review-title">
-            <div className="panel-heading">
-              <div>
-                <p className="step-label">STEP 2</p>
-                <h2 id="review-title">Review and approve</h2>
-              </div>
-              <span
-                className={`status-chip ${isApproved ? "approved" : draft ? "draft" : "neutral"}`}
-              >
-                {isApproved
-                  ? "Approved · saved"
-                  : draft
-                    ? "Draft · clinician review required"
-                    : "No draft yet"}
-              </span>
-            </div>
-
-            {message ? <p className="message" role="status">{message}</p> : null}
-
-            {draft ? (
-              <div className="draft-fields">
-                {draftSections.map((section) => (
-                  <section
-                    key={section.id}
-                    className="note-section"
-                    aria-labelledby={section.id}
-                  >
-                    <h3 id={section.id}>{section.title}</h3>
-                    <div className="note-section-fields">
-                      {section.fields.map((field) => {
-                        const emptyState =
-                          field.kind === "list"
-                            ? getListFieldEmptyState(
-                                draft[field.field],
-                                draft.raw_transcript,
-                                field.sourceLabel,
-                              )
-                            : null;
-
-                        return (
-                          <label
-                            key={field.field}
-                            className={`section-field is-${field.layout} ${field.field === "uncertainties" ? "is-uncertainties" : ""}`}
-                          >
-                            {field.label}
-                            {emptyState ? (
-                              <p className={`field-empty-state is-${emptyState}`}>
-                                {emptyState === "explicit-none"
-                                  ? "None mentioned in transcript"
-                                  : "No documented items extracted"}
-                              </p>
-                            ) : null}
-                            <textarea
-                              value={
-                                field.kind === "text"
-                                  ? draft[field.field]
-                                  : draft[field.field].join("\n")
-                              }
-                              onChange={(event) =>
-                                field.kind === "text"
-                                  ? updateDraftText(field.field, event.target.value)
-                                  : updateDraftList(field.field, event.target.value)
-                              }
-                              placeholder={
-                                field.kind === "list"
-                                  ? "One documented item per line"
-                                  : undefined
-                              }
-                              rows={field.rows}
-                              disabled={isApproved}
-                            />
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </section>
-                ))}
-
-                <details className="transcript-provenance">
-                  <summary>View raw transcript provenance</summary>
-                  <p>{draft.raw_transcript}</p>
-                </details>
-
-                <div className="approval-bar">
-                  <div>
-                    <strong>{isApproved ? "Note approved" : "Approval gate"}</strong>
-                    <p>
-                      {isApproved
-                        ? "The saved note is locked. Start a new consultation to continue."
-                        : "Only the edited, approved note will be saved."}
-                    </p>
-                  </div>
-                  {isApproved ? (
-                    <button
-                      type="button"
-                      className="primary-button"
-                      onClick={() => handleStartNewConsultation()}
-                    >
-                      Start new consultation
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className="primary-button"
-                      onClick={handleApprove}
-                      disabled={isApproving}
-                    >
-                      {isApproving ? "Saving approved note…" : "Approve and save"}
-                    </button>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="empty-state">
-                <p>Generate a draft to begin the clinician review step.</p>
-              </div>
-            )}
-
-            {approvedNote ? (
-              <div className="success-card">
-                <strong>Approved note saved</strong>
-                <p>Record ID: {approvedNote.noteId}</p>
-                <p>Approved: {new Date(approvedNote.approvedAt).toLocaleString()}</p>
-              </div>
-            ) : null}
-          </section>
-        </div>
-      </section>
+      {/* Step 1 & 2: Assign Session & Create New Client Modal (Pictures 1 & 2) */}
+      <AssignSessionModal
+        clients={clients}
+        isOpen={isAssignModalOpen}
+        onAssign={handleAssignClient}
+        onClose={() => {
+          setIsAssignModalOpen(false);
+          setPendingRecording(null);
+        }}
+        onDelete={() => {
+          setIsAssignModalOpen(false);
+          setPendingRecording(null);
+          setNotification("Recording deleted.");
+        }}
+      />
     </div>
   );
 }
+
