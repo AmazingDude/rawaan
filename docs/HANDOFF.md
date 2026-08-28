@@ -236,6 +236,29 @@ Added fixed retrieval-only quick-action chips above the chat input.
 
 No modifications to `lib/brain/`, `lib/llm/`, or `lib/notes/`.
 
+## Brain Chat UI — Task 5 checkpoint
+
+Branch: `feat/brain-chat-ui`. Task 5 of `plans/2026-08-28-brain-chat-and-roster.md` is complete.
+
+**What was done:**
+
+Created `tests/e2e-brain.mjs`, a production-browser E2E in the same style as `tests/e2e-scribe.mjs`. It seeds fictional approved notes (backing up and restoring `data/notes.json` in a `finally`), then against `npm run start` verifies the full demo matrix on `/rawaan-ai`:
+
+1. Supported question → answer card whose citation chip contains the exact source date `2026-06-01`.
+2. Deliberately absent fact → `no_supporting_record` card.
+3. Treatment question → refused card.
+4. General-medical question → a second, distinct refused card (2 refusal cards total).
+5. "New chat" clears the in-memory thread (0 entries) without touching persisted notes.
+6. A later supported question renders independently after the reset.
+
+Run with `PLAYWRIGHT_CHROMIUM_EXECUTABLE` pointed at the local Chrome (bundled browser not installed). Output: `supported with source date: 2026-06-01 · fictional-note-amina-1`, `no-record: OK`, `treatment refused: OK`, `general-medical refused (distinct): OK`, `new chat cleared thread: OK`, `later supported independent: OK`, `Brain E2E flow passed.`
+
+**Validation:** `npm run test` (15 files, 89 tests), `npm run typecheck`, `npm run lint` (0 errors / 0 warnings after removing an unused locator), and `npm run build` all passed. `data/notes.json` restored to `[]`; temporary server/logs removed.
+
+**Design reference review:** the `inspo/` screenshots (Klarify/Ease Health) confirm the workspace pattern already implemented — sidebar + pastel action cards + pill buttons on desktop; top bar + stacked full-width actions on mobile. A hamburger-collapsed sidebar on mobile is a possible future enhancement and is intentionally out of scope for this plan. `inspo/` remains an untracked reference asset.
+
+**Review gate:** Per the plan, this branch may open a PR only after Rehan/Aashir cross-review plus one teammate review, with the full validation loop passing. All five tasks are now implemented and validated; `main` is untouched.
+
 ## Next action
 
-Task 4 complete and pushed to `feat/brain-chat-ui`. Ready for Task 5: full integration, accessibility, and browser verification (tests/e2e-brain.mjs).
+All five Brain chat/roster tasks are complete and pushed to `feat/brain-chat-ui`. Awaiting the plan's cross-review before opening a PR into `main`.
