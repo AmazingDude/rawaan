@@ -92,4 +92,34 @@ describe("rankNotes", () => {
   });
 });
 
+describe("rankNotes name-token exclusion", () => {
+  // Transcript densely repeats the patient's first name, as realistic seeds do.
+  const nameDense = makeNote({
+    id: "note-name-dense",
+    patient_id: "p1",
+    patient_display_name: "Amina Khan",
+    symptoms: ["headache"],
+    raw_transcript: "Amina said Amina felt tired. Amina denied other symptoms.",
+  });
+
+  it("returns no evidence for a short name + unrecorded-vital question (no name-only match)", () => {
+    // Without the fix, the single name token "amina" alone crosses the 0.25
+    // threshold (1/3) and yields a false match. With the fix, name tokens are
+    // excluded from both sides, leaving {blood,pressure} with no note match.
+    const ranked = rankNotes([nameDense], "What was Amina's blood pressure?");
+    expect(ranked).toHaveLength(0);
+  });
+
+  it("still returns evidence when the question pairs the name with a recorded content term", () => {
+    const ranked = rankNotes([nameDense], "Did Amina report feeling tired?");
+    expect(ranked).toHaveLength(1);
+    expect(ranked[0]?.noteId).toBe("note-name-dense");
+  });
+
+  it("returns no evidence when the question is only the patient's name", () => {
+    const ranked = rankNotes([nameDense], "Amina?");
+    expect(ranked).toHaveLength(0);
+  });
+});
+
 export { makeNote };

@@ -161,4 +161,30 @@ describe("Brain adversarial integration cases", () => {
       reason: "general_medical",
     });
   });
+
+  it("returns no_supporting_record for a short name + unrecorded-vital question on a name-dense note", async () => {
+    // The transcript repeats the patient's first name, so without the ranker
+    // name-exclusion the single name token alone would cross the relevance
+    // threshold and trigger the exploding provider (a false "supported").
+    const nameDenseNotes = [
+      makeNote({
+        id: "ada-name-dense-2026-06-01",
+        raw_transcript:
+          "Ada said Ada felt tired. Ada denied other symptoms. Ada will follow up.",
+      }),
+    ];
+
+    const result = await queryPatientRecord({
+      patientId,
+      question: "What was Ada's weight?",
+      notes: nameDenseNotes,
+      provider: explodingProvider,
+    });
+
+    expect(result).toMatchObject({
+      status: "no_supporting_record",
+      reason: "no_relevant_evidence",
+      message: "No record of that for this patient.",
+    });
+  });
 });
