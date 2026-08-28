@@ -127,6 +127,49 @@ The roster investigation found that `listBrainPatientsAction` returned only `pat
 
 No modifications to `lib/brain/`, `lib/llm/`, or `lib/notes/`.
 
+## Brain Chat UI — Task 2 checkpoint
+
+Branch: `feat/brain-chat-ui`. Task 2 of `plans/2026-08-28-brain-chat-and-roster.md` is complete.
+
+**What was done:**
+
+Replaced the hardcoded `demoClients` wireframe in `app/(workspace)/clients/page.tsx` with a live roster derived from `listBrainPatientsAction()`. The page is now an async server component that calls the typed Server Action directly.
+
+Removed:
+- The entire `demoClients` array (invented age, status, complaint, appointment data).
+- The "WIREFRAME VIEW" badge.
+- The "UI Wireframe Mode" notice banner.
+- The disabled search input and hardcoded filter pills ("All Clients (4)", "Active (3)", "Follow-up (1)").
+- The status badge (no invented "Active"/"Follow-up required" states).
+- The "Recorded focus" complaint box (no invented primary complaint data).
+
+Added:
+- Honest empty state when no approved notes exist: cream-background card with link to `/record`.
+- Each card shows only approved-note-derived fields: display name, patient ID, approved note count, most recent consultation date.
+- Avatar initials derived from `displayName`.
+- Links to `/record` ("Start Session") and `/rawaan-ai` ("Query with Brain") preserved on every card.
+
+CSS: added `.roster-empty-state`, `.roster-empty-title`, `.roster-empty-body`, `.roster-empty-link` to `app/globals.css` using design system tokens (cream background, charcoal heading, slate body, canopy green link). No shadows, no new accent colors.
+
+**Tests:**
+
+`tests/brain-roster.test.ts` — 5 tests covering:
+- Empty store produces empty roster.
+- Each `BrainPatient` has exactly four approved-note-derived keys (no invented fields).
+- Multiple notes per patient aggregate count and latest date correctly.
+- Distinct patients appear as separate entries.
+- Compile-time type check: `deriveRosterSummary` accepts only `ApprovedNote[]`.
+
+**Validation output (2026-08-28):**
+
+- Focused suite: 5/5 passed.
+- Full suite: 14 files, 74 tests — all passed (up from 69 after Task 1).
+- `npm run typecheck`: passed.
+- `npm run lint`: passed.
+- `npm run build`: passed. All routes emitted including `/clients` (static).
+
+No modifications to `lib/brain/`, `lib/llm/`, or `lib/notes/`.
+
 ## Next action
 
-Task 1 complete and pushed to `feat/brain-chat-ui`. Ready for Task 2 review: replace the `demoClients` wireframe in `app/(workspace)/clients/page.tsx` with the approved-note-derived roster using `listBrainPatientsAction()` and `deriveRosterSummary`.
+Task 2 complete and pushed to `feat/brain-chat-ui`. Ready for Task 3: build the stateless Brain chat into the existing Rawaan AI wireframe page.

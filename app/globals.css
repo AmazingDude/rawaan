@@ -1682,6 +1682,33 @@ textarea:focus {
   background: #e2e8f0;
 }
 
+.roster-empty-state {
+  background: var(--color-cream);
+  border-radius: var(--radius-cards);
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.roster-empty-title {
+  font-size: var(--text-heading-sm);
+  font-weight: 600;
+  color: var(--color-charcoal);
+  margin: 0 0 8px;
+}
+
+.roster-empty-body {
+  font-size: var(--text-body);
+  color: var(--color-slate);
+  margin: 0;
+}
+
+.roster-empty-link {
+  color: var(--color-canopy-green);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 /* Brain Wireframe */
 .brain-wireframe-container {
   display: grid;
