@@ -1928,6 +1928,140 @@ textarea:focus {
   font-style: italic;
 }
 
+/* Brain Chat */
+.brain-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.brain-chat-controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.brain-chat-controls .form-field {
+  flex: 1;
+  min-width: 220px;
+}
+
+.brain-chat-loading,
+.brain-chat-empty {
+  color: var(--color-slate);
+  font-size: var(--text-body-sm);
+  margin: 0;
+}
+
+.patient-context-header {
+  background: var(--color-canopy-green);
+  color: #ffffff;
+  padding: 12px 24px;
+  border-radius: var(--radius-inputs);
+  font-size: var(--text-body-sm);
+  font-weight: 500;
+}
+
+.brain-chat-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.brain-chat-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.brain-chat-question {
+  margin: 0;
+  align-self: flex-end;
+  max-width: 85%;
+  background: var(--color-mint-wash);
+  color: var(--color-canopy-green);
+  border-radius: var(--radius-inputs);
+  padding: 8px 14px;
+  font-size: var(--text-body-sm);
+  font-weight: 500;
+}
+
+.brain-chat-body {
+  max-width: 85%;
+  border-radius: var(--radius-cards);
+  padding: 16px 20px;
+}
+
+.brain-chat-body.is-supported {
+  background: var(--color-sky-wash);
+}
+
+.brain-chat-body.is-no-record {
+  background: var(--color-peach-wash);
+  border: 1px solid #a6432b;
+}
+
+.brain-chat-body.is-refused {
+  background: var(--color-cream);
+  border: 1px solid var(--color-deep-teal);
+}
+
+.brain-chat-body.is-error {
+  background: #f8fafc;
+  border: 1px solid var(--color-frost-gray);
+}
+
+.brain-chat-answer {
+  margin: 0 0 10px;
+  color: var(--color-ink-black);
+  font-size: var(--text-body);
+}
+
+.brain-chat-state-title {
+  margin: 0 0 4px;
+  font-weight: 600;
+  font-size: var(--text-body);
+  color: var(--color-charcoal);
+}
+
+.brain-chat-state-body {
+  margin: 0;
+  color: var(--color-slate);
+  font-size: var(--text-body-sm);
+}
+
+.brain-chat-citations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.brain-chat-citation-chip {
+  background: #ffffff;
+  border: 1px solid var(--color-sky-wash);
+  border-radius: var(--radius-pills);
+  padding: 4px 12px;
+  font-size: var(--text-caption);
+  font-weight: 500;
+  color: var(--color-graphite);
+}
+
+.brain-chat-input-row {
+  display: flex;
+  gap: 10px;
+}
+
+.brain-chat-input {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: var(--radius-inputs);
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  font-size: var(--text-body);
+  color: var(--color-ink-black);
+}
+
 /* Learn Rawaan */
 .learn-grid {
   display: grid;

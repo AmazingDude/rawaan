@@ -193,6 +193,27 @@ Verified with production-browser captures at a 390×844 iPhone viewport across `
 
 Validation: `npm run typecheck`, `npm run lint`, `npm run test` (14 files, 74 tests), and `npm run build` all passed.
 
+## Brain Chat UI — Task 3 checkpoint
+
+Branch: `feat/brain-chat-ui`. Task 3 of `plans/2026-08-28-brain-chat-and-roster.md` is complete.
+
+**What was done:**
+
+Built the stateless Brain chat into the Rawaan AI page. The static wireframe mockup (disabled select, sample chips, hardcoded answer) was replaced with a live interactive boundary while preserving the page heading and the "Documentation support only" safety label.
+
+- `app/components/brain-chat-state.ts` — pure, browser-independent state machine: `initialBrainChatState`, `brainChatReducer` (select-patient resets the thread, set-draft, submit-start, append-entry, new-chat clears only in-memory entries), and `runBrainChatQuery` which calls the injected Server Action with ONLY `(patientId, question)` and maps the result verbatim onto a timestamped entry. No React, no browser, no `lib/brain` runtime imports (type-only).
+- `app/components/brain-chat.tsx` — client component. Loads patients via `listBrainPatientsAction()`, renders the patient selector, the dark Patient Context Header, the thread, and the input row. Calls only the typed Server Actions (`queryPatientRecordAction`, `listBrainPatientsAction`); never imports `lib/brain`/`lib/llm`/`lib/notes` runtime code. Distinct render states: supported (Sky Wash + citation chips), no-record (Peach Wash + border), refused (cream + teal border), action error (neutral). "New chat" clears client memory only.
+- `app/(workspace)/rawaan-ai/page.tsx` — now composes `<BrainChat />` under the preserved heading/safety label.
+- CSS — Brain chat styles using design tokens (flat pastel surfaces, no shadows).
+
+**Tests (written RED first, then GREEN):** `tests/brain-chat.test.ts` — 11 tests: initial state, select-patient thread reset, set-draft, submit-start, append-entry, new-chat, and verbatim mapping of supported/no-record/refused/error; plus the isolation regression proving three sequential turns each pass only `(patientId, question)` with no prior-turn content.
+
+**Production browser exercise (live Groq):** selected the fictional patient; treatment question → refused card; unrecorded vital → no-record card; documented symptom → supported card with the exact returned citation `2026-06-01 · fictional-note-amina-1`; "New chat" cleared 3 entries to 0. Screenshot review confirmed the three states are visually distinct. `data/notes.json` restored to `[]`; temp script/screenshots/server removed.
+
+**Validation:** `npm run typecheck`, `npm run lint`, `npm run test` (15 files, 85 tests), `npm run build` all passed.
+
+No modifications to `lib/brain/`, `lib/llm/`, or `lib/notes/`.
+
 ## Next action
 
-Task 2 plus the mobile/UI polish pass are complete and pushed to `feat/brain-chat-ui`. Ready for Task 3: build the stateless Brain chat into the existing Rawaan AI wireframe page.
+Task 3 complete and pushed to `feat/brain-chat-ui`. Ready for Task 4: add fixed retrieval-only quick-action chips above the chat input.
