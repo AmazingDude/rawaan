@@ -45,10 +45,11 @@ describe("brainChatReducer", () => {
     });
   });
 
-  it("selectPatient sets the patient and clears any prior thread", () => {
+  it("selectPatient sets the patient and clears any prior thread and draft", () => {
     const withThread: BrainChatState = {
       ...initialBrainChatState,
       patientId: "p-old",
+      draftQuestion: "question typed for the old patient",
       entries: [
         {
           question: "old question",
@@ -65,6 +66,7 @@ describe("brainChatReducer", () => {
 
     expect(next.patientId).toBe("p-new");
     expect(next.entries).toEqual([]);
+    expect(next.draftQuestion).toBe("");
     expect(next.isSubmitting).toBe(false);
   });
 

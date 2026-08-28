@@ -38,9 +38,16 @@ export function brainChatReducer(
 ): BrainChatState {
   switch (action.type) {
     case "select-patient":
-      // Changing patient resets the thread so a prior patient's conversation
-      // can never leak into the next patient's context.
-      return { ...state, patientId: action.patientId, entries: [], isSubmitting: false };
+      // Changing patient resets the thread and draft so a prior patient's
+      // conversation (or a question typed for it) can never leak into the next
+      // patient's context.
+      return {
+        ...state,
+        patientId: action.patientId,
+        entries: [],
+        draftQuestion: "",
+        isSubmitting: false,
+      };
     case "set-draft":
       return { ...state, draftQuestion: action.text };
     case "submit-start":
@@ -55,6 +62,8 @@ export function brainChatReducer(
     case "new-chat":
       // Clears only in-memory messages; never touches persisted notes.
       return { ...state, entries: [], draftQuestion: "", isSubmitting: false };
+    default:
+      return state;
   }
 }
 

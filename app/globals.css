@@ -102,7 +102,7 @@ summary:focus-visible {
 }
 
 /* Anchors: no ring for mouse/touch clicks, ring retained for keyboard focus. */
-a:focus {
+a:focus:not(:focus-visible) {
   outline: none;
 }
 

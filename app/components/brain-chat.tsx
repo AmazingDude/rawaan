@@ -26,8 +26,11 @@ function ChatEntryCard({ entry }: { entry: BrainChatEntry }) {
         <div className="brain-chat-body is-supported">
           <p className="brain-chat-answer">{response.answer}</p>
           <div className="brain-chat-citations">
-            {response.sources.map((source) => (
-              <span className="brain-chat-citation-chip" key={source.noteId}>
+            {response.sources.map((source, index) => (
+              <span
+                className="brain-chat-citation-chip"
+                key={`${source.noteId}-${source.consultationDate}-${index}`}
+              >
                 {source.consultationDate} · {source.noteId}
               </span>
             ))}
@@ -124,6 +127,7 @@ export function BrainChat() {
           Patient
           <select
             className="select-input"
+            disabled={state.isSubmitting}
             onChange={(event) =>
               dispatch({ type: "select-patient", patientId: event.target.value })
             }
@@ -141,6 +145,7 @@ export function BrainChat() {
         {selectedPatient && (
           <button
             className="ghost-button"
+            disabled={state.isSubmitting}
             onClick={() => dispatch({ type: "new-chat" })}
             type="button"
           >
