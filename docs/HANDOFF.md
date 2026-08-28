@@ -160,16 +160,24 @@ CSS: added `.roster-empty-state`, `.roster-empty-title`, `.roster-empty-body`, `
 - Distinct patients appear as separate entries.
 - Compile-time type check: `deriveRosterSummary` accepts only `ApprovedNote[]`.
 
+**Dynamic-rendering fix (found during the production-browser exercise):**
+
+The initial Task 2 implementation left `/clients` statically prerendered (`○ Static`), so the roster baked in whatever approved notes existed at build time and would not show a patient approved during a live demo session until a rebuild. This is a correctness defect for a live roster, not just a stylistic choice.
+
+Fix: added `export const dynamic = "force-dynamic";` to `app/(workspace)/clients/page.tsx`. Per the Next 16 route-segment-config docs bundled in `node_modules/next/dist/docs/`, `force-dynamic` forces per-request rendering. `/clients` now builds as `ƒ (Dynamic)`.
+
+Verified in a production browser (`npm run build` then `npm run start`): with an empty store `/clients` renders the honest empty state; after writing fictional approved notes to `data/notes.json` the same running server (no rebuild) immediately renders the roster with correct names, patient IDs, approved-note counts, and most-recent consultation dates. `data/notes.json` was then restored to `[]` and the temporary server/log artifacts removed.
+
 **Validation output (2026-08-28):**
 
 - Focused suite: 5/5 passed.
 - Full suite: 14 files, 74 tests — all passed (up from 69 after Task 1).
 - `npm run typecheck`: passed.
 - `npm run lint`: passed.
-- `npm run build`: passed. All routes emitted including `/clients` (static).
+- `npm run build`: passed. `/clients` emitted as `ƒ (Dynamic)`.
 
 No modifications to `lib/brain/`, `lib/llm/`, or `lib/notes/`.
 
 ## Next action
 
-Task 2 complete and pushed to `feat/brain-chat-ui`. Ready for Task 3: build the stateless Brain chat into the existing Rawaan AI wireframe page.
+Task 2 complete and pushed to `feat/brain-chat-ui` (roster implementation plus the follow-up `force-dynamic` correctness fix). Ready for Task 3: build the stateless Brain chat into the existing Rawaan AI wireframe page.

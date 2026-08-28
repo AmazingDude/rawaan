@@ -2,6 +2,11 @@ import Link from "next/link";
 
 import { listBrainPatientsAction } from "@/app/actions";
 
+// The roster reflects the live approved-note store, which changes when a
+// clinician approves a note during a session. Force per-request rendering so
+// newly approved patients appear without a rebuild.
+export const dynamic = "force-dynamic";
+
 export default async function ClientsPage() {
   const patients = await listBrainPatientsAction();
 
