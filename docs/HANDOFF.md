@@ -91,6 +91,42 @@ The application now features a persistent sidebar workspace layout with exactly 
 - **Learn Rawaan** (`/learn-rawaan`): UI wireframe for clinical documentation guidelines and safety principles.
 - The root landing page (`/`) "Try the Demo" button links directly to `/record`, and `/scribe` redirects to `/record`.
 
+## Brain Chat UI — Task 1 checkpoint
+
+Branch: `feat/brain-chat-ui`. Task 1 of `plans/2026-08-28-brain-chat-and-roster.md` is complete.
+
+**What was done:**
+
+Task 1 confirmed the existing action contracts (`queryPatientRecordAction`, `listBrainPatientsAction` in `app/actions.ts`; `queryPatientRecord` in `lib/actions/brain.ts`) and extracted the UI-safe boundaries following the plan's TDD order.
+
+The roster investigation found that `listBrainPatientsAction` returned only `patientId` and `displayName` — insufficient for the Task 2 roster UI which requires `approvedNoteCount` and `mostRecentConsultationDate`. As directed by the plan ("stop and propose a reviewed action-contract extension before implementation"), this was addressed within Task 1 by:
+
+1. Creating `lib/actions/roster.ts` with the pure `deriveRosterSummary(notes: ApprovedNote[]): RosterPatient[]` helper. It iterates approved notes once, accumulating count and lexicographically latest consultation date per patient. No imports from `lib/brain`, `lib/llm`, or any provider code.
+2. Extending `BrainPatient` in `app/actions.ts` with `approvedNoteCount: number` and `mostRecentConsultationDate: string`.
+3. Replacing the inline Map loop in `listBrainPatientsAction` with a `deriveRosterSummary` call — same approved-note source, now returning the full roster shape.
+
+**Tests written RED first, then GREEN:**
+
+`tests/brain-action-contracts.test.ts` — 14 tests covering:
+- Supported `BrainActionResult` shape: `ok: true` with answer and typed sources array.
+- No-record `BrainActionResult` shape: `ok: true` with `status: "no_supporting_record"`, exact message and reason.
+- Refused (treatment): `ok: true` with `status: "refused"`, `reason: "treatment_or_medication"`, exact safety message.
+- Refused (general_medical): distinct reason field is a distinct render state.
+- Action-level error: `ok: false` with a safe non-technical message — asserts no provider/key/model info leaks.
+- Provider isolation: refusal path and no-record path each assert the provider was never invoked.
+- `deriveRosterSummary`: one entry per distinct patient, correct counts, latest date, displayName preservation, empty-array case, single-note case.
+- `BrainPatient` compile-time shape: `approvedNoteCount` and `mostRecentConsultationDate` are now required fields.
+
+**Validation output (2026-08-28):**
+
+- Focused suite: 14/14 passed.
+- Full suite: 13 files, 69 tests — all passed (up from 55 tests before Task 1).
+- `npm run typecheck`: passed (no output).
+- `npm run lint`: passed (exit 0, no output).
+- `npm run build`: passed. Routes emitted: `/`, `/_not-found`, `/api/transcribe` (dynamic), `/clients`, `/learn-rawaan`, `/rawaan-ai`, `/record` (dynamic), `/scribe`.
+
+No modifications to `lib/brain/`, `lib/llm/`, or `lib/notes/`.
+
 ## Next action
 
-All changes are validated with `typecheck`, `lint`, `test`, and `build`. Ready for user review.
+Task 1 complete and pushed to `feat/brain-chat-ui`. Ready for Task 2 review: replace the `demoClients` wireframe in `app/(workspace)/clients/page.tsx` with the approved-note-derived roster using `listBrainPatientsAction()` and `deriveRosterSummary`.
