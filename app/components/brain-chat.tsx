@@ -59,12 +59,22 @@ export function BrainChat() {
 
   useEffect(() => {
     let cancelled = false;
-    listBrainPatientsAction().then((list) => {
-      if (!cancelled) {
-        setPatients(list);
-        setPatientsLoaded(true);
-      }
-    });
+    listBrainPatientsAction()
+      .then((list) => {
+        if (!cancelled) {
+          setPatients(list);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPatients([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setPatientsLoaded(true);
+        }
+      });
     return () => {
       cancelled = true;
     };
