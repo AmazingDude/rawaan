@@ -6,8 +6,13 @@ const noteDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD");
 const noteContentSchema = z.object({
   patient_id: requiredText,
   patient_display_name: requiredText,
+  first_name: z.string().optional(),
+  last_name: z.string().optional(),
+  email: z.string().optional(),
+  mobile_number: z.string().optional(),
   consultation_date: noteDate,
   chief_complaint: z.string(),
+  summary: z.string().optional(),
   history: z.array(z.string()),
   symptoms: z.array(z.string()),
   assessment_discussed: z.array(z.string()),

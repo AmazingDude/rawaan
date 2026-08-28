@@ -113,9 +113,26 @@
 - [x] Update `tests/e2e-scribe.mjs` and `tests/e2e-scribe-voice.mjs` to target `/record`.
 - [x] Run full verification loop (`npm run typecheck`, `npm run lint`, `npm run test`, `npm run build`).
 
+### Phase 7 — Record In-Person Modal, Live Mic Tester & Client Insights
+**Status:** complete
+- [x] Build `RecordSessionModal` component matching Image 1 (Selected client search, mic device dropdown, live animated mic checker visualizer, and previous session insights).
+- [x] Add client creation inline flow ("+ Add new client") when no client is found.
+- [x] Extract previous session insights (Summary, Action Items, Questions, Plan) from client's approved notes.
+- [x] Remove the static bottom STEP 1 / STEP 2 section from `/record` page.
+- [x] Add Supabase hybrid storage configuration with automatic local JSON fallback.
+- [x] Run full verification loop (`typecheck`, `lint`, `test`, `build`).
+
+### Phase 8 — Post-Recording Workflow: Assign Session & AI Note Workspace
+**Status:** complete
+- [x] Build `AssignSessionModal` (matching Picture 1) with recording badge, client selector, delete and next actions.
+- [x] Build `Create A New Client` view (matching Picture 2) with First Name, Last Name, Email, and Client Mobile Number.
+- [x] Build `SessionWorkspaceView` (matching Picture 3) with 7 top navigation tabs, formatted clinical note (Summary + Session Topics), and interactive AI Overview chat panel.
+- [x] Implement note modification LLM action (`modifyNoteAction`) allowing real-time AI transformations (paragraph format, de-identification/remove names, summarize key clinical points).
+- [x] Pass all verification gates (`typecheck`, `lint`, `test`, `build`).
+
 ## Next Step
 
-Present walkthrough and completed verification results to the user.
+Raise the PR with all verified features.
 
 ## Decisions Made
 

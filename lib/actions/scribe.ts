@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 
+import type { LlmCompletionProvider } from "@/lib/llm/provider";
 import {
   generateNoteDraft,
   type GeneratedDraft,
@@ -11,18 +12,20 @@ type ScribeServiceOptions = {
   storagePath: string;
   createId?: () => string;
   approvalTime?: () => string;
+  provider?: LlmCompletionProvider;
 };
 
 export function createScribeService({
   storagePath,
   createId = randomUUID,
   approvalTime = () => new Date().toISOString(),
+  provider,
 }: ScribeServiceOptions) {
   const repository = createNoteRepository(storagePath);
 
   return {
     createDraft(candidate: unknown): Promise<GeneratedDraft> {
-      return generateNoteDraft(candidate);
+      return generateNoteDraft(candidate, provider);
     },
 
     async approve(candidate: unknown): Promise<ApprovedNote> {
