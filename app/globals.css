@@ -1150,7 +1150,7 @@ textarea:focus {
 
 .action-cards-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 18px;
 }
 
@@ -1357,12 +1357,17 @@ textarea:focus {
   background: #ffffff;
   border: 1px solid #f1f5f9;
   border-radius: 8px;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.session-item-row.is-clickable {
+  cursor: pointer;
 }
 
 .session-item-row:hover {
   background: #f8fafc;
-  border-color: #e2e8f0;
+  border-color: #cbd5e1;
+  transform: translateY(-1px);
 }
 
 .session-item-left {
