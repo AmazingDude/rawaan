@@ -16,7 +16,7 @@ const navItems: NavItem[] = [
     icon: (active) => (
       <svg
         aria-hidden="true"
-        className={`sidebar-nav-icon ${active ? "is-active" : ""}`}
+        className={`sidebar-nav-icon accent-record ${active ? "is-active" : ""}`}
         fill="none"
         height="20"
         stroke="currentColor"
@@ -37,7 +37,7 @@ const navItems: NavItem[] = [
     icon: (active) => (
       <svg
         aria-hidden="true"
-        className={`sidebar-nav-icon ${active ? "is-active" : ""}`}
+        className={`sidebar-nav-icon accent-clients ${active ? "is-active" : ""}`}
         fill="none"
         height="20"
         stroke="currentColor"
@@ -60,7 +60,7 @@ const navItems: NavItem[] = [
     icon: (active) => (
       <svg
         aria-hidden="true"
-        className={`sidebar-nav-icon ${active ? "is-active" : ""}`}
+        className={`sidebar-nav-icon accent-ai ${active ? "is-active" : ""}`}
         fill="none"
         height="20"
         stroke="currentColor"
@@ -81,7 +81,7 @@ const navItems: NavItem[] = [
     icon: (active) => (
       <svg
         aria-hidden="true"
-        className={`sidebar-nav-icon ${active ? "is-active" : ""}`}
+        className={`sidebar-nav-icon accent-learn ${active ? "is-active" : ""}`}
         fill="none"
         height="20"
         stroke="currentColor"
@@ -137,6 +137,9 @@ export function WorkspaceSidebar() {
                   className={`sidebar-nav-link ${isActive ? "is-active" : ""}`}
                   href={item.href}
                   aria-current={isActive ? "page" : undefined}
+                  onClick={(event) => {
+                    if (event.detail > 0) event.currentTarget.blur();
+                  }}
                 >
                   {item.icon(isActive)}
                   <span className="sidebar-nav-label">{item.label}</span>
