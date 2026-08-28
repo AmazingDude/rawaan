@@ -45,7 +45,7 @@ export function LandingPage() {
               Rawaan turns a fictional consultation transcript into a structured
               note for clinician review, editing, and explicit approval.
             </p>
-            <Link className="landing-demo-link" href="/scribe">
+            <Link className="landing-demo-link" href="/record">
               Try the Demo
             </Link>
           </div>

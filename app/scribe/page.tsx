@@ -1,5 +1,5 @@
-import { ScribeWorkspace } from "@/app/components/scribe-workspace";
+import { redirect } from "next/navigation";
 
-export default function ScribePage() {
-  return <ScribeWorkspace />;
+export default function ScribeRedirectPage() {
+  redirect("/record");
 }

@@ -95,7 +95,7 @@ The pitch in one line: *we don't just save doctors time writing notes — we mak
 - **ASR:** Whisper (open-source, handles Urdu/English/code-switched speech reasonably well)
 - **Note generation & retrieval-answering LLM:** GPT-4-class or Claude, prompted with a fixed clinical note template and strict "answer only from provided notes" instructions
 - **Storage:** For the hackathon, a simple structured store (e.g. one JSON/DB record per note, tagged by patient ID) is sufficient — a full vector database is not required at this scale (a handful of notes per demo patient), though one can be used if the team is comfortable with it
-- **Frontend:** Two views — (1) consultation/review screen for the Scribe, (2) patient lookup + query screen for the Brain
+- **Frontend:** Persistent sidebar workspace layout with four dedicated pages: (1) Record / Scribe consultation capture & dashboard (`/record`), (2) Clients directory (`/clients`), (3) Rawaan AI Brain recall & Q&A (`/rawaan-ai`), and (4) Learn Rawaan clinical guide (`/learn-rawaan`).
 
 ## 8. Data, Privacy & Risk Notes
 

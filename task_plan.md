@@ -75,9 +75,47 @@
 - [x] Capture desktop and narrow screenshots and complete the anti-slop review.
 - [x] Commit landing work locally and keep the combined PR deferred.
 
+## Sidebar Architecture & 4 Feature Pages — Task Tracking
+
+**Goal:** Implement the new sidebar navigation architecture and modern UI/UX with exactly four dedicated pages: Record/Scribe, Clients, Rawaan AI, and Learn Rawaan, matching the provided design.
+
+**Detailed plan:** `plans/2026-08-28-sidebar-and-pages.md` / `implementation_plan.md`
+
+### Phase 1 — Architecture, Routing & Sidebar Layout
+**Status:** complete
+- [x] Create persistent workspace layout at `app/(workspace)/layout.tsx` with sidebar navigation.
+- [x] Build `app/components/workspace-sidebar.tsx` containing ONLY the 4 menu items: Record/Scribe (`/record`), Clients (`/clients`), Rawaan AI (`/rawaan-ai`), Learn Rawaan (`/learn-rawaan`).
+- [x] Update landing page "Try the Demo" link to `/record` and redirect `/scribe` to `/record`.
+
+### Phase 2 — Fully Functional Record / Scribe Page (`/record`)
+**Status:** complete
+- [x] Implement `app/(workspace)/record/page.tsx` and `app/components/scribe-dashboard.tsx`.
+- [x] Implement top 3 action cards ("Record virtual session", "Record in-person", "Record a summary").
+- [x] Implement search bar, "+ Create empty note", "Upload", and timeline session list.
+- [x] Integrate full consultation scribe engine (form values, voice capture controller, draft generator, review fields, approval action).
+
+### Phase 3 — Wireframe Pages for Clients, Rawaan AI, Learn Rawaan
+**Status:** complete
+- [x] Implement `app/(workspace)/clients/page.tsx` with clean wireframe layout.
+- [x] Implement `app/(workspace)/rawaan-ai/page.tsx` with clean wireframe layout.
+- [x] Implement `app/(workspace)/learn-rawaan/page.tsx` with clean wireframe layout.
+
+### Phase 4 — Styling and Design System in `app/globals.css`
+**Status:** complete
+- [x] Add sidebar, dashboard action cards, search pill, session items, and wireframe styling.
+
+### Phase 5 — Documentation Updates
+**Status:** complete
+- [x] Update `docs/PRD.md`, `PRD.md`, `docs/HANDOFF.md`, `README.md`.
+
+### Phase 6 — Verification & E2E
+**Status:** complete
+- [x] Update `tests/e2e-scribe.mjs` and `tests/e2e-scribe-voice.mjs` to target `/record`.
+- [x] Run full verification loop (`npm run typecheck`, `npm run lint`, `npm run test`, `npm run build`).
+
 ## Next Step
 
-Present the local landing commit and screenshots for user review. Do not push, open a PR, or begin Brain work until the user directs the next step.
+Present walkthrough and completed verification results to the user.
 
 ## Decisions Made
 
