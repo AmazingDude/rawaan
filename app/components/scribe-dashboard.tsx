@@ -275,6 +275,8 @@ export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
 
   const currentTranscriptRef = useRef(form.transcript);
   const transcriptAtStopRef = useRef("");
+  const studioRef = useRef<HTMLElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [voiceController, setVoiceController] =
     useState<VoiceCaptureController | null>(null);
   const isApproved = Boolean(approvedNote);
@@ -385,7 +387,81 @@ export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
     setApprovedNote(null);
     if (presetMode) {
       setActiveSessionMode(presetMode);
+      if (presetMode === "In-Person Session") {
+        setHasRecordingConsent(true);
+      }
     }
+    studioRef.current?.scrollIntoView({ behavior: "smooth" });
+  }
+
+  function handleSelectSession(session: RecentSession) {
+    resetVoiceCapture();
+    setMessage(null);
+
+    if (session.note) {
+      setForm({
+        consultation_date: session.note.consultation_date,
+        patient_display_name: session.note.patient_display_name,
+        patient_id: session.note.patient_id,
+        transcript: session.note.raw_transcript,
+      });
+      setDraft({
+        ...session.note,
+        approval_status: "draft",
+      });
+      setApprovedNote({
+        approvedAt: session.note.approved_at,
+        noteId: session.note.id,
+      });
+      setMessage("Loaded approved note from local record.");
+    } else if (session.id === "example-session-1") {
+      const exampleTranscript = `Chief complaint: Seeking therapeutic clarity and personal authenticity
+History: Tension between maternal obligations and personal independence
+Symptoms: Emotional conflict and mild anxiety
+Assessment discussed: Therapist used unconditional positive regard and reflective exploration
+Plan discussed: Continue weekly exploration of personal congruence and authentic choices
+Medications mentioned: None mentioned
+Follow up: Return in one week
+Uncertainties: Specific childhood antecedents to independence anxiety were not explored`;
+
+      setForm({
+        consultation_date: "2026-08-27",
+        patient_display_name: "Gloria",
+        patient_id: "patient-gloria-001",
+        transcript: exampleTranscript,
+      });
+      setApprovedNote(null);
+      setDraft(null);
+      setMessage("Loaded Carl Rogers & Gloria example consultation script.");
+    }
+
+    studioRef.current?.scrollIntoView({ behavior: "smooth" });
+  }
+
+  async function handleFileUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.type.startsWith("audio/")) {
+      setMessage("Uploading audio and requesting transcription…");
+      try {
+        const result = await requestTranscription(file);
+        if (result.ok) {
+          updateForm("transcript", result.transcript);
+          setMessage("Audio transcribed successfully. Enter patient info to create draft.");
+        } else {
+          setMessage(result.message);
+        }
+      } catch {
+        setMessage("Audio transcription failed. Try pasting the transcript manually.");
+      }
+    } else {
+      const text = await file.text();
+      updateForm("transcript", text);
+      setMessage("Transcript loaded from uploaded file.");
+    }
+
+    studioRef.current?.scrollIntoView({ behavior: "smooth" });
   }
 
   async function handleApprove() {
@@ -427,29 +503,8 @@ export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
 
   return (
     <div className="dashboard-layout">
-      {/* Top 3 Action Cards matching reference image */}
+      {/* Recording Option Action Cards */}
       <section className="action-cards-grid" aria-label="Recording options">
-        <button
-          className="action-card"
-          onClick={() => handleStartNewConsultation("Virtual Session")}
-          type="button"
-        >
-          <div className="action-card-top">
-            <div className="action-card-icon-wrap is-virtual">
-              <span className="record-circle-icon" />
-            </div>
-            <span className="action-card-arrow" aria-hidden="true">
-              ↗
-            </span>
-          </div>
-          <div className="action-card-body">
-            <h3 className="action-card-title">Record virtual session</h3>
-            <p className="action-card-desc">
-              For web-based platforms like Jane, Owl, and others.
-            </p>
-          </div>
-        </button>
-
         <button
           className="action-card"
           onClick={() => handleStartNewConsultation("In-Person Session")}
@@ -552,6 +607,13 @@ export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
         </div>
 
         <div className="header-action-buttons">
+          <input
+            accept="audio/*,.txt"
+            onChange={handleFileUpload}
+            ref={fileInputRef}
+            style={{ display: "none" }}
+            type="file"
+          />
           <button
             className="btn-create-empty"
             onClick={() => handleStartNewConsultation()}
@@ -561,7 +623,7 @@ export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
           </button>
           <button
             className="btn-upload"
-            onClick={() => handleStartNewConsultation()}
+            onClick={() => fileInputRef.current?.click()}
             type="button"
           >
             <svg
@@ -593,7 +655,18 @@ export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
       {/* Recent Sessions List */}
       <section className="sessions-list" aria-label="Recent consultation sessions">
         {filteredSessions.map((session) => (
-          <div key={session.id} className="session-item-row">
+          <div
+            className="session-item-row is-clickable"
+            key={session.id}
+            onClick={() => handleSelectSession(session)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                handleSelectSession(session);
+              }
+            }}
+            role="button"
+            tabIndex={0}
+          >
             <div className="session-item-left">
               <span className="session-item-icon">
                 <svg
@@ -625,6 +698,10 @@ export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
               <button
                 aria-label={`Options for ${session.patientName}`}
                 className="session-item-menu"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleSelectSession(session);
+                }}
                 type="button"
               >
                 ⋮
@@ -635,7 +712,10 @@ export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
       </section>
 
       {/* Active Consultation Scribe Studio Workspace */}
-      <section className={`scribe-studio ${isApproved ? "is-approved" : ""}`}>
+      <section
+        className={`scribe-studio ${isApproved ? "is-approved" : ""}`}
+        ref={studioRef}
+      >
         <div className="studio-heading">
           <div>
             <span className="eyebrow">
