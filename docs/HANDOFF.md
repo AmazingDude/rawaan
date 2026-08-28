@@ -214,6 +214,28 @@ Built the stateless Brain chat into the Rawaan AI page. The static wireframe moc
 
 No modifications to `lib/brain/`, `lib/llm/`, or `lib/notes/`.
 
+## Brain Chat UI — Task 4 checkpoint
+
+Branch: `feat/brain-chat-ui`. Task 4 of `plans/2026-08-28-brain-chat-and-roster.md` is complete.
+
+**What was done:**
+
+Added fixed retrieval-only quick-action chips above the chat input.
+
+- `app/components/brain-quick-actions.tsx` — exports `BRAIN_QUICK_ACTIONS` (`as const`, the three approved templates verbatim) and a presentational `BrainQuickActions` chip row. Chips are plain buttons that call `onAsk(action.question)`; there is no LLM that generates or rewrites labels/questions.
+- `app/components/brain-chat.tsx` — refactored submission into a shared `submitQuestion(question)` used by both the manual form and the chips, so chips and manual input share the same patient ID and stateless action path. Chips render only when a patient is selected and are disabled while submitting.
+- CSS — `.brain-quick-actions` / `.brain-quick-action-chip` mint-wash pills, no shadows.
+
+**Pre-implementation wording check (required by the plan):** all three templates classify as `record_query` via `classifyQuerySafety` (no treatment/general-medical refusal). Ranker tokens `plan/discussed/documented/visits/symptoms/follow-up` are live (non-stop-word), so retrieval strength depends on note content; a chip honestly renders `no_supporting_record` when there is no lexical match. The approved wording was kept verbatim (the plan forbids unilateral dynamic filtering).
+
+**Tests (RED first, then GREEN):** extended `tests/brain-chat.test.ts` with 4 quick-action tests: exact approved templates, every chip is a record query, a chip submits only its exact question through the same path, and a chip no-record result does not alter the next manual turn.
+
+**Production browser exercise (live Groq):** three chips render; clicking "Recall follow-up" submitted the exact question and returned a supported answer "Follow-up in two weeks." with citation `2026-06-01 · fictional-note-amina-1`. `data/notes.json` restored to `[]`; temp script/screenshot/server removed.
+
+**Validation:** `npm run typecheck`, `npm run lint`, `npm run test` (15 files, 89 tests), `npm run build` all passed.
+
+No modifications to `lib/brain/`, `lib/llm/`, or `lib/notes/`.
+
 ## Next action
 
-Task 3 complete and pushed to `feat/brain-chat-ui`. Ready for Task 4: add fixed retrieval-only quick-action chips above the chat input.
+Task 4 complete and pushed to `feat/brain-chat-ui`. Ready for Task 5: full integration, accessibility, and browser verification (tests/e2e-brain.mjs).

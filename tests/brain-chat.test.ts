@@ -18,6 +18,7 @@
 
 import { describe, expect, it } from "vitest";
 
+import { classifyQuerySafety } from "@/lib/brain/query-safety";
 import type { BrainResponse } from "@/lib/brain/types";
 
 import {
@@ -28,6 +29,7 @@ import {
   type BrainChatState,
   type ChatQueryResult,
 } from "@/app/components/brain-chat-state";
+import { BRAIN_QUICK_ACTIONS } from "@/app/components/brain-quick-actions";
 
 // ---------------------------------------------------------------------------
 // Reducer: pure client-state transitions
@@ -260,5 +262,100 @@ describe("stateless-per-turn isolation", () => {
     expect(serialized).not.toContain("medication");
     expect(serialized).not.toContain("blood pressure");
     expect(serialized).not.toContain("documented");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Task 4 — Fixed retrieval-only quick-action chips
+// ---------------------------------------------------------------------------
+
+describe("BRAIN_QUICK_ACTIONS", () => {
+  it("contains exactly the three approved retrieval-only templates", () => {
+    expect(BRAIN_QUICK_ACTIONS).toEqual([
+      {
+        id: "documented-plan",
+        label: "Recall documented plan",
+        question: "What plan was discussed in the documented visits?",
+      },
+      {
+        id: "reported-symptoms",
+        label: "Summarize reported symptoms",
+        question: "What symptoms were reported in the documented visits?",
+      },
+      {
+        id: "follow-up",
+        label: "Recall follow-up",
+        question: "What follow-up was documented for this patient?",
+      },
+    ]);
+  });
+
+  it("every chip question is a record query, never a refusal", () => {
+    for (const action of BRAIN_QUICK_ACTIONS) {
+      expect(classifyQuerySafety(action.question)).toMatchObject({
+        kind: "record_query",
+      });
+    }
+  });
+
+  it("a chip submits only its exact reviewed question through the same path", async () => {
+    const calls: Array<[string, string]> = [];
+    const spy = async (patientId: string, question: string): Promise<ChatQueryResult> => {
+      calls.push([patientId, question]);
+      return {
+        ok: true,
+        response: {
+          status: "no_supporting_record",
+          reason: "no_relevant_evidence",
+          message: "No record of that for this patient.",
+        },
+      };
+    };
+
+    for (const action of BRAIN_QUICK_ACTIONS) {
+      await runBrainChatQuery({
+        patientId: "p1",
+        question: action.question,
+        query: spy,
+        now: () => NOW,
+      });
+    }
+
+    expect(calls).toEqual([
+      ["p1", BRAIN_QUICK_ACTIONS[0].question],
+      ["p1", BRAIN_QUICK_ACTIONS[1].question],
+      ["p1", BRAIN_QUICK_ACTIONS[2].question],
+    ]);
+  });
+
+  it("a chip no-record result does not alter the next manual turn", () => {
+    const chipEntry: BrainChatEntry = {
+      question: BRAIN_QUICK_ACTIONS[0].question,
+      response: {
+        status: "no_supporting_record",
+        reason: "no_relevant_evidence",
+        message: "No record of that for this patient.",
+      },
+      timestamp: NOW,
+    };
+    const manualEntry: BrainChatEntry = {
+      question: "Has she mentioned chest pain?",
+      response: {
+        status: "supported",
+        answer: "Yes — documented.",
+        sources: [{ noteId: "n1", consultationDate: "2026-06-01" }],
+      },
+      timestamp: NOW,
+    };
+
+    let state = brainChatReducer(initialBrainChatState, {
+      type: "append-entry",
+      entry: chipEntry,
+    });
+    state = brainChatReducer(state, { type: "append-entry", entry: manualEntry });
+
+    // Both entries remain verbatim and independent.
+    expect(state.entries).toEqual([chipEntry, manualEntry]);
+    expect(state.entries[1].response).toEqual(manualEntry.response);
   });
 });

@@ -13,6 +13,7 @@ import {
   runBrainChatQuery,
   type BrainChatEntry,
 } from "@/app/components/brain-chat-state";
+import { BrainQuickActions } from "@/app/components/brain-quick-actions";
 
 function ChatEntryCard({ entry }: { entry: BrainChatEntry }) {
   const response = entry.response;
@@ -71,10 +72,9 @@ export function BrainChat() {
 
   const selectedPatient = patients.find((p) => p.patientId === state.patientId);
 
-  async function handleSubmit(event: React.FormEvent) {
-    event.preventDefault();
+  async function submitQuestion(rawQuestion: string) {
     if (!state.patientId || state.isSubmitting) return;
-    const question = state.draftQuestion.trim();
+    const question = rawQuestion.trim();
     if (!question) return;
 
     dispatch({ type: "submit-start" });
@@ -85,6 +85,11 @@ export function BrainChat() {
       now: () => new Date().toISOString(),
     });
     dispatch({ type: "append-entry", entry });
+  }
+
+  function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    void submitQuestion(state.draftQuestion);
   }
 
   if (!patientsLoaded) {
@@ -153,6 +158,13 @@ export function BrainChat() {
           ))
         )}
       </div>
+
+      {selectedPatient && (
+        <BrainQuickActions
+          disabled={state.isSubmitting}
+          onAsk={(question) => void submitQuestion(question)}
+        />
+      )}
 
       <form className="brain-chat-input-row" onSubmit={handleSubmit}>
         <input

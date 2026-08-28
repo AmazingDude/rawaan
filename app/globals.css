@@ -2047,6 +2047,33 @@ textarea:focus {
   color: var(--color-graphite);
 }
 
+.brain-quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.brain-quick-action-chip {
+  padding: 8px 14px;
+  border-radius: var(--radius-pills);
+  background: var(--color-mint-wash);
+  border: 1px solid transparent;
+  color: var(--color-canopy-green);
+  font-size: var(--text-body-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.brain-quick-action-chip:hover:not(:disabled) {
+  background: var(--color-sage-wash);
+}
+
+.brain-quick-action-chip:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+}
+
 .brain-chat-input-row {
   display: flex;
   gap: 10px;
