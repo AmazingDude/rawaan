@@ -1166,8 +1166,11 @@ textarea:focus {
   color: var(--color-leaf-accent);
 }
 
+/* Coral is reserved for the one primary action per screen (DESIGN.md) and every
+   workspace screen already has a coral primary button, so the decorative Record
+   nav icon uses Deep Teal rather than coral. */
 .sidebar-nav-icon.accent-record {
-  color: var(--color-coral-action);
+  color: var(--color-deep-teal);
 }
 
 .sidebar-nav-icon.accent-clients {
