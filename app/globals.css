@@ -1544,8 +1544,11 @@ textarea:focus {
 
 .wireframe-title {
   margin: 0 0 6px 0;
-  font-size: 28px;
-  font-weight: 600;
+  font-family: var(--font-thestral-neue), Georgia, "Times New Roman", serif;
+  font-size: var(--text-heading);
+  line-height: 1.2;
+  letter-spacing: -0.019em;
+  font-weight: 700;
   color: var(--color-canopy-green);
 }
 
@@ -1973,9 +1976,93 @@ textarea:focus {
 
 .brain-chat-loading,
 .brain-chat-empty {
-  color: var(--color-slate);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  background: var(--color-sky-wash);
+  border-radius: var(--radius-cards);
+  padding: 32px 24px;
+  color: var(--color-graphite);
   font-size: var(--text-body-sm);
   margin: 0;
+}
+
+.brain-chat-empty p {
+  margin: 0;
+  max-width: 46ch;
+}
+
+/* ==========================================================================
+   Personality pass — per-page washes, warm empty states, icon color pass.
+   Uses only existing DESIGN.md tokens; flat surfaces, no shadows/gradients.
+   ========================================================================== */
+
+.empty-state-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--color-paper-white);
+  color: var(--color-deep-teal);
+}
+
+/* Per-page dominant wash applied to the header band only. */
+.page-clients .wireframe-header {
+  background: var(--color-lilac-wash);
+  border-radius: var(--radius-cards);
+  padding: 20px 24px;
+}
+
+.page-ai .wireframe-header {
+  background: var(--color-sky-wash);
+  border-radius: var(--radius-cards);
+  padding: 20px 24px;
+}
+
+.page-learn .wireframe-header {
+  background: var(--color-peach-wash);
+  border-radius: var(--radius-cards);
+  padding: 20px 24px;
+}
+
+.page-record-band {
+  background: var(--color-mint-wash);
+  border-radius: var(--radius-cards);
+  padding: 20px 24px;
+}
+
+/* Sessions empty card */
+.sessions-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  padding: 32px 24px;
+}
+
+/* Icon color pass (idle states only; Recording Red stays reserved). */
+.action-card-icon-wrap.is-inperson {
+  background: var(--color-sky-wash);
+  color: var(--color-deep-teal);
+  border: 1px solid var(--color-sky-wash);
+}
+
+.action-card-icon-wrap.is-summary {
+  background: var(--color-lilac-wash);
+  color: var(--color-deep-teal);
+  border: 1px solid var(--color-lilac-wash);
+}
+
+/* Completed/historical session badges recede to neutral slate. */
+.session-item-icon {
+  background: #f1f5f9;
+  color: var(--color-slate);
+  border: 1px solid var(--color-frost-gray);
 }
 
 .patient-context-header {

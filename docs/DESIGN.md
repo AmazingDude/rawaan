@@ -34,9 +34,9 @@ Optional: the abstract green/blue motion-blur imagery may be used as a subtle, l
 
 **UI/body font:** Onest [1] everywhere in the application and across landing-page navigation, eyebrow, body, CTA, workflow, labels, and controls. It is self-hosted from the official Google Fonts source under the SIL Open Font License (OFL).
 
-**Display Serif (landing hero only):** Thestral Neue [2] is reserved for the single largest headline, **“Notes that stay with the patient.”**, on the root landing hero. It is self-hosted under the OFL. No other landing copy, screen, field, button, status, or card may use it.
+**Display Serif (landing hero + workspace page titles):** Thestral Neue [2] is reserved for the single largest headline, **“Notes that stay with the patient.”**, on the root landing hero, **and** for each workspace page's own H1 title (Record, Clients, Rawaan AI, Learn Rawaan) at the `heading`/`heading-lg` size tokens — page titles, not marketing headlines, so never at `display` size. *(2026-08-29 deliberate rule change: previously "landing hero only"; extended so each workspace "room" gets one editorial moment.)* It is self-hosted under the OFL. No other landing copy, screen, field, button, status, or card may use it.
 
-**Weights used:** Onest 400 (body), 500 (UI/labels), 600 (headings/buttons), and 700 (emphasis); Thestral Neue 700 only for the scoped landing hero headline.
+**Weights used:** Onest 400 (body), 500 (UI/labels), 600 (headings/buttons), and 700 (emphasis); Thestral Neue 700 for the landing hero headline and the workspace page titles.
 **Letter spacing:** -0.028em at ≥52px, -0.019em at 32–48px, normal below that.
 
 | Role | Size | Line height | Weight | Token |
@@ -162,10 +162,27 @@ Logo/wordmark left ("RAWAAN · PATIENT CONTEXT ENGINE" in 12px/600 uppercase Can
 `background: #d2f2e3 (Mint Wash); padding: 16px 20px; border-radius: 12px;`
 Keep this — it's doing real work (both product-honesty and hackathon-judging-honesty). Use a flat pastel fill only: no left-side accent bar, shadow, or generic alert treatment.
 
+## Personality — per-page temperature *(2026-08-29)*
+
+Each workspace page reads as a different "room" via a **header band** tinted with one wash (the page body stays neutral/white, per the flat, calm language). Only existing tokens are used; flat surfaces, no shadows/gradients.
+
+| Page | Header band wash | Notes |
+|---|---|---|
+| `/record` | Mint Wash | kept close to prior warm feel |
+| `/clients` | Lilac Wash | |
+| `/rawaan-ai` | Sky Wash | reinforces the Sky Wash answer cards |
+| `/learn-rawaan` | Peach Wash | warm, informational tone |
+
+**Idle icon color pass:** "Record in-person" mic tile = Sky Wash bg + Deep Teal stroke; "Record a summary" waveform tile = Lilac Wash bg + Deep Teal stroke; Rawaan AI nav icon = Deep Teal (the blue token, matching its Sky wash). Clients (Leaf) and Learn (Canopy) nav icons unchanged. Completed/historical session badges = neutral Slate on frost so they recede and live action cards stay the focus.
+
+**Warm empty/loading states:** flat placeholders (Scribe review-before-draft, Rawaan AI empty thread, Clients empty roster, Record empty session list) get a small lucide icon in a white rounded tile plus brief, professional, warmer copy — clinical-but-warm, never cutesy.
+
+**Hard constraints (unchanged):** Recording Red `#e5484d` stays reserved exclusively for the active-recording Stop control + timer dot (never idle icons or washes). Coral stays reserved for exactly one primary CTA per screen. No shadows, no gradients.
+
 ## Do's and Don'ts
 
 ### Do
-- Use Onest for all UI and body roles; use Thestral Neue only for the landing hero headline — do not introduce a third typeface
+- Use Onest for all UI and body roles; use Thestral Neue only for the landing hero headline and the four workspace page titles (see Typography) — do not introduce a third typeface
 - Reserve `#ff643b` coral for exactly one primary action per screen
 - Use the pastel wash rotation for card backgrounds instead of white/gray — mint for neutral/draft, sky for Brain answers, peach for warnings/no-record states, sage for success/approved
 - Keep all radii from the defined scale (8 / 12 / 16 / 20 / 40 / 9999px) — no ad-hoc values

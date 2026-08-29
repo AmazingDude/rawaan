@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpRight, ChevronDown, MoreVertical, X } from "lucide-react";
+import { ArrowUpRight, ChevronDown, Inbox, MoreVertical, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -272,6 +272,16 @@ export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
         </div>
       ) : null}
 
+      {/* Record page header band */}
+      <header className="wireframe-header page-record-band">
+        <div>
+          <h1 className="wireframe-title">Record</h1>
+          <p className="wireframe-subtitle">
+            Capture consultations and turn them into structured, clinician-approved notes.
+          </p>
+        </div>
+      </header>
+
       {/* Recording Option Action Cards */}
       <section className="action-cards-grid" aria-label="Recording options">
         <button
@@ -482,6 +492,17 @@ export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
             </div>
           </div>
         ))}
+        {filteredSessions.length === 0 ? (
+          <div className="sessions-empty">
+            <span className="empty-state-icon" aria-hidden="true">
+              <Inbox size={22} />
+            </span>
+            <p className="roster-empty-title">No sessions yet</p>
+            <p className="roster-empty-body">
+              Record a session above, or load the demo dataset, to see it here.
+            </p>
+          </div>
+        ) : null}
       </section>
 
       {/* In-Person Recording Modal */}
