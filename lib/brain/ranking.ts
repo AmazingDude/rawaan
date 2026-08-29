@@ -40,16 +40,36 @@ function extractExcerpts(note: ApprovedNote, terms: Set<string>): string[] {
   return matches.slice(0, 3);
 }
 
+// A patient's own name appears in nearly every sentence of a realistic
+// transcript, so it acts as a near-universal lexical match and lets short
+// absent-fact questions cross the relevance threshold on a name-only match.
+// Exclude name/ID tokens from scoring so a note must match on clinical content.
+function nameTokens(note: ApprovedNote): Set<string> {
+  return new Set([
+    ...tokenize(note.patient_display_name),
+    ...tokenize(note.patient_id),
+  ]);
+}
+
 export function rankNotes(
   notes: ApprovedNote[],
   question: string,
 ): EvidenceNote[] {
-  const questionTerms = new Set(tokenize(question));
-  if (questionTerms.size === 0) return [];
+  const allQuestionTerms = tokenize(question);
+  if (allQuestionTerms.length === 0) return [];
 
   return notes
     .map((note) => {
-      const tokens = tokenize(noteText(note));
+      const excluded = nameTokens(note);
+      const questionTerms = new Set(
+        allQuestionTerms.filter((term) => !excluded.has(term)),
+      );
+      if (questionTerms.size === 0) {
+        return { note, score: 0, termsMatched: new Set<string>() };
+      }
+      const tokens = tokenize(noteText(note)).filter(
+        (token) => !excluded.has(token),
+      );
       if (tokens.length === 0) {
         return { note, score: 0, termsMatched: new Set<string>() };
       }

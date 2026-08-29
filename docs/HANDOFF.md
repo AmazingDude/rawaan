@@ -284,3 +284,17 @@ Implemented the 3-step post-recording workflow:
 ## Next action
 
 All changes are validated with `typecheck` (`tsc --noEmit`), `lint` (`eslint .`), `test` (`vitest run` - 55 passed), and `build` (`next build`). Ready for PR review.
+
+## Seed-data checkpoint
+
+`feat/seed-data` adds `data/seed/demo-patients.json`: eight strictly fictional approved notes for three patients (two visits for `patient-amina-001`, three for `patient-hassan-002`, three for `patient-sara-003`). `data/seed/demo-questions.md` identifies deliberately absent facts and the expected supported, no-record, general-medical-refusal, and treatment-refusal rehearsal outcomes. `data/seed/load-demo-seed.mjs` is the only explicit loader; `npm run seed:demo` copies the JSON fixture to the live store on demand and `npm run seed:reset` restores it to exactly `[]`. Product code does not import the seed data.
+
+The loader was exercised successfully, wrote eight notes, and reset cleanly. `tests/demo-seed.test.ts` validates the exact approved-note schema plus the three-patient/two-to-three-note distribution. Rebased onto current `main` and merged; full validation passed. Keep the live store empty except during an intentional demo rehearsal, then immediately run `npm run seed:reset`.
+
+## Ranker name-exclusion fix checkpoint
+
+The 2026-08-29 seeded live rehearsal exposed a grounding defect: a patient's own name (dense in realistic transcripts) counted as a lexical relevance match, so short absent-fact questions ("What was Amina's blood pressure?", "What was Hassan's weight?") crossed the 0.25 threshold on a name-only match and returned a false `supported` with a citation to a note lacking the fact. Approved plan addendum: `plans/2026-08-29-ranker-name-exclusion-fix.md`. Implemented as Option B-on-A on `feat/seed-data` (separate follow-up commit): `lib/brain/ranking.ts` now excludes per-note `patient_display_name` + `patient_id` tokens from both the note token set and the question term set, and a note whose remaining question-term set is empty yields no evidence.
+
+RED first: `tests/brain-ranking.test.ts` gained a name-dense block (short name+unrecorded-vital → no evidence; name+recorded-content-term → still evidence, no over-exclusion; name-only → no evidence) and `tests/brain-adversarial.test.ts` gained an end-to-end §8.6-style row (name-dense note + "What was Ada's weight?" → `no_supporting_record` with an exploding provider that must never fire). All 3 were failing before the fix and pass after; the existing cross-patient isolation case still holds.
+
+Post-fix live rehearsal (all 12 `demo-questions.md` questions, `npm run seed:demo`, production build): **ALL 12 MATCH** — the 2 previously-failing absent-vital questions now return `no_supporting_record`, the 3 supported answers cite the exact documented dates, and the 6 refusals are unchanged. `npm run seed:reset` run afterwards. Full loop: typecheck, lint, test (16 files, 95 tests), build all pass.
