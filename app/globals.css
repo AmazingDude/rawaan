@@ -1050,7 +1050,7 @@ textarea:focus {
 .workspace-shell {
   display: flex;
   min-height: 100vh;
-  background: #fcfcfd;
+  background: #f6f7f8;
   padding-top: env(safe-area-inset-top);
 }
 
@@ -1164,6 +1164,25 @@ textarea:focus {
 
 .sidebar-nav-icon.is-active {
   color: var(--color-leaf-accent);
+}
+
+/* Coral is reserved for the one primary action per screen (DESIGN.md) and every
+   workspace screen already has a coral primary button, so the decorative Record
+   nav icon uses Deep Teal rather than coral. */
+.sidebar-nav-icon.accent-record {
+  color: var(--color-deep-teal);
+}
+
+.sidebar-nav-icon.accent-clients {
+  color: var(--color-leaf-accent);
+}
+
+.sidebar-nav-icon.accent-ai {
+  color: var(--color-deep-teal);
+}
+
+.sidebar-nav-icon.accent-learn {
+  color: var(--color-canopy-green);
 }
 
 .workspace-content-pane {
@@ -4072,6 +4091,47 @@ textarea:focus {
   .workspace-ai-overview-panel {
     height: 500px;
   }
+}
+
+/* Icon alignment + accents (lucide SVGs replacing emoji) */
+.plant-sprout-icon,
+.mic-icon,
+.pill-icon,
+.badge-file-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.plant-sprout-icon {
+  color: var(--color-leaf-accent);
+}
+
+.mic-icon {
+  color: var(--color-recording-red);
+}
+
+.save-success-tag,
+.client-meta-line,
+.option-name,
+.pill-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.icon-action-btn,
+.tool-btn,
+.btn-copy-inline,
+.btn-dismiss-banner,
+.btn-unselect-client,
+.btn-chat-close,
+.modal-icon-btn,
+.btn-close-modal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 

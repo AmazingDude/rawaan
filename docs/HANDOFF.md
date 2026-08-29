@@ -298,3 +298,14 @@ The 2026-08-29 seeded live rehearsal exposed a grounding defect: a patient's own
 RED first: `tests/brain-ranking.test.ts` gained a name-dense block (short name+unrecorded-vital → no evidence; name+recorded-content-term → still evidence, no over-exclusion; name-only → no evidence) and `tests/brain-adversarial.test.ts` gained an end-to-end §8.6-style row (name-dense note + "What was Ada's weight?" → `no_supporting_record` with an exploding provider that must never fire). All 3 were failing before the fix and pass after; the existing cross-patient isolation case still holds.
 
 Post-fix live rehearsal (all 12 `demo-questions.md` questions, `npm run seed:demo`, production build): **ALL 12 MATCH** — the 2 previously-failing absent-vital questions now return `no_supporting_record`, the 3 supported answers cite the exact documented dates, and the 6 refusals are unchanged. `npm run seed:reset` run afterwards. Full loop: typecheck, lint, test (16 files, 95 tests), build all pass.
+
+## UI polish round 2 (post-merge, on feat/brain-chat-ui)
+
+Feedback-driven polish applied after the record-workspace merge:
+
+- **Emoji → lucide icons:** replaced every remaining emoji glyph in `session-workspace-view.tsx`, `record-session-modal.tsx`, `assign-session-modal.tsx`, `review-approval-modal.tsx`, and `scribe-dashboard.tsx` (🌱 ✕ 🎙️  📋 📥 🇬🇧 🔒 ✉️ 📱 📄 ️ 📎 ✓ ↑) with lucide-react icons, preserving classNames and adding an alignment/accent CSS pass. The recording mic uses the Recording Red accent; the sprout uses Leaf.
+- **Sidebar icon color variety:** each nav icon now has a design-token accent (Record = Deep Teal, Clients = Leaf, Rawaan AI = Deep Teal, Learn = Canopy Green) instead of all-gray/all-green. Record was originally Coral but was switched to Deep Teal on review: DESIGN.md reserves coral for the one primary action per screen, and every workspace screen already has a coral primary button, so a coral nav icon would put two coral elements on one screen.
+- **Focus ring:** sidebar links blur on pointer click (`event.detail > 0`) so the transient click ring no longer lingers; keyboard `:focus-visible` ring is retained. Why JS blur rather than CSS `:focus-visible` alone: the CSS-only approach (`a:focus:not(:focus-visible){outline:none}` + `a:focus-visible{…}`) was already deployed in the prior review-fix commit, yet the transient click ring was still observed on a real device, so the blur is the reliable guarantee. The tradeoff (programmatic blur after a pointer click) was reviewed and accepted; keyboard focus indication is unaffected.
+- **Canvas:** workspace shell background darkened slightly (`#fcfcfd` → `#f6f7f8`) to reduce glare, matching the reference screenshots.
+
+Validation: `typecheck`, `lint`, `test` (15 files, 89 tests), `build` all passed; production-browser capture confirmed colored sidebar icons, darker canvas, and lucide icons in the record dashboard. `inspo/` remains an untracked reference asset.

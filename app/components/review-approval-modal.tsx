@@ -1,5 +1,6 @@
 "use client";
 
+import { X } from "lucide-react";
 import { useState } from "react";
 
 import { approveDraftAction } from "@/app/actions";
@@ -94,7 +95,7 @@ export function ReviewApprovalModal({
               {isApproved ? "Approved · Saved to Record" : "Draft · Review Required"}
             </span>
             <button aria-label="Close review" className="modal-icon-btn" onClick={onClose} type="button">
-              ✕
+              <X size={16} />
             </button>
           </div>
         </header>

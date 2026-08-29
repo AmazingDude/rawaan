@@ -1,5 +1,6 @@
 "use client";
 
+import { Sprout, X } from "lucide-react";
 import { useState } from "react";
 
 import { createClientAction, type ClientRecord } from "@/app/actions";
@@ -218,7 +219,9 @@ export function AssignSessionModal({
             {/* Modal Header */}
             <header className="modal-header-simple">
               <div className="header-lockup">
-                <span className="plant-sprout-icon" aria-hidden="true">🌱</span>
+                <span className="plant-sprout-icon" aria-hidden="true">
+                  <Sprout size={18} />
+                </span>
                 <h2>Assign Session</h2>
               </div>
               <button
@@ -227,7 +230,7 @@ export function AssignSessionModal({
                 onClick={onClose}
                 type="button"
               >
-                ✕
+                <X size={16} />
               </button>
             </header>
 

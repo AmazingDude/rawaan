@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpRight, ChevronDown, MoreVertical } from "lucide-react";
+import { ArrowUpRight, ChevronDown, MoreVertical, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -267,7 +267,7 @@ export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
             onClick={() => setNotification(null)}
             type="button"
           >
-            ✕
+            <X size={14} />
           </button>
         </div>
       ) : null}

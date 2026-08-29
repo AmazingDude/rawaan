@@ -1,5 +1,6 @@
 "use client";
 
+import { Mic, Sprout, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -323,7 +324,9 @@ export function RecordSessionModal({
         {/* Header matching Image 1 */}
         <header className="modal-header">
           <div className="modal-title-lockup">
-            <span className="plant-sprout-icon" aria-hidden="true">🌱</span>
+            <span className="plant-sprout-icon" aria-hidden="true">
+              <Sprout size={18} />
+            </span>
             <h2>Record an In-Person Session</h2>
           </div>
           <div className="modal-window-actions">
@@ -345,7 +348,7 @@ export function RecordSessionModal({
               onClick={onClose}
               type="button"
             >
-              ✕
+              <X size={16} />
             </button>
           </div>
         </header>
@@ -436,7 +439,7 @@ export function RecordSessionModal({
                         }}
                         type="button"
                       >
-                        ✕
+                        <X size={14} />
                       </button>
                     ) : (
                       <span className="dropdown-caret">⌄</span>
@@ -461,7 +464,9 @@ export function RecordSessionModal({
                             className="client-option-item is-clear-option"
                             onClick={() => handleSelectClient(null)}
                           >
-                            <span className="option-name">✕ Clear selection (No client)</span>
+                            <span className="option-name">
+                              <X size={14} /> Clear selection (No client)
+                            </span>
                           </li>
                         ) : null}
                         {filteredClients.map((client) => (
@@ -526,7 +531,9 @@ export function RecordSessionModal({
                 <label className="setup-label">Setup Session</label>
                 <p className="setup-sublabel">Select the mic you&apos;d like to use for the session.</p>
                 <div className="mic-select-wrapper">
-                  <span className="mic-icon" aria-hidden="true">🎙️</span>
+                  <span className="mic-icon" aria-hidden="true">
+                    <Mic size={16} />
+                  </span>
                   <select
                     className="mic-dropdown-select"
                     onChange={(e) => setSelectedDeviceId(e.target.value)}

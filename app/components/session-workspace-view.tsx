@@ -1,5 +1,22 @@
 "use client";
 
+import {
+  ArrowUp,
+  Check,
+  Clipboard,
+  Download,
+  EyeOff,
+  FileText,
+  Languages,
+  Lock,
+  Mail,
+  Mic,
+  Paperclip,
+  Smartphone,
+  Sprout,
+  X,
+  Zap,
+} from "lucide-react";
 import { useState } from "react";
 
 import { modifyNoteAction } from "@/app/actions";
@@ -258,7 +275,7 @@ export function SessionWorkspaceView({
                 title="Polish note"
                 type="button"
               >
-                ⚡
+                <Zap size={16} />
               </button>
               {/* Copy Note */}
               <button
@@ -268,7 +285,7 @@ export function SessionWorkspaceView({
                 title="Copy entire note"
                 type="button"
               >
-                {isCopied ? "✓" : "📋"}
+                {isCopied ? <Check size={16} /> : <Clipboard size={16} />}
               </button>
               {/* Export / Download */}
               <button
@@ -278,7 +295,7 @@ export function SessionWorkspaceView({
                 title="Export"
                 type="button"
               >
-                📥
+                <Download size={16} />
               </button>
               {/* Flag / Language */}
               <button
@@ -287,7 +304,7 @@ export function SessionWorkspaceView({
                 title="English (US/UK)"
                 type="button"
               >
-                🇬🇧
+                <Languages size={16} />
               </button>
               {/* Lock note */}
               <button
@@ -296,7 +313,7 @@ export function SessionWorkspaceView({
                 title="Protected medical record"
                 type="button"
               >
-                🔒
+                <Lock size={16} />
               </button>
               {/* Share button */}
               <button
@@ -306,7 +323,9 @@ export function SessionWorkspaceView({
                 Share ⌄
               </button>
               {/* Sprout icon */}
-              <span className="toolbar-sprout" aria-hidden="true">🌱</span>
+              <span className="toolbar-sprout" aria-hidden="true">
+                <Sprout size={16} />
+              </span>
             </div>
           </div>
 
@@ -327,7 +346,7 @@ export function SessionWorkspaceView({
                     }}
                     type="button"
                   >
-                    📋
+                    <Clipboard size={14} />
                   </button>
                 </div>
                 <p className="summary-paragraph-text">{noteSummary}</p>
@@ -372,7 +391,9 @@ export function SessionWorkspaceView({
               {/* Approval Bar */}
               <div className="doc-approval-footer-bar">
                 {saveSuccess ? (
-                  <span className="save-success-tag">✓ Approved & Saved to Patient Record</span>
+                  <span className="save-success-tag">
+                    <Check size={14} /> Approved & Saved to Patient Record
+                  </span>
                 ) : null}
                 <button
                   className="primary-button btn-approve-doc"
@@ -394,9 +415,15 @@ export function SessionWorkspaceView({
                 <div className="client-profile-info">
                   <h2>{currentNote.patient_display_name}</h2>
                   <p className="client-meta-line">Client ID: {currentNote.patient_id}</p>
-                  {currentNote.email ? <p className="client-meta-line">✉️ {currentNote.email}</p> : null}
+                  {currentNote.email ? (
+                    <p className="client-meta-line">
+                      <Mail size={14} /> {currentNote.email}
+                    </p>
+                  ) : null}
                   {currentNote.mobile_number ? (
-                    <p className="client-meta-line">📱 {currentNote.mobile_number}</p>
+                    <p className="client-meta-line">
+                      <Smartphone size={14} /> {currentNote.mobile_number}
+                    </p>
                   ) : null}
                 </div>
               </div>
@@ -491,7 +518,7 @@ export function SessionWorkspaceView({
               onClick={() => {}}
               type="button"
             >
-              ✕
+              <X size={16} />
             </button>
           </header>
 
@@ -502,7 +529,9 @@ export function SessionWorkspaceView({
               onClick={() => handleSendPrompt("Change to paragraph format")}
               type="button"
             >
-              <span className="pill-icon">📄</span>
+              <span className="pill-icon">
+                <FileText size={14} />
+              </span>
               <span>Change to paragraph format</span>
             </button>
 
@@ -511,7 +540,9 @@ export function SessionWorkspaceView({
               onClick={() => handleSendPrompt("Remove all names")}
               type="button"
             >
-              <span className="pill-icon">🕶️</span>
+              <span className="pill-icon">
+                <EyeOff size={14} />
+              </span>
               <span>Remove all names</span>
             </button>
 
@@ -520,7 +551,9 @@ export function SessionWorkspaceView({
               onClick={() => handleSendPrompt("Summarize key clinical points")}
               type="button"
             >
-              <span className="pill-icon">⚡</span>
+              <span className="pill-icon">
+                <Zap size={14} />
+              </span>
               <span>Summarize key clinical points</span>
             </button>
           </div>
@@ -555,7 +588,9 @@ export function SessionWorkspaceView({
 
             {/* Note Loaded Context Badge */}
             <div className="loaded-context-badge">
-              <span className="badge-file-icon">📄</span>
+              <span className="badge-file-icon">
+                <FileText size={14} />
+              </span>
               <span className="badge-text">
                 {currentNote.patient_display_name} - Note ({noteVariant})
               </span>
@@ -585,7 +620,7 @@ export function SessionWorkspaceView({
                     title="Attach document"
                     type="button"
                   >
-                    📎
+                    <Paperclip size={15} />
                   </button>
                   <button
                     aria-label="Add field"
@@ -600,7 +635,7 @@ export function SessionWorkspaceView({
                     onClick={() => setIncludeTreatmentPlanToggle((p) => !p)}
                     type="button"
                   >
-                    📋 Treatment Plan
+                    <Clipboard size={14} /> Treatment Plan
                   </button>
                 </div>
 
@@ -611,7 +646,7 @@ export function SessionWorkspaceView({
                     title="Dictate modification prompt"
                     type="button"
                   >
-                    🎙️
+                    <Mic size={15} />
                   </button>
                   <button
                     aria-label="Send message"
@@ -620,7 +655,7 @@ export function SessionWorkspaceView({
                     onClick={() => void handleSendPrompt()}
                     type="button"
                   >
-                    ↑
+                    <ArrowUp size={16} />
                   </button>
                 </div>
               </div>
