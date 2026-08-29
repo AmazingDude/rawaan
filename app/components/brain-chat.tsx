@@ -1,5 +1,6 @@
 "use client";
 
+import { MessageSquare } from "lucide-react";
 import { useEffect, useReducer, useState } from "react";
 
 import {
@@ -162,11 +163,16 @@ export function BrainChat() {
 
       <div className="brain-chat-thread" aria-live="polite">
         {state.entries.length === 0 ? (
-          <p className="brain-chat-empty">
-            {selectedPatient
-              ? "Ask a question about this patient's documented history."
-              : "Select a patient to start a grounded conversation."}
-          </p>
+          <div className="brain-chat-empty">
+            <span className="empty-state-icon" aria-hidden="true">
+              <MessageSquare size={22} />
+            </span>
+            <p>
+              {selectedPatient
+                ? "No questions yet. Ask about symptoms, plans, or follow-ups from this patient's documented visits."
+                : "Choose a patient above to start a grounded conversation — every answer cites approved notes only."}
+            </p>
+          </div>
         ) : (
           state.entries.map((entry, index) => (
             <ChatEntryCard entry={entry} key={`${entry.timestamp}-${index}`} />

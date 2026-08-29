@@ -2,7 +2,7 @@ import { BrainChat } from "@/app/components/brain-chat";
 
 export default function RawaanAiPage() {
   return (
-    <div className="wireframe-page">
+    <div className="wireframe-page page-ai">
       <header className="wireframe-header">
         <div>
           <h1 className="wireframe-title">Rawaan AI · Patient Context Brain</h1>

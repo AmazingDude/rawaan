@@ -50,7 +50,7 @@ const guideModules = [
 
 export default function LearnRawaanPage() {
   return (
-    <div className="wireframe-page">
+    <div className="wireframe-page page-learn">
       <header className="wireframe-header">
         <div>
           <div className="wireframe-badge">LEARNING CENTER</div>

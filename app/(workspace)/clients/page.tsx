@@ -1,4 +1,4 @@
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, Users } from "lucide-react";
 import Link from "next/link";
 
 import { listBrainPatientsAction } from "@/app/actions";
@@ -12,7 +12,7 @@ export default async function ClientsPage() {
   const patients = await listBrainPatientsAction();
 
   return (
-    <div className="wireframe-page">
+    <div className="wireframe-page page-clients">
       <header className="wireframe-header">
         <div>
           <h1 className="wireframe-title">Clients Directory</h1>
@@ -29,6 +29,9 @@ export default async function ClientsPage() {
 
       {patients.length === 0 ? (
         <div className="roster-empty-state">
+          <span className="empty-state-icon" aria-hidden="true">
+            <Users size={22} />
+          </span>
           <p className="roster-empty-title">No patients yet</p>
           <p className="roster-empty-body">
             Approve a consultation note on the{" "}
