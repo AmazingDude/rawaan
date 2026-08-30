@@ -2,7 +2,10 @@ import { z } from "zod";
 
 const GROQ_CHAT_COMPLETIONS_URL =
   "https://api.groq.com/openai/v1/chat/completions";
-const DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b";
+// Verified against the project's Groq account: qwen/qwen3.8-27b returns clean
+// JSON content with no reasoning overhead. The older gpt-oss models emit
+// reasoning tokens that eat the max_tokens budget and truncate the JSON.
+const DEFAULT_GROQ_MODEL = "qwen/qwen3.8-27b";
 const REQUEST_TIMEOUT_MS = 30_000;
 
 const groqChatCompletionSchema = z.object({

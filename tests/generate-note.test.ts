@@ -43,4 +43,56 @@ Uncertainties: Duration of each headache episode was not clarified`,
     expect(result.draft.medications_mentioned).toEqual([]);
     expect(result.draft.uncertainties).toEqual([]);
   });
+
+  it("never dumps an unstructured non-English transcript into clinical fields", async () => {
+    const transcript = "मुझे सीने में दर्द है जो तीन हफ्तों से हो रहा है।";
+    const result = await generateNoteDraft({
+      patient_id: "patient-omar-002",
+      patient_display_name: "Omar Ali",
+      consultation_date: "2026-08-22",
+      transcript,
+    });
+
+    expect(result.source).toBe("local-demo");
+    expect(result.draft.history).toEqual([]);
+    expect(result.draft.chief_complaint).toBe("");
+    // Provenance is preserved verbatim in the transcript field.
+    expect(result.draft.raw_transcript).toBe(transcript);
+    // The summary must not claim the content was documented.
+    expect(result.draft.summary).toContain("structuring was unavailable");
+  });
+
+  it("parses provider JSON even when it includes a reasoning block and fences", async () => {
+    const result = await generateNoteDraft(
+      {
+        patient_id: "patient-amina-001",
+        patient_display_name: "Amina Khan",
+        consultation_date: "2026-08-22",
+        transcript: "मुझे सिर में दर्द है।",
+      },
+      {
+        async complete() {
+          return `<think>Analyzing the transcript...</think>
+\`\`\`json
+{
+  "summary": "Headache consultation.",
+  "chief_complaint": "Persistent headache",
+  "history": ["Headache for three days"],
+  "symptoms": ["Headache"],
+  "assessment_discussed": ["Discussed triggers"],
+  "plan_discussed": ["Keep a symptom diary"],
+  "medications_mentioned": [],
+  "follow_up": "Return in two weeks",
+  "uncertainties": []
+}
+\`\`\``;
+        },
+      },
+    );
+
+    expect(result.source).toBe("groq");
+    expect(result.draft.chief_complaint).toBe("Persistent headache");
+    expect(result.draft.history).toEqual(["Headache for three days"]);
+    expect(result.draft.plan_discussed).toEqual(["Keep a symptom diary"]);
+  });
 });

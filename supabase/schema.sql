@@ -115,3 +115,17 @@ values
     '2026-08-27T18:20:00.000Z'
   )
 on conflict (id) do nothing;
+
+-- 5. Migration: bring an existing deployment in sync with this schema
+-- If the tables were created before these columns existed, run this block.
+-- Idempotent: safe to run repeatedly.
+
+alter table if exists public.patients
+  add column if not exists first_name text default '',
+  add column if not exists last_name text default '',
+  add column if not exists email text default '',
+  add column if not exists mobile_number text default '';
+
+alter table if exists public.notes
+  add column if not exists summary text default '';
+

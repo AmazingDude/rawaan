@@ -4,6 +4,7 @@ import { Mic, Sprout, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import {
+  createClientAction,
   getPatientInsightsAction,
   listClientsAction,
   type ClientRecord,
@@ -57,6 +58,8 @@ export function RecordSessionModal({
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
+  const recordingStreamRef = useRef<MediaStream | null>(null);
+  const isCaptureAbandonedRef = useRef(false);
   const timerIntervalRef = useRef<number | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
@@ -130,9 +133,40 @@ export function RecordSessionModal({
   useEffect(() => {
     return () => {
       stopMicTest();
-      stopRecordingTimer();
+      stopCapture();
     };
   }, []);
+
+  // Releases the mic and abandons any in-flight recording/transcription, so a
+  // capture that is torn down mid-flight can never report back into the UI.
+  function stopCapture() {
+    isCaptureAbandonedRef.current = true;
+
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+
+    const recorder = mediaRecorderRef.current;
+    if (recorder && recorder.state !== "inactive") {
+      recorder.stop();
+    }
+    mediaRecorderRef.current = null;
+
+    if (recordingStreamRef.current) {
+      recordingStreamRef.current.getTracks().forEach((t) => t.stop());
+      recordingStreamRef.current = null;
+    }
+
+    recordedChunksRef.current = [];
+  }
+
+  function handleCancelRecording() {
+    stopCapture();
+    setElapsedSeconds(0);
+    setPhase("setup");
+    setStatusMessage(null);
+  }
 
   function stopMicTest() {
     if (animFrameRef.current) {
@@ -205,20 +239,24 @@ export function RecordSessionModal({
     }
   }
 
-  function handleCreateClientSubmit(e: React.FormEvent) {
+  async function handleCreateClientSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!newClientName.trim()) return;
 
-    const patientId = `patient-${newClientName.toLowerCase().replace(/[^a-z0-9]/g, "-")}-${Date.now().toString().slice(-4)}`;
-    const newRecord: ClientRecord = {
-      displayName: newClientName.trim(),
-      lastSessionDate: null,
-      noteCount: 0,
-      patientId,
-    };
+    // Persist through the server action so the client is stored
+    // (Supabase + local fallback) instead of living only in this modal.
+    const result = await createClientAction({
+      firstName: newClientName.trim(),
+      lastName: "",
+    });
 
-    setClients((prev) => [newRecord, ...prev]);
-    handleSelectClient(newRecord);
+    if (!result.ok) {
+      setStatusMessage(result.message);
+      return;
+    }
+
+    setClients((prev) => [result.client, ...prev]);
+    handleSelectClient(result.client);
     setNewClientName("");
     setIsCreatingClient(false);
   }
@@ -249,6 +287,7 @@ export function RecordSessionModal({
     stopMicTest();
     setStatusMessage(null);
     recordedChunksRef.current = [];
+    isCaptureAbandonedRef.current = false;
 
     try {
       const constraints: MediaStreamConstraints = {
@@ -258,6 +297,7 @@ export function RecordSessionModal({
       };
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      recordingStreamRef.current = stream;
       const recorder = new MediaRecorder(stream);
       mediaRecorderRef.current = recorder;
 
@@ -269,6 +309,10 @@ export function RecordSessionModal({
 
       recorder.onstop = () => {
         stream.getTracks().forEach((t) => t.stop());
+        if (isCaptureAbandonedRef.current) {
+          recordedChunksRef.current = [];
+          return;
+        }
         const audioBlob = new Blob(recordedChunksRef.current, { type: "audio/webm" });
         const audioFile = new File([audioBlob], "consultation-recording.webm", { type: "audio/webm" });
         void processRecording(audioFile);
@@ -293,6 +337,7 @@ export function RecordSessionModal({
   async function processRecording(file: File) {
     try {
       const result = await requestTranscription(file);
+      if (isCaptureAbandonedRef.current) return;
       if (result.ok && result.transcript) {
         onComplete({
           consultationDate: new Date().toISOString().slice(0, 10),
@@ -305,6 +350,7 @@ export function RecordSessionModal({
         setPhase("setup");
       }
     } catch {
+      if (isCaptureAbandonedRef.current) return;
       setStatusMessage("Transcription service error. Please try again.");
       setPhase("setup");
     }
@@ -389,11 +435,7 @@ export function RecordSessionModal({
               </button>
               <button
                 className="ghost-button"
-                onClick={() => {
-                  stopRecordingTimer();
-                  if (mediaRecorderRef.current) mediaRecorderRef.current.stop();
-                  setPhase("setup");
-                }}
+                onClick={handleCancelRecording}
                 type="button"
               >
                 Cancel

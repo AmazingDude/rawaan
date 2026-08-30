@@ -17,7 +17,7 @@ describe("Groq Brain completion provider", () => {
     );
   });
 
-  it("uses the approved GPT-OSS default when no model override is configured", async () => {
+  it("uses the verified JSON-safe default when no model override is configured", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({ choices: [{ message: { content: "grounded answer" } }] }),
@@ -38,7 +38,7 @@ describe("Groq Brain completion provider", () => {
       "Bearer test-key",
     );
     expect(JSON.parse(init.body as string)).toMatchObject({
-      model: "openai/gpt-oss-120b",
+      model: "qwen/qwen3.8-27b",
       max_tokens: 1024,
       temperature: 0,
       stream: false,
@@ -49,7 +49,7 @@ describe("Groq Brain completion provider", () => {
     });
   });
 
-  it("accepts an explicit model override for the documented fallback candidate", async () => {
+  it("accepts an explicit model override", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({ choices: [{ message: { content: "fallback answer" } }] }),
@@ -60,14 +60,14 @@ describe("Groq Brain completion provider", () => {
 
     const provider = createLlmProviderFromEnv({
       GROQ_API_KEY: "test-key",
-      LLM_MODEL: "llama-3.3-70b-versatile",
+      LLM_MODEL: "qwen/qwen3.6-27b",
     });
 
     await provider.complete({ system: "system instruction", user: "evidence" });
 
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(JSON.parse(init.body as string)).toMatchObject({
-      model: "llama-3.3-70b-versatile",
+      model: "qwen/qwen3.6-27b",
     });
   });
 

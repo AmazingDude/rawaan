@@ -13,3 +13,6 @@ out/
 .DS_Store
 *.log
 *.tsbuildinfo
+
+# local patient fallback store (per-machine runtime data)
+data/patients.json
