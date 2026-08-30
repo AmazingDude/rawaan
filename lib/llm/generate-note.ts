@@ -70,6 +70,30 @@ function listFromValue(value: string | undefined): string[] {
     .filter(Boolean);
 }
 
+function containsNonLatinText(value: string): boolean {
+  return /[^\x00-\x7F]/.test(value);
+}
+
+/**
+ * Extracts the JSON object from an LLM response, tolerating reasoning blocks
+ * (`<think>…</think>`), markdown fences, and surrounding prose.
+ */
+function extractJsonObject(raw: string): string {
+  let cleaned = raw.replace(/<think>[\s\S]*?<\/think>/gi, "");
+  cleaned = cleaned
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim();
+
+  const firstBrace = cleaned.indexOf("{");
+  const lastBrace = cleaned.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    cleaned = cleaned.slice(firstBrace, lastBrace + 1);
+  }
+
+  return cleaned;
+}
+
 function createLocalDemoDraft(input: GenerateNoteInput): NoteDraft {
   const transcript = input.transcript.trim();
   const lines = transcript.split(/\r?\n/).map((line) => line.trim());
@@ -82,6 +106,10 @@ function createLocalDemoDraft(input: GenerateNoteInput): NoteDraft {
   const hasStructuredLabels = Object.values(values).some(
     (value) => value !== undefined,
   );
+  // An unstructured non-English transcript must never be dumped verbatim into
+  // the clinical fields; the raw transcript stays in raw_transcript instead.
+  const isUnstructuredForeignTranscript =
+    !hasStructuredLabels && containsNonLatinText(transcript);
 
   return noteDraftSchema.parse({
     patient_id: input.patient_id,
@@ -94,10 +122,14 @@ function createLocalDemoDraft(input: GenerateNoteInput): NoteDraft {
     chief_complaint: values.chief_complaint ?? "",
     summary: hasStructuredLabels
       ? `Consultation encounter with ${input.patient_display_name} regarding ${values.chief_complaint || "clinical evaluation"}.`
-      : `Clinical encounter with ${input.patient_display_name}. Key discussions and recommendations documented from consultation recording.`,
+      : isUnstructuredForeignTranscript
+        ? `Clinical encounter with ${input.patient_display_name}. Automatic note structuring was unavailable; review the transcript for the verbatim record.`
+        : `Clinical encounter with ${input.patient_display_name}. Key discussions and recommendations documented from consultation recording.`,
     history: hasStructuredLabels
       ? listFromValue(values.history)
-      : [transcript],
+      : isUnstructuredForeignTranscript
+        ? []
+        : [transcript],
     symptoms: listFromValue(values.symptoms),
     assessment_discussed: listFromValue(values.assessment_discussed),
     plan_discussed: listFromValue(values.plan_discussed),
@@ -128,12 +160,7 @@ export async function generateNoteDraft(
         user: userPrompt,
       });
 
-      const cleanJson = rawResponse
-        .replace(/^```(?:json)?\s*/i, "")
-        .replace(/\s*```$/i, "")
-        .trim();
-
-      const parsedJson = JSON.parse(cleanJson);
+      const parsedJson = JSON.parse(extractJsonObject(rawResponse));
 
       const draft = noteDraftSchema.parse({
         patient_id: input.patient_id,
@@ -208,12 +235,7 @@ export async function modifyNoteWithAi(
         user: userPrompt,
       });
 
-      const cleanJson = rawResponse
-        .replace(/^```(?:json)?\s*/i, "")
-        .replace(/\s*```$/i, "")
-        .trim();
-
-      const parsed = JSON.parse(cleanJson);
+      const parsed = JSON.parse(extractJsonObject(rawResponse));
       const updated = parsed.updated_note || {};
 
       const newDraft = noteDraftSchema.parse({

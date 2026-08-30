@@ -505,30 +505,35 @@ export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
         ) : null}
       </section>
 
-      {/* In-Person Recording Modal */}
-      <RecordSessionModal
-        initialClients={clients}
-        isOpen={isRecordModalOpen}
-        onClose={() => setIsRecordModalOpen(false)}
-        onComplete={handleRecordingComplete}
-        requestTranscription={requestTranscription}
-      />
+      {/* In-Person Recording Modal — mounted only while open so every session
+          starts from a clean setup state instead of a stale phase. */}
+      {isRecordModalOpen ? (
+        <RecordSessionModal
+          initialClients={clients}
+          isOpen
+          onClose={() => setIsRecordModalOpen(false)}
+          onComplete={handleRecordingComplete}
+          requestTranscription={requestTranscription}
+        />
+      ) : null}
 
       {/* Step 1 & 2: Assign Session & Create New Client Modal (Pictures 1 & 2) */}
-      <AssignSessionModal
-        clients={clients}
-        isOpen={isAssignModalOpen}
-        onAssign={handleAssignClient}
-        onClose={() => {
-          setIsAssignModalOpen(false);
-          setPendingRecording(null);
-        }}
-        onDelete={() => {
-          setIsAssignModalOpen(false);
-          setPendingRecording(null);
-          setNotification("Recording deleted.");
-        }}
-      />
+      {isAssignModalOpen ? (
+        <AssignSessionModal
+          clients={clients}
+          isOpen
+          onAssign={handleAssignClient}
+          onClose={() => {
+            setIsAssignModalOpen(false);
+            setPendingRecording(null);
+          }}
+          onDelete={() => {
+            setIsAssignModalOpen(false);
+            setPendingRecording(null);
+            setNotification("Recording deleted.");
+          }}
+        />
+      ) : null}
     </div>
   );
 }

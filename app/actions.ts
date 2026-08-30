@@ -7,14 +7,26 @@ import { ZodError } from "zod";
 
 import { queryPatientRecord } from "@/lib/actions/brain";
 import { deriveRosterSummary } from "@/lib/actions/roster";
-import { createScribeService } from "@/lib/actions/scribe";
+import { createScribeService, type NoteRepository } from "@/lib/actions/scribe";
 import type { BrainResponse } from "@/lib/brain/types";
+import {
+  ensureLocalNotesSynced,
+  listSupabaseNotes,
+  mergeNotes,
+  syncNoteToSupabase,
+} from "@/lib/db/notes-sync";
+import {
+  listPatients,
+  savePatient,
+  type PatientRecord,
+} from "@/lib/db/patients";
 import {
   createLlmProviderFromEnv,
   type LlmCompletionProvider,
 } from "@/lib/llm/provider";
 import { createNoteRepository } from "@/lib/notes/repository";
 import { type NoteDraft } from "@/lib/notes/schema";
+import demoSeedNotes from "@/data/seed/demo-patients.json";
 
 function createLazyBrainProvider(): LlmCompletionProvider {
   return {
@@ -28,11 +40,39 @@ function createLazyBrainProvider(): LlmCompletionProvider {
 }
 
 const notesStoragePath = join(process.cwd(), "data", "notes.json");
+
+// Local JSON is the durable source of truth for notes; Supabase is synced on
+// top when configured. Reads merge both so nothing created elsewhere is lost.
+const baseNoteRepository = createNoteRepository(notesStoragePath);
+
+const noteRepository: NoteRepository = {
+  async listAll() {
+    const local = await baseNoteRepository.listAll();
+    const remote = await listSupabaseNotes();
+    if (remote) {
+      void ensureLocalNotesSynced(local);
+      return mergeNotes(local, remote);
+    }
+    return local;
+  },
+
+  async listByPatient(patientId: string) {
+    const all = await noteRepository.listAll();
+    return all.filter((note) => note.patient_id === patientId);
+  },
+
+  async save(candidate: unknown) {
+    const saved = await baseNoteRepository.save(candidate);
+    await syncNoteToSupabase(saved);
+    return saved;
+  },
+};
+
 const scribeService = createScribeService({
   provider: createLazyBrainProvider(),
   storagePath: notesStoragePath,
+  repository: noteRepository,
 });
-const noteRepository = createNoteRepository(notesStoragePath);
 
 type ActionFailure = {
   message: string;
@@ -135,7 +175,31 @@ export async function queryPatientRecordAction(
 
 export async function listBrainPatientsAction(): Promise<BrainPatient[]> {
   const notes = await noteRepository.listAll();
-  return deriveRosterSummary(notes);
+  const rosterById = new Map(
+    deriveRosterSummary(notes).map((patient) => [patient.patientId, patient]),
+  );
+
+  // Registered patients without any approved notes must still show up in the
+  // Clients directory and the Brain's patient selector.
+  let storedPatients: PatientRecord[] = [];
+  try {
+    storedPatients = await listPatients();
+  } catch {
+    // Storage unreadable — fall back to the notes-derived roster.
+  }
+
+  for (const patient of storedPatients) {
+    if (!rosterById.has(patient.id)) {
+      rosterById.set(patient.id, {
+        patientId: patient.id,
+        displayName: patient.display_name,
+        approvedNoteCount: 0,
+        mostRecentConsultationDate: "—",
+      });
+    }
+  }
+
+  return [...rosterById.values()];
 }
 
 export type ClientRecord = {
@@ -151,6 +215,14 @@ export type ClientRecord = {
 
 export async function listClientsAction(): Promise<ClientRecord[]> {
   const notes = await noteRepository.listAll();
+
+  let storedPatients: PatientRecord[] = [];
+  try {
+    storedPatients = await listPatients();
+  } catch {
+    // Storage unreadable — fall back to notes + baseline clients below.
+  }
+
   const map = new Map<
     string,
     {
@@ -164,44 +236,29 @@ export async function listClientsAction(): Promise<ClientRecord[]> {
     }
   >();
 
-  // Include baseline registered clients
-  const defaultSeedClients = [
-    {
-      displayName: "Amina Khan",
-      email: "amina.khan@example.com",
-      firstName: "Amina",
-      lastName: "Khan",
-      mobileNumber: "+92 300 1234567",
-      patientId: "patient-amina-001",
-    },
-    {
-      displayName: "Tariq Mahmood",
-      email: "tariq.mahmood@example.com",
-      firstName: "Tariq",
-      lastName: "Mahmood",
-      mobileNumber: "+92 321 7654321",
-      patientId: "patient-tariq-002",
-    },
-    {
-      displayName: "Gloria",
-      email: "gloria@example.com",
-      firstName: "Gloria",
-      lastName: "Rogers",
-      mobileNumber: "+1 555 0192834",
-      patientId: "patient-gloria-001",
-    },
-  ];
-
-  for (const c of defaultSeedClients) {
-    map.set(c.patientId, {
-      displayName: c.displayName,
-      email: c.email,
-      firstName: c.firstName,
-      lastName: c.lastName,
+  // Registered patients (Supabase + local fallback) come first.
+  for (const patient of storedPatients) {
+    map.set(patient.id, {
+      displayName: patient.display_name,
+      email: patient.email || undefined,
+      firstName: patient.first_name || undefined,
+      lastName: patient.last_name || undefined,
       lastSessionDate: null,
-      mobileNumber: c.mobileNumber,
+      mobileNumber: patient.mobile_number || undefined,
       noteCount: 0,
     });
+  }
+
+  // Baseline clients come from the canonical demo dataset in data/seed/ so
+  // the demo stays usable when storage is empty (fresh clone, no Supabase).
+  for (const note of demoSeedNotes) {
+    if (!map.has(note.patient_id)) {
+      map.set(note.patient_id, {
+        displayName: note.patient_display_name,
+        lastSessionDate: null,
+        noteCount: 0,
+      });
+    }
   }
 
   for (const note of notes) {
@@ -271,6 +328,22 @@ export async function createClientAction(data: {
     noteCount: 0,
     patientId,
   };
+
+  try {
+    await savePatient({
+      id: patientId,
+      first_name: firstName,
+      last_name: lastName,
+      display_name: displayName,
+      email: newClient.email || "",
+      mobile_number: newClient.mobileNumber || "",
+    });
+  } catch {
+    return {
+      message: "Could not save the client. Please try again.",
+      ok: false,
+    };
+  }
 
   return {
     client: newClient,

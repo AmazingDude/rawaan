@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
-import { modifyNoteAction } from "@/app/actions";
+import { approveDraftAction, modifyNoteAction } from "@/app/actions";
 import type { ApprovedNote, NoteDraft } from "@/lib/notes/schema";
 
 interface SessionWorkspaceViewProps {
@@ -56,6 +56,7 @@ export function SessionWorkspaceView({
   const [isCopied, setIsCopied] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => [
     {
@@ -139,21 +140,35 @@ export function SessionWorkspaceView({
 
   async function handleApproveAndSave() {
     setIsSaving(true);
-    const approvedNote: ApprovedNote = {
+    setSaveError(null);
+
+    // Persist through the server action so the approved note lands in the
+    // store (Supabase + local JSON) instead of only updating this view.
+    // approval_status is normalized to "draft" because approve() re-marks it.
+    const result = await approveDraftAction({
+      ...currentNote,
+      approval_status: "draft",
+      summary: noteSummary,
+    });
+
+    setIsSaving(false);
+
+    if (!result.ok) {
+      setSaveError(result.message);
+      return;
+    }
+
+    const saved: ApprovedNote = {
       ...currentNote,
       approval_status: "approved",
-      approved_at: new Date().toISOString(),
-      id:
-        "id" in currentNote && currentNote.id
-          ? currentNote.id
-          : `note-${currentNote.patient_id}-${Date.now().toString().slice(-4)}`,
+      approved_at: result.approvedAt,
+      id: result.noteId,
       summary: noteSummary,
     };
 
     if (onApprove) {
-      onApprove(approvedNote);
+      onApprove(saved);
     }
-    setIsSaving(false);
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 3000);
   }
@@ -394,6 +409,9 @@ export function SessionWorkspaceView({
                   <span className="save-success-tag">
                     <Check size={14} /> Approved & Saved to Patient Record
                   </span>
+                ) : null}
+                {saveError ? (
+                  <span className="save-error-tag">{saveError}</span>
                 ) : null}
                 <button
                   className="primary-button btn-approve-doc"

@@ -3824,6 +3824,12 @@ textarea:focus {
   color: #059669;
 }
 
+.save-error-tag {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #dc2626;
+}
+
 /* Client, Treatment & Transcript Tabs */
 .client-profile-card {
   display: flex;

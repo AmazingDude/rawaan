@@ -13,15 +13,19 @@ type ScribeServiceOptions = {
   createId?: () => string;
   approvalTime?: () => string;
   provider?: LlmCompletionProvider;
+  repository?: NoteRepository;
 };
+
+export type NoteRepository = ReturnType<typeof createNoteRepository>;
 
 export function createScribeService({
   storagePath,
   createId = randomUUID,
   approvalTime = () => new Date().toISOString(),
   provider,
+  repository,
 }: ScribeServiceOptions) {
-  const repository = createNoteRepository(storagePath);
+  const noteRepository = repository ?? createNoteRepository(storagePath);
 
   return {
     createDraft(candidate: unknown): Promise<GeneratedDraft> {
@@ -31,7 +35,7 @@ export function createScribeService({
     async approve(candidate: unknown): Promise<ApprovedNote> {
       const draft = noteDraftSchema.parse(candidate);
 
-      return repository.save({
+      return noteRepository.save({
         ...draft,
         approval_status: "approved",
         approved_at: approvalTime(),
@@ -40,7 +44,7 @@ export function createScribeService({
     },
 
     listByPatient(patientId: string): Promise<ApprovedNote[]> {
-      return repository.listByPatient(patientId);
+      return noteRepository.listByPatient(patientId);
     },
   };
 }
