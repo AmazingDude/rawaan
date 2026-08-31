@@ -4227,5 +4227,364 @@ textarea:focus {
   justify-content: center;
 }
 
+/* ==========================================================================
+   Session Workspace: Client, Treatment, Transcript, Session Info,
+   Mindmap, and Reflection tabs
+   ========================================================================== */
 
+.client-tab-view,
+.treatment-plan-tab-view,
+.transcript-tab-view,
+.session-info-tab-view,
+.mindmap-tab-view,
+.reflection-tab-view {
+  padding: 28px 36px 48px;
+  max-width: 840px;
+}
+
+/* Session Information grid */
+.session-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.session-info-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 18px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.session-info-card.is-wide {
+  grid-column: 1 / -1;
+}
+
+.session-info-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #ffffff;
+  color: var(--color-deep-teal);
+  border: 1px solid #e2e8f0;
+  flex-shrink: 0;
+}
+
+.session-info-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.session-info-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.session-info-value {
+  font-size: 14px;
+  font-weight: 500;
+  color: #0f172a;
+  line-height: 1.4;
+}
+
+.session-info-meta {
+  font-size: 12.5px;
+  color: #94a3b8;
+}
+
+/* Mindmap */
+.mindmap-empty-state {
+  padding: 32px 24px;
+  text-align: center;
+  background: var(--color-cream);
+  border-radius: 12px;
+  color: var(--color-graphite);
+  font-size: 14px;
+}
+
+.mindmap-canvas {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  padding: 8px 4px 24px;
+}
+
+.mindmap-root-node {
+  align-self: center;
+  padding: 14px 24px;
+  border-radius: 12px;
+  background: var(--color-canopy-green);
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 15px;
+  text-align: center;
+  max-width: 560px;
+}
+
+.mindmap-node-label {
+  line-height: 1.4;
+}
+
+.mindmap-branches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 18px;
+}
+
+.mindmap-branch {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.mindmap-branch-connector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 14px;
+  flex-shrink: 0;
+}
+
+.mindmap-connector-line {
+  display: block;
+  width: 3px;
+  height: 100%;
+  border-radius: 2px;
+  background: currentColor;
+  opacity: 0.35;
+}
+
+.mindmap-branch-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.mindmap-branch-title {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: currentColor;
+}
+
+.mindmap-leaf-list {
+  margin: 0;
+  padding-left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mindmap-leaf-node {
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: #334155;
+}
+
+.mindmap-branch-history { color: #0d9488; }
+.mindmap-branch-symptoms { color: #d97706; }
+.mindmap-branch-assessment { color: #7c3aed; }
+.mindmap-branch-plan { color: #059669; }
+.mindmap-branch-medications { color: #dc2626; }
+.mindmap-branch-followup { color: #0369a1; }
+
+/* Reflection Questions */
+.reflection-questions-view {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.reflection-intro {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--color-lilac-wash);
+  border-radius: 12px;
+  color: var(--color-deep-teal);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.reflection-intro p {
+  margin: 0;
+}
+
+.reflection-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.reflection-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.reflection-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--color-canopy-green);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.reflection-text {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #334155;
+  padding-top: 2px;
+}
+
+/* Client Timeline */
+.client-timeline-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.client-timeline-loading .spin {
+  animation: spin 1s linear infinite;
+}
+
+.client-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.client-timeline-empty {
+  margin: 0;
+  padding: 18px;
+  background: var(--color-cream);
+  border-radius: 12px;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.patient-sessions-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding-left: 8px;
+}
+
+.timeline-item {
+  position: relative;
+  display: flex;
+  gap: 14px;
+  padding-bottom: 20px;
+}
+
+.timeline-item::before {
+  content: "";
+  position: absolute;
+  left: 7px;
+  top: 18px;
+  bottom: 0;
+  width: 1px;
+  background: #e2e8f0;
+}
+
+.timeline-item:last-child {
+  padding-bottom: 0;
+}
+
+.timeline-item:last-child::before {
+  display: none;
+}
+
+.timeline-dot {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  border: 3px solid #ffffff;
+  box-shadow: 0 0 0 1px #e2e8f0;
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+.timeline-item.is-active .timeline-dot {
+  background: var(--color-leaf-accent);
+  box-shadow: 0 0 0 1px var(--color-leaf-accent);
+}
+
+.timeline-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.timeline-content p {
+  margin: 0;
+  font-size: 14px;
+  color: #334155;
+  line-height: 1.45;
+}
+
+.timeline-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: #64748b;
+}
+
+.transcript-hint {
+  margin: -8px 0 14px;
+  font-size: 12.5px;
+  color: #94a3b8;
+}
+
+@media (max-width: 900px) {
+  .client-tab-view,
+  .treatment-plan-tab-view,
+  .transcript-tab-view,
+  .session-info-tab-view,
+  .mindmap-tab-view,
+  .reflection-tab-view {
+    padding: 20px 20px 40px;
+  }
+
+  .session-info-grid,
+  .mindmap-branches {
+    grid-template-columns: 1fr;
+  }
+}
 

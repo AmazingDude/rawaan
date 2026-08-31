@@ -5,7 +5,11 @@ import {
   NOTE_GENERATION_SYSTEM_PROMPT,
   NOTE_MODIFICATION_SYSTEM_PROMPT,
 } from "@/lib/llm/prompts/note-generation";
-import { noteDraftSchema, type NoteDraft } from "@/lib/notes/schema";
+import {
+  noteDraftSchema,
+  sessionInfoSchema,
+  type NoteDraft,
+} from "@/lib/notes/schema";
 
 export const generateNoteInputSchema = z.object({
   patient_id: z.string().trim().min(1),
@@ -16,6 +20,7 @@ export const generateNoteInputSchema = z.object({
   mobile_number: z.string().optional(),
   consultation_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD"),
   transcript: z.string().trim().min(1),
+  session_info: sessionInfoSchema.optional(),
 });
 
 type GenerateNoteInput = z.infer<typeof generateNoteInputSchema>;
@@ -138,6 +143,7 @@ function createLocalDemoDraft(input: GenerateNoteInput): NoteDraft {
     uncertainties: listFromValue(values.uncertainties),
     approval_status: "draft",
     raw_transcript: transcript,
+    session_info: input.session_info,
   });
 }
 
@@ -200,6 +206,7 @@ export async function generateNoteDraft(
           : [],
         approval_status: "draft",
         raw_transcript: input.transcript.trim(),
+        session_info: input.session_info,
       });
 
       return {

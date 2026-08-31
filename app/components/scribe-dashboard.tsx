@@ -97,6 +97,8 @@ export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [pendingRecording, setPendingRecording] = useState<{
     consultationDate: string;
+    recordingDevice?: string;
+    recordingDurationSeconds?: number;
     transcript: string;
   } | null>(null);
   const [activeWorkspaceDraft, setActiveWorkspaceDraft] = useState<
@@ -117,11 +119,15 @@ export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
     consultationDate: string;
     patientDisplayName: string;
     patientId: string;
+    recordingDevice?: string;
+    recordingDurationSeconds?: number;
     transcript: string;
   }) {
     setIsRecordModalOpen(false);
     setPendingRecording({
       consultationDate: data.consultationDate,
+      recordingDevice: data.recordingDevice,
+      recordingDurationSeconds: data.recordingDurationSeconds,
       transcript: data.transcript,
     });
     setIsAssignModalOpen(true);
@@ -133,6 +139,17 @@ export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
     setIsAssignModalOpen(false);
     setNotification("Generating structured clinical note with AI Overview…");
 
+    const sessionInfo: NoteDraft["session_info"] =
+      pendingRecording.recordingDurationSeconds || pendingRecording.recordingDevice
+        ? {
+            duration_seconds: pendingRecording.recordingDurationSeconds,
+            recorded_at: new Date().toISOString(),
+            recording_device: pendingRecording.recordingDevice,
+            session_type: "in-person",
+            transcript_source: "Whisper Large v3",
+          }
+        : buildUploadSessionInfo();
+
     const result = await generateDraftAction({
       consultation_date: pendingRecording.consultationDate,
       email: client.email,
@@ -141,6 +158,7 @@ export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
       mobile_number: client.mobileNumber,
       patient_display_name: client.displayName,
       patient_id: client.patientId,
+      session_info: sessionInfo,
       transcript: pendingRecording.transcript,
     });
 
@@ -236,6 +254,14 @@ export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
       transcript,
     });
     setIsAssignModalOpen(true);
+  }
+
+  function buildUploadSessionInfo(): NoteDraft["session_info"] {
+    return {
+      recorded_at: new Date().toISOString(),
+      session_type: "upload",
+      transcript_source: "Whisper Large v3",
+    };
   }
 
   // If viewing a note workspace (Picture 3), render full Session Workspace View!

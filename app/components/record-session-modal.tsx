@@ -19,6 +19,8 @@ interface RecordSessionModalProps {
     consultationDate: string;
     patientDisplayName: string;
     patientId: string;
+    recordingDevice?: string;
+    recordingDurationSeconds?: number;
     transcript: string;
   }) => void;
   requestTranscription: (audio: File) => Promise<{ ok: boolean; transcript?: string; message?: string }>;
@@ -339,10 +341,13 @@ export function RecordSessionModal({
       const result = await requestTranscription(file);
       if (isCaptureAbandonedRef.current) return;
       if (result.ok && result.transcript) {
+        const selectedDevice = audioDevices.find((d) => d.deviceId === selectedDeviceId);
         onComplete({
           consultationDate: new Date().toISOString().slice(0, 10),
           patientDisplayName: selectedClient ? selectedClient.displayName : "Walk-in Consultation",
           patientId: selectedClient ? selectedClient.patientId : `patient-guest-${Date.now().toString().slice(-4)}`,
+          recordingDevice: selectedDevice?.label || "Default Microphone",
+          recordingDurationSeconds: elapsedSeconds,
           transcript: result.transcript,
         });
       } else {

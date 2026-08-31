@@ -3,6 +3,16 @@ import { z } from "zod";
 const requiredText = z.string().trim().min(1);
 const noteDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD");
 
+export const sessionInfoSchema = z.object({
+  session_type: z.enum(["in-person", "telehealth", "summary", "upload"]),
+  duration_seconds: z.number().optional(),
+  recording_device: z.string().optional(),
+  recorded_at: z.string().optional(),
+  transcript_source: z.string(),
+});
+
+export type SessionInfo = z.infer<typeof sessionInfoSchema>;
+
 const noteContentSchema = z.object({
   patient_id: requiredText,
   patient_display_name: requiredText,
@@ -21,6 +31,7 @@ const noteContentSchema = z.object({
   follow_up: z.string(),
   uncertainties: z.array(z.string()),
   raw_transcript: requiredText,
+  session_info: sessionInfoSchema.optional(),
 });
 
 export const noteDraftSchema = noteContentSchema.extend({

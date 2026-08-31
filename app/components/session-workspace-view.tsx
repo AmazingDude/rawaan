@@ -20,6 +20,10 @@ import {
 import { useState } from "react";
 
 import { approveDraftAction, modifyNoteAction } from "@/app/actions";
+import { ClientTimeline } from "@/app/components/client-timeline";
+import { ReflectionQuestions } from "@/app/components/reflection-questions";
+import { SessionInfoView } from "@/app/components/session-info-view";
+import { SessionMindmap } from "@/app/components/session-mindmap";
 import type { ApprovedNote, NoteDraft } from "@/lib/notes/schema";
 
 interface SessionWorkspaceViewProps {
@@ -446,18 +450,11 @@ export function SessionWorkspaceView({
                 </div>
               </div>
 
-              <div className="doc-section">
-                <h3 className="section-title">Session History</h3>
-                <div className="patient-sessions-timeline">
-                  <div className="timeline-item is-active">
-                    <span className="timeline-dot" />
-                    <div className="timeline-content">
-                      <strong>{currentNote.consultation_date}</strong>
-                      <p>{currentNote.chief_complaint || "In-Person Consultation"}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <ClientTimeline
+                key={currentNote.patient_id}
+                patientDisplayName={currentNote.patient_display_name}
+                patientId={currentNote.patient_id}
+              />
             </div>
           ) : activeTab === "treatment" ? (
             /* Tab 3: TREATMENT PLAN */
@@ -510,15 +507,31 @@ export function SessionWorkspaceView({
                 </pre>
               </div>
             </div>
-          ) : (
-            /* Other Tabs */
-            <div className="generic-tab-view">
+          ) : activeTab === "session-info" ? (
+            /* Tab 5: SESSION INFORMATION */
+            <div className="session-info-tab-view">
               <div className="doc-section">
-                <h2 className="section-title">{activeTab.toUpperCase()} View</h2>
-                <p>Interactive {activeTab} workspace for {currentNote.patient_display_name}.</p>
+                <h2 className="section-title">Session Information</h2>
+                <SessionInfoView note={currentNote} />
               </div>
             </div>
-          )}
+          ) : activeTab === "mindmap" ? (
+            /* Tab 6: MINDMAP */
+            <div className="mindmap-tab-view">
+              <div className="doc-section">
+                <h2 className="section-title">Session Mindmap</h2>
+                <SessionMindmap note={currentNote} />
+              </div>
+            </div>
+          ) : activeTab === "reflection" ? (
+            /* Tab 7: REFLECTION QUESTIONS */
+            <div className="reflection-tab-view">
+              <div className="doc-section">
+                <h2 className="section-title">Reflection Questions</h2>
+                <ReflectionQuestions note={currentNote} />
+              </div>
+            </div>
+          ) : null}
         </section>
 
         {/* ===================================================================
