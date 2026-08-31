@@ -7,6 +7,7 @@ export interface PatientSessionInsights {
   planForThisSession: string[];
   previousActionItems: string[];
   summary: string;
+  timeline: Array<{ chiefComplaint: string; date: string; noteId: string }>;
 }
 
 export function extractPatientSessionInsights(
@@ -20,6 +21,7 @@ export function extractPatientSessionInsights(
       planForThisSession: [],
       previousActionItems: [],
       summary: "",
+      timeline: [],
     };
   }
 
@@ -53,6 +55,12 @@ export function extractPatientSessionInsights(
         "Follow up on symptom response and progress toward discussed goals.",
       ];
 
+  const timeline = sortedNotes.map((note) => ({
+    chiefComplaint: note.chief_complaint || note.summary || "Consultation note",
+    date: note.consultation_date,
+    noteId: note.id,
+  }));
+
   return {
     hasInsights: true,
     interestingQuestions,
@@ -60,5 +68,6 @@ export function extractPatientSessionInsights(
     planForThisSession,
     previousActionItems,
     summary,
+    timeline,
   };
 }
