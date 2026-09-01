@@ -3564,6 +3564,144 @@ textarea:focus {
 }
 
 /* ==========================================================================
+   MANUAL SUMMARY & DIRECT NOTE ENTRY
+   ========================================================================== */
+
+.manual-summary-modal {
+  width: min(560px, 94vw);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.18), 0 4px 12px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  animation: modalScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.manual-summary-header,
+.manual-summary-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px;
+}
+
+.manual-summary-header {
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.manual-summary-eyebrow {
+  margin: 0 0 4px;
+  color: #0d9488;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.manual-summary-header h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.manual-summary-body {
+  display: grid;
+  gap: 8px;
+  padding: 24px;
+}
+
+.manual-summary-label,
+.manual-note-field > span {
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.manual-summary-date-input,
+.manual-summary-textarea,
+.manual-note-field input,
+.manual-note-field textarea {
+  box-sizing: border-box;
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #0f172a;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.manual-summary-date-input,
+.manual-note-field input {
+  padding: 10px 12px;
+}
+
+.manual-summary-textarea,
+.manual-note-field textarea {
+  resize: vertical;
+  padding: 10px 12px;
+}
+
+.manual-summary-date-input:focus,
+.manual-summary-textarea:focus,
+.manual-note-field input:focus,
+.manual-note-field textarea:focus {
+  border-color: #003642;
+  box-shadow: 0 0 0 3px rgba(0, 54, 66, 0.08);
+}
+
+.manual-summary-footer {
+  border-top: 1px solid #e2e8f0;
+}
+
+.btn-secondary-summary {
+  border: 1px solid #cbd5e1;
+  border-radius: 24px;
+  background: #ffffff;
+  color: #334155;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 11px 20px;
+}
+
+.btn-secondary-summary:hover {
+  background: #f8fafc;
+}
+
+.manual-note-editor {
+  width: min(100%, 920px);
+}
+
+.manual-note-editor-intro {
+  max-width: 580px;
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.manual-note-fields-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.manual-note-field {
+  display: grid;
+  gap: 7px;
+}
+
+.manual-note-field.is-full {
+  grid-column: 1 / -1;
+}
+
+/* ==========================================================================
    PICTURE 3: SESSION WORKSPACE & INTERACTIVE AI OVERVIEW
    ========================================================================== */
 
@@ -3918,6 +4056,36 @@ textarea:focus {
   overflow: hidden;
 }
 
+.workspace-manual-entry-panel {
+  display: flex;
+  align-items: flex-start;
+  height: 100%;
+  background: #f8fafc;
+  padding: 24px 20px;
+}
+
+.manual-entry-panel-content {
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 18px;
+}
+
+.manual-entry-panel-content h2 {
+  margin: 0 0 8px;
+  color: #0f172a;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.manual-entry-panel-content p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
 .ai-overview-header {
   display: flex;
   justify-content: space-between;
@@ -4183,6 +4351,12 @@ textarea:focus {
   }
   .workspace-ai-overview-panel {
     height: 500px;
+  }
+  .workspace-manual-entry-panel {
+    height: auto;
+  }
+  .manual-note-fields-grid {
+    grid-template-columns: 1fr;
   }
 }
 
