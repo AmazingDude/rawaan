@@ -132,14 +132,14 @@
 
 ### Phase 9 — Record Entry-Flow Correction
 **Status:** in_progress
-- [ ] Replace the stale Scribe E2E with a failing dashboard-entry regression test.
+- [x] Replace the stale Scribe E2E with a failing dashboard-entry regression test.
 - [ ] Route manual-summary capture through client assignment with summary provenance.
 - [ ] Route blank manual notes through client assignment with direct structured editing and manual provenance.
 - [ ] Run unit, static, production-build, and browser verification.
 
 ## Next Step
 
-Run the failing current-dashboard Record entry-flow regression against the unmodified production application.
+Implement the dedicated clinician-entered summary modal and explicitly typed pending session state.
 
 ## Decisions Made
 

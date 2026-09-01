@@ -29,3 +29,4 @@
 - The approved correction keeps the microphone modal exclusive to in-person capture, adds a clinician-entered summary path with `summary` provenance, and adds a client-assigned manual note with explicit `manual` provenance.
 - A manual draft must remain empty until the clinician enters structured content and approves it; it must not invoke draft generation or persist before approval.
 - Existing Scribe browser coverage targets removed legacy fields and must be replaced with public Record-dashboard entry-flow checks.
+- The refreshed production E2E first required title-prefix button locators because each action button's accessible name includes its descriptive copy. It then failed as intended: after `Record a summary`, the expected `Record a Summary` heading never appeared because the dashboard opened the in-person recorder instead.

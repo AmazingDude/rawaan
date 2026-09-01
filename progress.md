@@ -43,3 +43,5 @@ The Scribe vertical slice is implemented as a Next.js App Router + TypeScript ap
 
 - Confirmed that `Record a summary` and `Create empty note` both open the in-person recorder because all three controls use the same `isRecordModalOpen` state.
 - The approved focused implementation will add summary and manual entry flows, preserve the microphone recorder unchanged, retain explicit provenance, and replace stale Record E2E coverage.
+- Rebuilt the production app successfully, then ran the refreshed `tests/e2e-scribe.mjs` against `next start`. The test now reaches the intended regression and fails waiting for the `Record a Summary` modal after clicking `Record a summary`, confirming that action still opens the in-person recorder.
+
