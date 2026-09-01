@@ -133,13 +133,13 @@
 ### Phase 9 — Record Entry-Flow Correction
 **Status:** in_progress
 - [x] Replace the stale Scribe E2E with a failing dashboard-entry regression test.
-- [ ] Route manual-summary capture through client assignment with summary provenance.
+- [x] Route manual-summary capture through client assignment with summary provenance.
 - [ ] Route blank manual notes through client assignment with direct structured editing and manual provenance.
 - [ ] Run unit, static, production-build, and browser verification.
 
 ## Next Step
 
-Implement the dedicated clinician-entered summary modal and explicitly typed pending session state.
+Close the manual Notes conditional, type the workspace prop, and make remaining transcript labels provenance-aware before browser coverage.
 
 ## Decisions Made
 

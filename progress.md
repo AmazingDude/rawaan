@@ -46,3 +46,9 @@ The Scribe vertical slice is implemented as a Next.js App Router + TypeScript ap
 - Rebuilt the production app successfully, then ran the refreshed `tests/e2e-scribe.mjs` against `next start`. The test now reaches the intended regression and fails waiting for the `Record a Summary` modal after clicking `Record a summary`, confirming that action still opens the in-person recorder.
 - Confirmed the dashboard, assignment dialog, workspace, schema, and session-information boundaries. The next source change is a dedicated summary modal, followed by a discriminated pending-session handoff.
 
+## 2026-09-01 — Manual-entry workspace continuation
+
+- The Record dashboard now sends in-person recording, clinician-entered summary, upload, and manual-note sessions through typed provenance-aware handoff state.
+- The remaining implementation work is conditional workspace rendering for manual notes: keep all fields blank until direct clinician input, avoid AI modification controls, and persist only through `approveDraftAction`.
+- Inspection found the manual editor JSX is missing its outer conditional close, the new `isManualEntry` prop is not declared in the workspace prop type, and the Transcript tab still presents all content as Whisper audio.
+

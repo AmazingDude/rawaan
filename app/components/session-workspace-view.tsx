@@ -42,6 +42,7 @@ interface ChatMessage {
 
 export function SessionWorkspaceView({
   draft: initialDraft,
+  isManualEntry = false,
   onApprove,
   onBack,
 }: SessionWorkspaceViewProps) {
@@ -67,7 +68,9 @@ export function SessionWorkspaceView({
     {
       id: "msg-welcome",
       role: "assistant",
-      text: `I've loaded ${initialDraft.patient_display_name}'s clinical note into context. You can ask me to rewrite the note in a different format, remove identifiable names, summarize key clinical points, or make custom edits.`,
+      text: isManualEntry
+        ? "This manual note remains local until you review and approve the structured fields."
+        : `I've loaded ${initialDraft.patient_display_name}'s clinical note into context. You can ask me to rewrite the note in a different format, remove identifiable names, summarize key clinical points, or make custom edits.`,
       timestamp: "Just now",
     },
   ]);
@@ -75,16 +78,23 @@ export function SessionWorkspaceView({
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [includeTreatmentPlanToggle, setIncludeTreatmentPlanToggle] = useState(true);
 
-  // Generate fallback summary if empty
-  const noteSummary =
-    currentNote.summary ||
-    (currentNote.chief_complaint
-      ? `This consultation focused on ${currentNote.chief_complaint}. Clinical history was evaluated alongside reported symptoms (${currentNote.symptoms.slice(0, 2).join(", ") || "observed"}). The provider discussed assessment and instituted the corresponding management plan.`
-      : "Clinical consultation note documented from conversation recording.");
+  const noteSummary = isManualEntry
+    ? currentNote.summary ?? ""
+    : currentNote.summary ||
+      (currentNote.chief_complaint
+        ? `This consultation focused on ${currentNote.chief_complaint}. Clinical history was evaluated alongside reported symptoms (${currentNote.symptoms.slice(0, 2).join(", ") || "observed"}). The provider discussed assessment and instituted the corresponding management plan.`
+        : "Clinical consultation note documented from conversation recording.");
+
+  function toStructuredList(value: string) {
+    return value
+      .split("\n")
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+  }
 
   async function handleSendPrompt(promptToSend?: string) {
     const prompt = (promptToSend || inputPrompt).trim();
-    if (!prompt || isAiLoading) return;
+    if (isManualEntry || !prompt || isAiLoading) return;
 
     const userMsg: ChatMessage = {
       id: `msg-${Date.now()}`,
@@ -351,6 +361,173 @@ export function SessionWorkspaceView({
 
           {/* Tab 1: NOTES CONTENT matching Picture 3 */}
           {activeTab === "notes" ? (
+            isManualEntry ? (
+              <div className="clinical-document-body manual-note-editor">
+                <div className="doc-section">
+                  <h2 className="section-title">Manual note</h2>
+                  <p className="manual-note-editor-intro">
+                    Add only the details you want recorded. This draft stays local until approval.
+                  </p>
+                </div>
+
+                <div className="manual-note-fields-grid">
+                  <label className="manual-note-field is-full" htmlFor="manual-note-summary">
+                    <span>Summary</span>
+                    <textarea
+                      id="manual-note-summary"
+                      onChange={(event) =>
+                        setCurrentNote((note) => ({ ...note, summary: event.target.value }))
+                      }
+                      placeholder="Add a concise session summary."
+                      rows={4}
+                      value={currentNote.summary ?? ""}
+                    />
+                  </label>
+
+                  <label className="manual-note-field is-full" htmlFor="manual-note-chief-complaint">
+                    <span>Chief complaint</span>
+                    <input
+                      id="manual-note-chief-complaint"
+                      onChange={(event) =>
+                        setCurrentNote((note) => ({
+                          ...note,
+                          chief_complaint: event.target.value,
+                        }))
+                      }
+                      placeholder="Describe the primary reason for the session."
+                      type="text"
+                      value={currentNote.chief_complaint}
+                    />
+                  </label>
+
+                  <label className="manual-note-field" htmlFor="manual-note-history">
+                    <span>History</span>
+                    <textarea
+                      id="manual-note-history"
+                      onChange={(event) =>
+                        setCurrentNote((note) => ({
+                          ...note,
+                          history: toStructuredList(event.target.value),
+                        }))
+                      }
+                      placeholder="One item per line"
+                      rows={5}
+                      value={currentNote.history.join("\n")}
+                    />
+                  </label>
+
+                  <label className="manual-note-field" htmlFor="manual-note-symptoms">
+                    <span>Symptoms</span>
+                    <textarea
+                      id="manual-note-symptoms"
+                      onChange={(event) =>
+                        setCurrentNote((note) => ({
+                          ...note,
+                          symptoms: toStructuredList(event.target.value),
+                        }))
+                      }
+                      placeholder="One item per line"
+                      rows={5}
+                      value={currentNote.symptoms.join("\n")}
+                    />
+                  </label>
+
+                  <label className="manual-note-field" htmlFor="manual-note-assessment">
+                    <span>Assessment discussed</span>
+                    <textarea
+                      id="manual-note-assessment"
+                      onChange={(event) =>
+                        setCurrentNote((note) => ({
+                          ...note,
+                          assessment_discussed: toStructuredList(event.target.value),
+                        }))
+                      }
+                      placeholder="One item per line"
+                      rows={5}
+                      value={currentNote.assessment_discussed.join("\n")}
+                    />
+                  </label>
+
+                  <label className="manual-note-field" htmlFor="manual-note-plan">
+                    <span>Plan discussed</span>
+                    <textarea
+                      id="manual-note-plan"
+                      onChange={(event) =>
+                        setCurrentNote((note) => ({
+                          ...note,
+                          plan_discussed: toStructuredList(event.target.value),
+                        }))
+                      }
+                      placeholder="One item per line"
+                      rows={5}
+                      value={currentNote.plan_discussed.join("\n")}
+                    />
+                  </label>
+
+                  <label className="manual-note-field" htmlFor="manual-note-medications">
+                    <span>Medications mentioned</span>
+                    <textarea
+                      id="manual-note-medications"
+                      onChange={(event) =>
+                        setCurrentNote((note) => ({
+                          ...note,
+                          medications_mentioned: toStructuredList(event.target.value),
+                        }))
+                      }
+                      placeholder="One item per line"
+                      rows={4}
+                      value={currentNote.medications_mentioned.join("\n")}
+                    />
+                  </label>
+
+                  <label className="manual-note-field" htmlFor="manual-note-follow-up">
+                    <span>Follow-up</span>
+                    <textarea
+                      id="manual-note-follow-up"
+                      onChange={(event) =>
+                        setCurrentNote((note) => ({ ...note, follow_up: event.target.value }))
+                      }
+                      placeholder="Add follow-up details."
+                      rows={4}
+                      value={currentNote.follow_up}
+                    />
+                  </label>
+
+                  <label className="manual-note-field" htmlFor="manual-note-uncertainties">
+                    <span>Items needing review</span>
+                    <textarea
+                      id="manual-note-uncertainties"
+                      onChange={(event) =>
+                        setCurrentNote((note) => ({
+                          ...note,
+                          uncertainties: toStructuredList(event.target.value),
+                        }))
+                      }
+                      placeholder="One item per line"
+                      rows={4}
+                      value={currentNote.uncertainties.join("\n")}
+                    />
+                  </label>
+                </div>
+
+                <div className="doc-approval-footer-bar">
+                  {saveSuccess ? (
+                    <span className="save-success-tag">
+                      <Check size={14} /> Approved & Saved to Patient Record
+                    </span>
+                  ) : null}
+                  {saveError ? <span className="save-error-tag">{saveError}</span> : null}
+                  <button
+                    className="primary-button btn-approve-doc"
+                    disabled={isSaving}
+                    onClick={handleApproveAndSave}
+                    type="button"
+                  >
+                    {isSaving ? "Saving…" : "Approve & Save Note"}
+                  </button>
+                </div>
+              </div>
+            ) : (
             <div className="clinical-document-body">
               {/* Summary Section */}
               <div className="doc-section">
