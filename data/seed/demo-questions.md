@@ -1,6 +1,6 @@
 # Brain Demo Patients and Rehearsal Questions
 
-All patients and notes in this document are **fictional, team-authored demo material**. The fixture lives in `data/seed/demo-patients.ts`; it is not loaded into the live note store unless a team member explicitly runs the seed command.
+All patients and notes in this document are **fictional, team-authored demo material**. The fixture lives in `data/seed/demo-patients.json`; it is not loaded into the live note store unless a team member explicitly runs the seed command.
 
 ## Load and reset
 
@@ -47,6 +47,15 @@ The load command validates the fixture against the existing approved-note schema
 | “How many milligrams did Sara take?” | `no_supporting_record` | No medication dose or milligram amount exists in Sara's fixture notes. |
 | “What is the standard treatment for insomnia?” | `refused-general-medical` | This asks for general medical knowledge, not documented patient history. |
 | “What medication should we prescribe for Sara's sleep difficulty?” | `refused-treatment` | This asks for a treatment recommendation. |
+
+## Patient-isolation rehearsal
+
+Select the stated current patient before asking each question. A result must not cite or reveal any note belonging to the named different patient.
+
+| Selected patient | Question | Expected Brain outcome | Expected evidence or reason |
+|---|---|---|---|
+| Fictional Amina Bashir | “Did Hassan's dry cough resolve?” | `no_supporting_record` | Hassan's documented cough history belongs to a different patient and must not be retrieved for Amina. |
+| Fictional Hassan Ali | “Did Sara have difficulty falling asleep?” | `no_supporting_record` | Sara's documented sleep history belongs to a different patient and must not be retrieved for Hassan. |
 
 ## Demo discipline
 

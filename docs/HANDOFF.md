@@ -1,5 +1,12 @@
 # Handoff
 
+## Current checkpoint — 2026-09-01
+
+- Static repository orientation is complete; the working tree was clean on `main`. Dependencies are absent locally, so no fresh typecheck, lint, test, build, or browser validation was run during this review.
+- The canonical opt-in seed workflow already exists: `data/seed/demo-patients.json` contains eight approved, explicitly fictional notes across three patients; `npm run seed:demo` loads it and `npm run seed:reset` restores `data/notes.json` to `[]`; `data/seed/demo-questions.md` contains the rehearsal matrix.
+- Pending user approval: create `feat/seed-data-refresh` to refresh and validate the isolated fixture, its expected grounded/no-record/refusal outcomes, and its loader/reset tests. Do not add seed imports to product logic or make the live store non-empty by default.
+- Separate follow-up findings, intentionally outside the seed-refresh scope: `app/actions.ts` imports the seed fixture for the Record client list; `supabase/schema.sql` contains conflicting noncanonical clinical demo rows outside `data/seed/`; `AGENTS.md` points to the older `docs/PRD.md` while `findings.md` names root `PRD.md` as the build-ready source of truth.
+
 ## Current state
 
 `main` contains the merged Rawaan design system, landing route split, typography update, and CI workflow. The active Scribe voice-input workstream is on `feat/voice-input-scribe`; Tasks 1–4 added the approved Groq transcription boundary, server validation and endpoint, plus an additive consent-gated batch recorder beside the manual textarea. Task 5 now adds mocked production-browser coverage for the success and fallback-to-manual flows, confirms the unchanged manual E2E, and documents the configured Groq/local-parser boundary. `lib/transcription/voice-recorder.ts` isolates browser-independent lifecycle and transcript-race logic for mocked testing; the client component owns browser-only media access and posts a single completed recording to the typed route. The Brain retrieval plan remains a separate, review-only workstream.
