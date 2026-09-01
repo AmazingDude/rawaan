@@ -23,10 +23,9 @@
 - No diagnosis, treatment recommendation, real patient data, EHR integration, multi-patient analytics, live ASR, Brain retrieval, or CRM is part of this slice.
 - Local demo fallback must be visibly labeled and must not claim to be an LLM response.
 
-## Record dashboard correction — 2026-09-01
-
 - The Record dashboard routes both `Record a summary` and `Create empty note` to the in-person microphone modal through one shared `isRecordModalOpen` state.
 - The approved correction keeps the microphone modal exclusive to in-person capture, adds a clinician-entered summary path with `summary` provenance, and adds a client-assigned manual note with explicit `manual` provenance.
 - A manual draft must remain empty until the clinician enters structured content and approves it; it must not invoke draft generation or persist before approval.
 - Existing Scribe browser coverage targets removed legacy fields and must be replaced with public Record-dashboard entry-flow checks.
 - The refreshed production E2E first required title-prefix button locators because each action button's accessible name includes its descriptive copy. It then failed as intended: after `Record a summary`, the expected `Record a Summary` heading never appeared because the dashboard opened the in-person recorder instead.
+- The dashboard must discriminate three inputs at handoff: in-person audio (`in-person` / Whisper provenance), clinician-entered summary (`summary` / clinician-entered provenance), and a blank manual note (`manual` / clinician-created provenance). Only the manual route may bypass `generateDraftAction`; it opens a local draft and relies on existing approval persistence.
