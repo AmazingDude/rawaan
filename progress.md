@@ -55,5 +55,6 @@ The Scribe vertical slice is implemented as a Next.js App Router + TypeScript ap
 ## 2026-09-01 — Record entry-flow status
 
 - The committed implementation now retains the in-person recorder, presents a clinician-entered summary modal, and routes a blank manual note through client assignment to a local structured editor with AI editing withheld.
-- The remaining scope is solid-surface styling for the new UI classes and production-browser coverage through manual editing, approval, and persisted session visibility. The E2E must restore `data/notes.json` and any patient storage it changes after execution.
+- Focused solid-surface styles and responsive behavior are now in place for the summary and manual-entry UI.
+- The remaining scope is production-browser coverage through manual editing, approval, and persisted session visibility. The E2E must restore `data/notes.json` and any patient storage it changes after execution.
 

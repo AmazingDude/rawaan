@@ -33,4 +33,5 @@
 - `SessionWorkspaceView` currently renders empty drafts with invented fallback prose and exposes AI rewrite controls, so manual entry needs a conditional structured editor that updates only local draft state until the existing approval action persists it.
 - The manual editor conditional, `isManualEntry` prop, and provenance-aware Transcript display are implemented. Manual drafts preserve blank structured fields, withhold AI rewrite controls, and only persist through the existing approval action.
 - The current committed routing separates all three paths: in-person retains its recorder and Whisper source; summary input opens `ManualSummaryModal`; and an empty manual note goes through client assignment into direct structured editing with AI controls withheld.
-- Remaining gaps are presentation styles for the new summary/manual classes and an E2E path that creates a fictional client, edits a manual note, approves it, confirms the persisted session, and restores tracked local storage.
+- The summary modal and manual-entry workspace now use the established solid-surface styling system, including mobile layout behavior.
+- The remaining gap is an E2E path that creates a fictional client, edits a manual note, approves it, confirms the persisted session, and restores tracked local storage.
