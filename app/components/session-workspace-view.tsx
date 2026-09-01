@@ -28,6 +28,7 @@ import type { ApprovedNote, NoteDraft } from "@/lib/notes/schema";
 
 interface SessionWorkspaceViewProps {
   draft: NoteDraft | ApprovedNote;
+  isManualEntry?: boolean;
   onApprove?: (note: ApprovedNote) => void;
   onBack: () => void;
 }

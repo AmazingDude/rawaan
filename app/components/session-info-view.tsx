@@ -22,6 +22,7 @@ function formatSessionType(type?: string): string {
     telehealth: "Telehealth Session",
     summary: "Dictated Summary",
     upload: "Uploaded Recording",
+    manual: "Manual Note",
   };
   return labels[type] || type;
 }
@@ -68,7 +69,7 @@ export function SessionInfoView({ note }: SessionInfoViewProps) {
         </div>
         <div className="session-info-body">
           <span className="session-info-label">Audio Source</span>
-          <span className="session-info-value">{info?.recording_device || "Default Microphone"}</span>
+          <span className="session-info-value">{info?.recording_device || "Not recorded"}</span>
         </div>
       </div>
 

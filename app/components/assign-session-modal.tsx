@@ -7,19 +7,23 @@ import { createClientAction, type ClientRecord } from "@/app/actions";
 
 interface AssignSessionModalProps {
   clients: ClientRecord[];
+  deleteLabel?: string;
   isOpen: boolean;
   onAssign: (client: ClientRecord) => void;
   onClose: () => void;
   onDelete: () => void;
+  recordingSubtitle?: string;
   recordingTitle?: string;
 }
 
 export function AssignSessionModal({
   clients = [],
+  deleteLabel,
   isOpen,
   onAssign,
   onClose,
   onDelete,
+  recordingSubtitle,
   recordingTitle,
 }: AssignSessionModalProps) {
   const [view, setView] = useState<"assign" | "create">("assign");
@@ -259,7 +263,9 @@ export function AssignSessionModal({
                 </div>
                 <div className="badge-text-meta">
                   <h3 className="badge-title">{defaultTitle}</h3>
-                  <p className="badge-subtitle">In-Person Recording</p>
+                  <p className="badge-subtitle">
+                    {recordingSubtitle ?? "In-Person Recording"}
+                  </p>
                 </div>
               </div>
               <div className="badge-card-right">
@@ -382,7 +388,7 @@ export function AssignSessionModal({
                 onClick={onDelete}
                 type="button"
               >
-                Delete Recording
+                {deleteLabel ?? "Delete Recording"}
               </button>
               <button
                 className="btn-next-step"
