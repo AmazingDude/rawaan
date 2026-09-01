@@ -77,7 +77,7 @@ export function SessionInfoView({ note }: SessionInfoViewProps) {
         <div className="session-info-body">
           <span className="session-info-label">Transcript Provenance</span>
           <span className="session-info-value">
-            {info?.transcript_source || "Whisper Large v3 Spoken Audio"}
+            {info?.transcript_source || "Not recorded"}
           </span>
           <span className="session-info-meta">
             {transcriptWordCount.toLocaleString()} words captured

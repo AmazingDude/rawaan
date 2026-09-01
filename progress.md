@@ -49,6 +49,11 @@ The Scribe vertical slice is implemented as a Next.js App Router + TypeScript ap
 ## 2026-09-01 — Manual-entry workspace continuation
 
 - The Record dashboard now sends in-person recording, clinician-entered summary, upload, and manual-note sessions through typed provenance-aware handoff state.
-- The remaining implementation work is conditional workspace rendering for manual notes: keep all fields blank until direct clinician input, avoid AI modification controls, and persist only through `approveDraftAction`.
-- Inspection found the manual editor JSX is missing its outer conditional close, the new `isManualEntry` prop is not declared in the workspace prop type, and the Transcript tab still presents all content as Whisper audio.
+- The workspace now keeps manual fields blank until direct clinician input, withholds AI modification controls, and persists only through `approveDraftAction`.
+- The manual editor conditional, `isManualEntry` prop, and provenance-aware Transcript labels are resolved; focused styles and full browser coverage remain.
+
+## 2026-09-01 — Record entry-flow status
+
+- The committed implementation now retains the in-person recorder, presents a clinician-entered summary modal, and routes a blank manual note through client assignment to a local structured editor with AI editing withheld.
+- The remaining scope is solid-surface styling for the new UI classes and production-browser coverage through manual editing, approval, and persisted session visibility. The E2E must restore `data/notes.json` and any patient storage it changes after execution.
 

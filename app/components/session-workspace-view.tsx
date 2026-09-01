@@ -297,16 +297,17 @@ export function SessionWorkspaceView({
             </div>
 
             <div className="toolbar-right-group">
-              {/* AI Polish */}
-              <button
-                aria-label="Refine with AI"
-                className="icon-action-btn"
-                onClick={() => handleSendPrompt("Polish and refine clinical phrasing")}
-                title="Polish note"
-                type="button"
-              >
-                <Zap size={16} />
-              </button>
+              {isManualEntry ? null : (
+                <button
+                  aria-label="Refine with AI"
+                  className="icon-action-btn"
+                  onClick={() => handleSendPrompt("Polish and refine clinical phrasing")}
+                  title="Polish note"
+                  type="button"
+                >
+                  <Zap size={16} />
+                </button>
+              )}
               {/* Copy Note */}
               <button
                 aria-label="Copy Note"
@@ -605,7 +606,8 @@ export function SessionWorkspaceView({
                 </button>
               </div>
             </div>
-          ) : activeTab === "client" ? (
+          )
+        ) : activeTab === "client" ? (
             /* Tab 2: CLIENT INFO */
             <div className="client-tab-view">
               <div className="client-profile-card">
@@ -678,8 +680,20 @@ export function SessionWorkspaceView({
             /* Tab 4: TRANSCRIPT */
             <div className="transcript-tab-view">
               <div className="doc-section">
-                <h2 className="section-title">Spoken Audio Transcript</h2>
-                <p className="transcript-hint">Whisper Large v3 Spoken Audio Provenance</p>
+                <h2 className="section-title">
+                  {currentNote.session_info?.session_type === "in-person"
+                    ? "Spoken Audio Transcript"
+                    : currentNote.session_info?.session_type === "upload"
+                      ? "Uploaded Audio Transcript"
+                      : currentNote.session_info?.session_type === "summary"
+                        ? "Clinician-Entered Session Summary"
+                        : currentNote.session_info?.session_type === "manual"
+                          ? "Manual Note Provenance"
+                          : "Session Transcript"}
+                </h2>
+                <p className="transcript-hint">
+                  {currentNote.session_info?.transcript_source ?? "Not recorded"}
+                </p>
                 <pre className="transcript-verbatim-box">
                   {currentNote.raw_transcript}
                 </pre>
@@ -712,10 +726,18 @@ export function SessionWorkspaceView({
           ) : null}
         </section>
 
-        {/* ===================================================================
-           RIGHT COLUMN: AI OVERVIEW CHAT ASSISTANT matching Picture 3
-           =================================================================== */}
-        <aside className="workspace-ai-overview-panel">
+        {isManualEntry ? (
+          <aside className="workspace-manual-entry-panel">
+            <div className="manual-entry-panel-content">
+              <h2>Manual entry</h2>
+              <p>
+                AI editing is unavailable for manually created notes. Review the structured
+                fields before approval.
+              </p>
+            </div>
+          </aside>
+        ) : (
+          <aside className="workspace-ai-overview-panel">
           {/* Top Chat Bar */}
           <header className="ai-overview-header">
             <button className="btn-chat-dropdown" type="button">
@@ -870,7 +892,8 @@ export function SessionWorkspaceView({
               </div>
             </div>
           </div>
-        </aside>
+          </aside>
+        )}
       </main>
     </div>
   );

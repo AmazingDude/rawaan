@@ -134,12 +134,14 @@
 **Status:** in_progress
 - [x] Replace the stale Scribe E2E with a failing dashboard-entry regression test.
 - [x] Route manual-summary capture through client assignment with summary provenance.
-- [ ] Route blank manual notes through client assignment with direct structured editing and manual provenance.
+- [x] Route blank manual notes through client assignment with direct structured editing and manual provenance.
+- [ ] Style the summary modal and manual-entry workspace with the established solid-surface system.
+- [ ] Extend dashboard E2E through manual edit, approval, and persisted-session confirmation without retaining test data.
 - [ ] Run unit, static, production-build, and browser verification.
 
 ## Next Step
 
-Close the manual Notes conditional, type the workspace prop, and make remaining transcript labels provenance-aware before browser coverage.
+Add the focused solid-surface styles, then extend the Record E2E to restore any local demo storage after the manual approval flow.
 
 ## Decisions Made
 
