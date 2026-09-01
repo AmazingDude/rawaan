@@ -9,6 +9,7 @@ import {
   type ClientRecord,
 } from "@/app/actions";
 import { AssignSessionModal } from "@/app/components/assign-session-modal";
+import { ManualSummaryModal } from "@/app/components/manual-summary-modal";
 import { RecordSessionModal } from "@/app/components/record-session-modal";
 import { SessionWorkspaceView } from "@/app/components/session-workspace-view";
 import type { ApprovedNote, NoteDraft } from "@/lib/notes/schema";
@@ -26,6 +27,15 @@ interface RecentSession {
 interface ScribeDashboardProps {
   initialNotes?: ApprovedNote[];
 }
+
+type PendingSession = {
+  consultationDate: string;
+  recordingDevice?: string;
+  recordingDurationSeconds?: number;
+  sessionType: "in-person" | "summary" | "upload" | "manual";
+  transcript: string;
+  transcriptSource: string;
+};
 
 function formatSessionTime(isoString?: string): string {
   if (!isoString) return "9:18 PM";
@@ -93,14 +103,10 @@ export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
   const [notification, setNotification] = useState<string | null>(null);
 
   // Workflow State Modals & Workspace Views
-  const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
+  const [isInPersonRecordModalOpen, setIsInPersonRecordModalOpen] = useState(false);
+  const [isManualSummaryModalOpen, setIsManualSummaryModalOpen] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
-  const [pendingRecording, setPendingRecording] = useState<{
-    consultationDate: string;
-    recordingDevice?: string;
-    recordingDurationSeconds?: number;
-    transcript: string;
-  } | null>(null);
+  const [pendingSession, setPendingSession] = useState<PendingSession | null>(null);
   const [activeWorkspaceDraft, setActiveWorkspaceDraft] = useState<
     NoteDraft | ApprovedNote | null
   >(null);
