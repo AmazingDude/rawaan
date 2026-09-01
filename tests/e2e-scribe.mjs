@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { chromium } from "@playwright/test";
 
 const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE;
+const baseUrl = process.env.E2E_BASE_URL ?? "http://127.0.0.1:3000";
 const notesPath = join(process.cwd(), "data", "notes.json");
 const patientsPath = join(process.cwd(), "data", "patients.json");
 
@@ -55,13 +56,13 @@ try {
   const clientLastName = "Fictional";
   const clientDisplayName = `${clientFirstName} ${clientLastName}`;
 
-  await page.goto("http://127.0.0.1:3000/record", { waitUntil: "networkidle" });
+  await page.goto(`${baseUrl}/record`, { waitUntil: "networkidle" });
   await page.getByRole("button", { name: /^Record in-person/ }).click();
   await page
     .getByRole("heading", { name: "Record an In-Person Session", exact: true })
     .waitFor();
 
-  await page.goto("http://127.0.0.1:3000/record", { waitUntil: "networkidle" });
+  await page.goto(`${baseUrl}/record`, { waitUntil: "networkidle" });
   await page.getByRole("button", { name: /^Record a summary/ }).click();
   await page.getByRole("heading", { name: "Record a Summary", exact: true }).waitFor();
   await page.getByLabel("Session summary").fill("Clinician-entered fictional session summary.");
@@ -71,7 +72,7 @@ try {
   await page.getByRole("heading", { name: "Assign Session", exact: true }).waitFor();
   await page.getByText("Dictated Summary", { exact: true }).waitFor();
 
-  await page.goto("http://127.0.0.1:3000/record", { waitUntil: "networkidle" });
+  await page.goto(`${baseUrl}/record`, { waitUntil: "networkidle" });
   await page.getByRole("button", { name: /Create empty note/ }).click();
   await page.getByRole("heading", { name: "Assign Session", exact: true }).waitFor();
   await page.getByText("Manual Note", { exact: true }).waitFor();
@@ -118,7 +119,7 @@ try {
   await page.getByRole("button", { name: "Back to dashboard" }).click();
   await page.getByText(clientDisplayName, { exact: true }).waitFor();
 
-  await page.goto("http://127.0.0.1:3000/record", { waitUntil: "networkidle" });
+  await page.goto(`${baseUrl}/record`, { waitUntil: "networkidle" });
   await page.getByText(clientDisplayName, { exact: true }).waitFor();
 
   console.log("Record entry-flow E2E passed.");
