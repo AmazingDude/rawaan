@@ -130,9 +130,16 @@
 - [x] Implement note modification LLM action (`modifyNoteAction`) allowing real-time AI transformations (paragraph format, de-identification/remove names, summarize key clinical points).
 - [x] Pass all verification gates (`typecheck`, `lint`, `test`, `build`).
 
+### Phase 9 — Record Entry-Flow Correction
+**Status:** in_progress
+- [ ] Replace the stale Scribe E2E with a failing dashboard-entry regression test.
+- [ ] Route manual-summary capture through client assignment with summary provenance.
+- [ ] Route blank manual notes through client assignment with direct structured editing and manual provenance.
+- [ ] Run unit, static, production-build, and browser verification.
+
 ## Next Step
 
-Raise the PR with all verified features.
+Run the failing current-dashboard Record entry-flow regression against the unmodified production application.
 
 ## Decisions Made
 

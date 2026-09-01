@@ -39,3 +39,7 @@ The Scribe vertical slice is implemented as a Next.js App Router + TypeScript ap
 - Updated seed data in `data/notes.json` with narrative summaries and client details.
 - Validated with strict TypeScript (`tsc --noEmit`), ESLint (`eslint .`), Vitest test suite (55 passed), and production build (`next build`).
 
+## 2026-09-01 — Record entry-flow correction in progress
+
+- Confirmed that `Record a summary` and `Create empty note` both open the in-person recorder because all three controls use the same `isRecordModalOpen` state.
+- The approved focused implementation will add summary and manual entry flows, preserve the microphone recorder unchanged, retain explicit provenance, and replace stale Record E2E coverage.
