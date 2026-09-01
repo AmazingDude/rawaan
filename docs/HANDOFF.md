@@ -2,9 +2,9 @@
 
 ## Current checkpoint — 2026-09-01
 
-- Static repository orientation is complete; the working tree was clean on `main`. Dependencies are absent locally, so no fresh typecheck, lint, test, build, or browser validation was run during this review.
-- The canonical opt-in seed workflow already exists: `data/seed/demo-patients.json` contains eight approved, explicitly fictional notes across three patients; `npm run seed:demo` loads it and `npm run seed:reset` restores `data/notes.json` to `[]`; `data/seed/demo-questions.md` contains the rehearsal matrix.
-- Pending user approval: create `feat/seed-data-refresh` to refresh and validate the isolated fixture, its expected grounded/no-record/refusal outcomes, and its loader/reset tests. Do not add seed imports to product logic or make the live store non-empty by default.
+- On `feat/seed-data-refresh`, commit `6d991c5` refreshes the isolated demo rehearsal documentation and validation: it corrects the fixture reference, adds two explicit cross-patient isolation probes, and checks visibly fictional identities plus chronological visit histories. The canonical eight-note fixture and opt-in loader remain unchanged.
+- Fresh verification passed: `npm run seed:demo` loaded eight fictional approved notes, a schema check validated all eight, and `npm run seed:reset` restored `data/notes.json` to `[]`. `npm run test -- tests/demo-seed.test.ts` passed 3/3 tests; `npm run typecheck`, `npm run lint`, `npm run test` (16 files, 98 tests), and `npm run build` all passed.
+- The live store is currently `[]`; do not load the fixture except for a deliberate rehearsal, and run `npm run seed:reset` immediately afterward.
 - Separate follow-up findings, intentionally outside the seed-refresh scope: `app/actions.ts` imports the seed fixture for the Record client list; `supabase/schema.sql` contains conflicting noncanonical clinical demo rows outside `data/seed/`; `AGENTS.md` points to the older `docs/PRD.md` while `findings.md` names root `PRD.md` as the build-ready source of truth.
 
 ## Current state
