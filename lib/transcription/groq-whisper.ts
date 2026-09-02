@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { sanitizeTranscript } from "@/lib/transcription/devanagari-to-urdu";
 import type { TranscriptionProvider } from "@/lib/transcription/types";
 
 const GROQ_TRANSCRIPTIONS_URL =
@@ -27,9 +28,10 @@ export function createGroqWhisperProvider(): TranscriptionProvider {
       formData.append("file", audio);
       formData.append("model", GROQ_WHISPER_MODEL);
       formData.append("response_format", "json");
+      formData.append("language", "ur");
       formData.append(
         "prompt",
-        "Clinical consultation in Urdu and English. Transcribe conversation and medical terms accurately.",
+        "طبی معائنہ اور مشاورت، ڈاکٹر اور مریض کے درمیان گفتگو۔ Transcribe conversation strictly in Urdu (اردو) or English.",
       );
       formData.append("temperature", "0");
 
@@ -55,7 +57,7 @@ export function createGroqWhisperProvider(): TranscriptionProvider {
       }
 
       return {
-        transcript: payload.data.text,
+        transcript: sanitizeTranscript(payload.data.text),
       };
     },
   };

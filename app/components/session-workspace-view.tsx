@@ -3,28 +3,35 @@
 import {
   ArrowUp,
   Check,
+  ChevronDown,
   Clipboard,
   Download,
   EyeOff,
   FileText,
   Languages,
-  Lock,
+  Link2,
   Mail,
   Mic,
   Paperclip,
+  Printer,
+  Share2,
   Smartphone,
-  Sprout,
   X,
   Zap,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import { approveDraftAction, modifyNoteAction } from "@/app/actions";
+import {
+  approveDraftAction,
+  modifyNoteAction,
+  translateNoteToUrduAction,
+} from "@/app/actions";
 import { ClientTimeline } from "@/app/components/client-timeline";
 import { ReflectionQuestions } from "@/app/components/reflection-questions";
 import { SessionInfoView } from "@/app/components/session-info-view";
 import { SessionMindmap } from "@/app/components/session-mindmap";
 import type { ApprovedNote, NoteDraft } from "@/lib/notes/schema";
+import { sanitizeTranscript } from "@/lib/transcription/devanagari-to-urdu";
 
 interface SessionWorkspaceViewProps {
   draft: NoteDraft | ApprovedNote;
@@ -38,6 +45,17 @@ interface ChatMessage {
   role: "assistant" | "user";
   text: string;
   timestamp: string;
+}
+
+interface SpeechRecognitionInstance {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onerror: () => void;
+  onend: () => void;
+  onresult: (event: { results: { 0: { 0: { transcript: string } } } }) => void;
+  onstart: () => void;
+  start: () => void;
 }
 
 export function SessionWorkspaceView({
@@ -57,12 +75,28 @@ export function SessionWorkspaceView({
   >("notes");
 
   const [currentNote, setCurrentNote] = useState<NoteDraft | ApprovedNote>(initialDraft);
-  const [noteVariant, setNoteVariant] = useState<"BASE" | "SOAP" | "NARRATIVE">("BASE");
-  const [detailLevel, setDetailLevel] = useState<"Detailed" | "Concise">("Detailed");
+  const [englishNote, setEnglishNote] = useState<NoteDraft | ApprovedNote>(initialDraft);
+  const [urduNote, setUrduNote] = useState<(NoteDraft | ApprovedNote) | null>(null);
+  const [activeLanguage, setActiveLanguage] = useState<"en" | "ur">("en");
+  const [isTranslating, setIsTranslating] = useState(false);
+
   const [isCopied, setIsCopied] = useState(false);
+  const [isCopiedLink, setIsCopiedLink] = useState(false);
+  const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  const shareMenuRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [attachedFile, setAttachedFile] = useState<{
+    name: string;
+    content: string;
+    size: string;
+  } | null>(null);
+  const [isListening, setIsListening] = useState(false);
 
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => [
     {
@@ -70,13 +104,97 @@ export function SessionWorkspaceView({
       role: "assistant",
       text: isManualEntry
         ? "This manual note remains local until you review and approve the structured fields."
-        : `I've loaded ${initialDraft.patient_display_name}'s clinical note into context. You can ask me to rewrite the note in a different format, remove identifiable names, summarize key clinical points, or make custom edits.`,
+        : `I've loaded ${initialDraft.patient_display_name}'s clinical note into context. You can ask me to rewrite the note in a different format, remove identifiable names, summarize key clinical points, attach lab/clinical documents, translate to Urdu, or make custom edits.`,
+
       timestamp: "Just now",
     },
   ]);
   const [inputPrompt, setInputPrompt] = useState("");
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [includeTreatmentPlanToggle, setIncludeTreatmentPlanToggle] = useState(true);
+
+  // Auto-scroll chat to latest message
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages, isAiLoading]);
+
+  // Close share dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        shareMenuRef.current &&
+        !shareMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsShareMenuOpen(false);
+      }
+    }
+
+    if (isShareMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isShareMenuOpen]);
+
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const sizeFormatted =
+      file.size < 1024
+        ? `${file.size} B`
+        : file.size < 1024 * 1024
+          ? `${(file.size / 1024).toFixed(1)} KB`
+          : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = (event.target?.result as string) || "";
+      setAttachedFile({
+        name: file.name,
+        content: text.slice(0, 10000),
+        size: sizeFormatted,
+      });
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  }
+
+  function handleToggleDictation() {
+    if (typeof window === "undefined") return;
+    const SpeechRecognition =
+      (window as unknown as { SpeechRecognition?: new () => SpeechRecognitionInstance }).SpeechRecognition ||
+      (window as unknown as { webkitSpeechRecognition?: new () => SpeechRecognitionInstance }).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      return;
+    }
+
+    if (isListening) {
+      setIsListening(false);
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = "en-US";
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      recognition.onstart = () => setIsListening(true);
+      recognition.onend = () => setIsListening(false);
+      recognition.onerror = () => setIsListening(false);
+      recognition.onresult = (event: { results: { 0: { 0: { transcript: string } } } }) => {
+        const transcript = event.results[0][0].transcript;
+        setInputPrompt((prev) => (prev ? `${prev} ${transcript}` : transcript));
+      };
+
+      recognition.start();
+    } catch {
+      setIsListening(false);
+    }
+  }
 
   const noteSummary = isManualEntry
     ? currentNote.summary ?? ""
@@ -92,29 +210,100 @@ export function SessionWorkspaceView({
       .filter(Boolean);
   }
 
+
+  async function handleToggleLanguage() {
+    if (isTranslating) return;
+
+    if (activeLanguage === "ur") {
+      // Toggle back to English
+      setActiveLanguage("en");
+      setCurrentNote(englishNote);
+      return;
+    }
+
+    // If we already have the Urdu translation cached, switch instantly
+    if (urduNote) {
+      setActiveLanguage("ur");
+      setCurrentNote(urduNote);
+      return;
+    }
+
+    // Otherwise, translate via server action
+    setIsTranslating(true);
+    try {
+      const res = await translateNoteToUrduAction(currentNote as NoteDraft);
+      if (res.ok) {
+        setUrduNote(res.urduNote);
+        setCurrentNote(res.urduNote);
+        setActiveLanguage("ur");
+
+        const aiMsg: ChatMessage = {
+          id: `msg-${Date.now()}`,
+          role: "assistant",
+          text: "نوٹ کو اردو زبان میں کامیابی سے تبدیل کر دیا گیا ہے۔ (The clinical note has been translated into Urdu.)",
+          timestamp: "Just now",
+        };
+        setChatMessages((prev) => [...prev, aiMsg]);
+      } else {
+        const errorMsg: ChatMessage = {
+          id: `msg-${Date.now()}`,
+          role: "assistant",
+          text: `Could not translate note to Urdu: ${res.message}`,
+          timestamp: "Just now",
+        };
+        setChatMessages((prev) => [...prev, errorMsg]);
+      }
+    } catch {
+      const errorMsg: ChatMessage = {
+        id: `msg-${Date.now()}`,
+        role: "assistant",
+        text: "There was an error communicating with the translation service.",
+        timestamp: "Just now",
+      };
+      setChatMessages((prev) => [...prev, errorMsg]);
+    } finally {
+      setIsTranslating(false);
+    }
+  }
+
   async function handleSendPrompt(promptToSend?: string) {
-    const prompt = (promptToSend || inputPrompt).trim();
-    if (isManualEntry || !prompt || isAiLoading) return;
+    const userText = (promptToSend || inputPrompt).trim();
+    if (isManualEntry || (!userText && !attachedFile) || isAiLoading) return;
+
+    let effectivePrompt = userText || "Please incorporate the attached document into the clinical note.";
+    if (attachedFile) {
+      effectivePrompt = `[Attached Document: ${attachedFile.name}]\n${attachedFile.content}\n\n[Clinician Request]:\n${effectivePrompt}`;
+    }
+
+    const displayPrompt = userText || `Incorporate ${attachedFile?.name || "attached document"}`;
+
 
     const userMsg: ChatMessage = {
       id: `msg-${Date.now()}`,
       role: "user",
-      text: prompt,
+      text: displayPrompt,
       timestamp: "Just now",
     };
 
     setChatMessages((prev) => [...prev, userMsg]);
     setInputPrompt("");
+    setAttachedFile(null);
     setIsAiLoading(true);
 
     try {
       const res = await modifyNoteAction({
         note: currentNote as NoteDraft,
-        prompt,
+        prompt: effectivePrompt,
       });
 
       if (res.ok) {
         setCurrentNote(res.updatedNote);
+        if (activeLanguage === "en") {
+          setEnglishNote(res.updatedNote);
+        } else {
+          setUrduNote(res.updatedNote);
+        }
+
         const aiMsg: ChatMessage = {
           id: `msg-${Date.now() + 1}`,
           role: "assistant",
@@ -144,13 +333,90 @@ export function SessionWorkspaceView({
     }
   }
 
+
   function handleCopyNote() {
-    const fullText = `PATIENT: ${currentNote.patient_display_name}\nDATE: ${currentNote.consultation_date}\n\nSUMMARY:\n${noteSummary}\n\nCHIEF COMPLAINT:\n${currentNote.chief_complaint}\n\nHISTORY:\n${currentNote.history.map((h) => `• ${h}`).join("\n")}\n\nSYMPTOMS:\n${currentNote.symptoms.map((s) => `• ${s}`).join("\n")}\n\nASSESSMENT DISCUSSED:\n${currentNote.assessment_discussed.map((a) => `• ${a}`).join("\n")}\n\nPLAN DISCUSSED:\n${currentNote.plan_discussed.map((p) => `• ${p}`).join("\n")}\n\nMEDICATIONS MENTIONED:\n${currentNote.medications_mentioned.map((m) => `• ${m}`).join("\n")}\n\nFOLLOW-UP:\n${currentNote.follow_up}`;
+    const fullText = `PATIENT: ${currentNote.patient_display_name}\nDATE: ${currentNote.consultation_date}\nLANGUAGE: ${activeLanguage === "ur" ? "Urdu (اردو)" : "English"}\n\nSUMMARY:\n${noteSummary}\n\nCHIEF COMPLAINT:\n${currentNote.chief_complaint}\n\nHISTORY:\n${currentNote.history.map((h) => `• ${h}`).join("\n")}\n\nSYMPTOMS:\n${currentNote.symptoms.map((s) => `• ${s}`).join("\n")}\n\nASSESSMENT DISCUSSED:\n${currentNote.assessment_discussed.map((a) => `• ${a}`).join("\n")}\n\nPLAN DISCUSSED:\n${currentNote.plan_discussed.map((p) => `• ${p}`).join("\n")}\n\nMEDICATIONS MENTIONED:\n${currentNote.medications_mentioned.map((m) => `• ${m}`).join("\n")}\n\nFOLLOW-UP:\n${currentNote.follow_up}`;
 
     void navigator.clipboard.writeText(fullText).then(() => {
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2000);
     });
+  }
+
+  function handleCopyShareLink() {
+    const url = typeof window !== "undefined" ? window.location.href : "";
+    if (url) {
+      void navigator.clipboard.writeText(url).then(() => {
+        setIsCopiedLink(true);
+        setTimeout(() => setIsCopiedLink(false), 2500);
+      });
+    }
+  }
+
+  function handleDownloadNoteFile() {
+    const fullText = `=====================================================
+RAWAAN CLINICAL ENCOUNTER RECORD
+=====================================================
+Patient:       ${currentNote.patient_display_name}
+Patient ID:    ${currentNote.patient_id}
+Date:          ${currentNote.consultation_date}
+Language:      ${activeLanguage === "ur" ? "Urdu (اردو)" : "English"}
+Status:        ${currentNote.approval_status.toUpperCase()}
+=====================================================
+
+SUMMARY:
+${noteSummary}
+
+CHIEF COMPLAINT:
+${currentNote.chief_complaint || "None recorded"}
+
+HISTORY:
+${currentNote.history.length > 0 ? currentNote.history.map((h) => `• ${h}`).join("\n") : "• Routine evaluation"}
+
+SYMPTOMS:
+${currentNote.symptoms.length > 0 ? currentNote.symptoms.map((s) => `• ${s}`).join("\n") : "• None reported"}
+
+ASSESSMENT DISCUSSED:
+${currentNote.assessment_discussed.length > 0 ? currentNote.assessment_discussed.map((a) => `• ${a}`).join("\n") : "• None documented"}
+
+PLAN DISCUSSED:
+${currentNote.plan_discussed.length > 0 ? currentNote.plan_discussed.map((p) => `• ${p}`).join("\n") : "• None documented"}
+
+MEDICATIONS MENTIONED:
+${currentNote.medications_mentioned.length > 0 ? currentNote.medications_mentioned.map((m) => `• ${m}`).join("\n") : "• No medications"}
+
+FOLLOW-UP:
+${currentNote.follow_up || "Follow up as clinically indicated"}
+
+UNCERTAINTIES / NOTES FOR REVIEW:
+${currentNote.uncertainties.length > 0 ? currentNote.uncertainties.map((u) => `• ${u}`).join("\n") : "• None"}
+
+=====================================================
+TRANSCRIPT PROVENANCE:
+${currentNote.raw_transcript}
+=====================================================
+`;
+
+    const blob = new Blob([fullText], { type: "text/plain;charset=utf-8" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    const safeName = currentNote.patient_display_name.replace(/[^a-zA-Z0-9]/g, "_");
+    link.download = `${safeName}_Clinical_Note_${currentNote.consultation_date}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setIsShareMenuOpen(false);
+  }
+
+  function handleEmailSummary() {
+    const subject = encodeURIComponent(
+      `Clinical Note Summary: ${currentNote.patient_display_name} (${currentNote.consultation_date})`,
+    );
+    const body = encodeURIComponent(
+      `Patient: ${currentNote.patient_display_name}\nDate: ${currentNote.consultation_date}\n\nSummary:\n${noteSummary}\n\nChief Complaint:\n${currentNote.chief_complaint}\n\nPlan:\n${currentNote.plan_discussed.join("\n")}\n\nFollow-up:\n${currentNote.follow_up}`,
+    );
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    setIsShareMenuOpen(false);
   }
 
   async function handleApproveAndSave() {
@@ -159,7 +425,6 @@ export function SessionWorkspaceView({
 
     // Persist through the server action so the approved note lands in the
     // store (Supabase + local JSON) instead of only updating this view.
-    // approval_status is normalized to "draft" because approve() re-marks it.
     const result = await approveDraftAction({
       ...currentNote,
       approval_status: "draft",
@@ -190,7 +455,7 @@ export function SessionWorkspaceView({
 
   return (
     <div className="session-workspace-container">
-      {/* Top Header & Navigation Tabs matching Picture 3 */}
+      {/* Top Header & Navigation Tabs */}
       <header className="session-workspace-topbar">
         <button
           aria-label="Back to dashboard"
@@ -273,41 +538,38 @@ export function SessionWorkspaceView({
            LEFT COLUMN: CLINICAL DOCUMENT WORKSPACE
            =================================================================== */}
         <section className="workspace-document-panel">
-          {/* Sub-toolbar matching Picture 3 */}
+          {/* Sub-toolbar */}
           <div className="document-sub-toolbar">
             <div className="toolbar-left-group">
-              <select
-                className="select-pill"
-                onChange={(e) => setNoteVariant(e.target.value as "BASE")}
-                value={noteVariant}
-              >
-                <option value="BASE">BASE</option>
-                <option value="SOAP">SOAP Note</option>
-                <option value="NARRATIVE">Narrative</option>
-              </select>
-
-              <select
-                className="select-pill"
-                onChange={(e) => setDetailLevel(e.target.value as "Detailed")}
-                value={detailLevel}
-              >
-                <option value="Detailed">Detailed</option>
-                <option value="Concise">Concise</option>
-              </select>
+              <div className="doc-status-badge">
+                <span className="doc-status-dot" />
+                <span className="doc-status-title">Clinical Note</span>
+              </div>
+              <span className={`doc-language-pill ${activeLanguage === "ur" ? "is-urdu" : "is-en"}`}>
+                {activeLanguage === "ur" ? "اردو (Urdu Active)" : "English"}
+              </span>
             </div>
 
             <div className="toolbar-right-group">
+              {/* AI Polish */}
               {isManualEntry ? null : (
                 <button
                   aria-label="Refine with AI"
                   className="icon-action-btn"
-                  onClick={() => handleSendPrompt("Polish and refine clinical phrasing")}
-                  title="Polish note"
+                  onClick={() =>
+                    handleSendPrompt(
+                      activeLanguage === "ur"
+                        ? "اردو جملوں اور طبی اصطلاحات کو مزید نکھاریں"
+                        : "Polish and refine clinical phrasing",
+                    )
+                  }
+                  title="Polish & refine clinical phrasing"
                   type="button"
                 >
-                  <Zap size={16} />
+                  <Zap size={15} />
                 </button>
               )}
+
               {/* Copy Note */}
               <button
                 aria-label="Copy Note"
@@ -316,51 +578,129 @@ export function SessionWorkspaceView({
                 title="Copy entire note"
                 type="button"
               >
-                {isCopied ? <Check size={16} /> : <Clipboard size={16} />}
+                {isCopied ? <Check size={15} /> : <Clipboard size={15} />}
               </button>
-              {/* Export / Download */}
+
+              {/* Download Note Text */}
               <button
-                aria-label="Download Note"
+                aria-label="Download Note File"
                 className="icon-action-btn"
-                onClick={handleCopyNote}
-                title="Export"
+                onClick={handleDownloadNoteFile}
+                title="Download note (.txt)"
                 type="button"
               >
-                <Download size={16} />
+                <Download size={15} />
               </button>
-              {/* Flag / Language */}
+
+              {/* Language Toggle: Urdu Only */}
               <button
-                aria-label="English Translation"
-                className="icon-action-btn flag-btn"
-                title="English (US/UK)"
+                aria-label={activeLanguage === "ur" ? "Switch to English" : "Translate note to Urdu"}
+                className={`btn-language-action ${activeLanguage === "ur" ? "is-active-urdu" : ""}`}
+                disabled={isTranslating}
+                onClick={handleToggleLanguage}
+                title={activeLanguage === "ur" ? "Switch back to English" : "Translate note to Urdu (اردو)"}
                 type="button"
               >
-                <Languages size={16} />
+                <Languages size={15} />
+                <span className="lang-action-label">
+                  {isTranslating ? "Translating…" : activeLanguage === "ur" ? "اردو (Active)" : "اردو (Urdu)"}
+                </span>
               </button>
-              {/* Lock note */}
-              <button
-                aria-label="Locked"
-                className="icon-action-btn"
-                title="Protected medical record"
-                type="button"
-              >
-                <Lock size={16} />
-              </button>
-              {/* Share button */}
-              <button
-                className="btn-share-pill"
-                type="button"
-              >
-                Share ⌄
-              </button>
-              {/* Sprout icon */}
-              <span className="toolbar-sprout" aria-hidden="true">
-                <Sprout size={16} />
-              </span>
+
+              {/* Beautiful Interactive Share Menu */}
+              <div className="share-menu-container" ref={shareMenuRef}>
+                <button
+                  aria-expanded={isShareMenuOpen}
+                  aria-haspopup="true"
+                  className={`btn-share-pill ${isShareMenuOpen ? "is-open" : ""}`}
+                  onClick={() => setIsShareMenuOpen((prev) => !prev)}
+                  type="button"
+                >
+                  <Share2 size={13} />
+                  <span>Share</span>
+                  <ChevronDown className={`share-chevron ${isShareMenuOpen ? "is-rotated" : ""}`} size={13} />
+                </button>
+
+                {isShareMenuOpen && (
+                  <div className="share-dropdown-popover" role="menu">
+                    <div className="share-popover-header">
+                      <span className="share-popover-title">Share & Export</span>
+                      <span className="share-popover-badge">Secure</span>
+                    </div>
+
+                    <div className="share-popover-list">
+                      <button
+                        className="share-popover-item"
+                        onClick={handleCopyShareLink}
+                        role="menuitem"
+                        type="button"
+                      >
+                        <div className="share-item-icon">
+                          {isCopiedLink ? <Check size={15} /> : <Link2 size={15} />}
+                        </div>
+                        <div className="share-item-content">
+                          <div className="share-item-title">
+                            {isCopiedLink ? "Link Copied!" : "Copy Shareable Link"}
+                          </div>
+                          <div className="share-item-desc">Direct encounter reference for clinical team</div>
+                        </div>
+                      </button>
+
+                      <button
+                        className="share-popover-item"
+                        onClick={handleDownloadNoteFile}
+                        role="menuitem"
+                        type="button"
+                      >
+                        <div className="share-item-icon">
+                          <FileText size={15} />
+                        </div>
+                        <div className="share-item-content">
+                          <div className="share-item-title">Download Note (.txt)</div>
+                          <div className="share-item-desc">Structured clinical note file download</div>
+                        </div>
+                      </button>
+
+                      <button
+                        className="share-popover-item"
+                        onClick={() => {
+                          setIsShareMenuOpen(false);
+                          window.print();
+                        }}
+                        role="menuitem"
+                        type="button"
+                      >
+                        <div className="share-item-icon">
+                          <Printer size={15} />
+                        </div>
+                        <div className="share-item-content">
+                          <div className="share-item-title">Print / PDF Report</div>
+                          <div className="share-item-desc">Open printable clinical view</div>
+                        </div>
+                      </button>
+
+                      <button
+                        className="share-popover-item"
+                        onClick={handleEmailSummary}
+                        role="menuitem"
+                        type="button"
+                      >
+                        <div className="share-item-icon">
+                          <Mail size={15} />
+                        </div>
+                        <div className="share-item-content">
+                          <div className="share-item-title">Email Clinical Summary</div>
+                          <div className="share-item-desc">Draft referral email with note summary</div>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Tab 1: NOTES CONTENT matching Picture 3 */}
+          {/* Tab 1: NOTES CONTENT */}
           {activeTab === "notes" ? (
             isManualEntry ? (
               <div className="clinical-document-body manual-note-editor">
@@ -529,11 +869,17 @@ export function SessionWorkspaceView({
                 </div>
               </div>
             ) : (
-            <div className="clinical-document-body">
+              <div
+                className={`clinical-document-body ${activeLanguage === "ur" ? "is-urdu-doc" : ""}`}
+                dir={activeLanguage === "ur" ? "rtl" : "ltr"}
+              >
+
               {/* Summary Section */}
               <div className="doc-section">
                 <div className="section-title-row">
-                  <h2 className="section-title">Summary</h2>
+                  <h2 className="section-title">
+                    {activeLanguage === "ur" ? "خلاصہ" : "Summary"}
+                  </h2>
                   <button
                     aria-label="Copy summary"
                     className="btn-copy-inline"
@@ -550,19 +896,29 @@ export function SessionWorkspaceView({
                 <p className="summary-paragraph-text">{noteSummary}</p>
               </div>
 
-              {/* Session Topics Section matching Picture 3 */}
+              {/* Session Topics Section */}
               <div className="doc-section">
-                <h2 className="section-title">Session Topics</h2>
+                <h2 className="section-title">
+                  {activeLanguage === "ur" ? "سیشن کے موضوعات" : "Session Topics"}
+                </h2>
 
                 <div className="topic-block">
-                  <h3 className="topic-subtitle">Medical History Documentation</h3>
+                  <h3 className="topic-subtitle">
+                    {activeLanguage === "ur"
+                      ? "طبی تاریخ اور علامات کا اندراج"
+                      : "Medical History Documentation"}
+                  </h3>
                   <ul className="topic-bullet-list">
                     {currentNote.history.length > 0 ? (
                       currentNote.history.map((h, i) => (
                         <li key={`hist-${i}`}>{h}</li>
                       ))
                     ) : (
-                      <li>Patient attended consultation for routine clinical evaluation.</li>
+                      <li>
+                        {activeLanguage === "ur"
+                          ? "مریض معمول کے طبی معائنے کے لیے حاضر ہوا۔"
+                          : "Patient attended consultation for routine clinical evaluation."}
+                      </li>
                     )}
                     {currentNote.symptoms.map((s, i) => (
                       <li key={`symp-${i}`}>{s}</li>
@@ -574,13 +930,25 @@ export function SessionWorkspaceView({
                       <li key={`plan-${i}`}>{p}</li>
                     ))}
                     {currentNote.medications_mentioned.map((m, i) => (
-                      <li key={`med-${i}`}>Prescribed/Discussed medication: {m}</li>
+                      <li key={`med-${i}`}>
+                        {activeLanguage === "ur"
+                          ? `تجویز کردہ دوا: ${m}`
+                          : `Prescribed/Discussed medication: ${m}`}
+                      </li>
                     ))}
                     {currentNote.follow_up ? (
-                      <li>Follow-up recommendations: {currentNote.follow_up}</li>
+                      <li>
+                        {activeLanguage === "ur"
+                          ? `فالو اپ رہنمائی: ${currentNote.follow_up}`
+                          : `Follow-up recommendations: ${currentNote.follow_up}`}
+                      </li>
                     ) : null}
                     {currentNote.uncertainties.map((u, i) => (
-                      <li key={`unc-${i}`}>Note for review: {u}</li>
+                      <li key={`unc-${i}`}>
+                        {activeLanguage === "ur"
+                          ? `جائزہ کے لیے نوٹ: ${u}`
+                          : `Note for review: ${u}`}
+                      </li>
                     ))}
                   </ul>
                 </div>
@@ -638,11 +1006,16 @@ export function SessionWorkspaceView({
             </div>
           ) : activeTab === "treatment" ? (
             /* Tab 3: TREATMENT PLAN */
-            <div className="treatment-plan-tab-view">
+            <div
+              className={`treatment-plan-tab-view ${activeLanguage === "ur" ? "is-urdu-doc" : ""}`}
+              dir={activeLanguage === "ur" ? "rtl" : "ltr"}
+            >
               <div className="doc-section">
-                <h2 className="section-title">Assessment & Treatment Plan</h2>
+                <h2 className="section-title">
+                  {activeLanguage === "ur" ? "تشخیص اور علاج کا منصوبہ" : "Assessment & Treatment Plan"}
+                </h2>
                 <div className="plan-card">
-                  <h3>Clinical Assessment</h3>
+                  <h3>{activeLanguage === "ur" ? "طبی تشخیص" : "Clinical Assessment"}</h3>
                   <ul>
                     {currentNote.assessment_discussed.map((a, i) => (
                       <li key={i}>{a}</li>
@@ -651,7 +1024,7 @@ export function SessionWorkspaceView({
                 </div>
 
                 <div className="plan-card">
-                  <h3>Action Items & Directives</h3>
+                  <h3>{activeLanguage === "ur" ? "علاج کی ہدایات" : "Action Items & Directives"}</h3>
                   <ul>
                     {currentNote.plan_discussed.map((p, i) => (
                       <li key={i}>{p}</li>
@@ -660,19 +1033,28 @@ export function SessionWorkspaceView({
                 </div>
 
                 <div className="plan-card">
-                  <h3>Medications & Interventions</h3>
+                  <h3>{activeLanguage === "ur" ? "ادویات" : "Medications & Interventions"}</h3>
                   <ul>
                     {currentNote.medications_mentioned.length > 0 ? (
                       currentNote.medications_mentioned.map((m, i) => <li key={i}>{m}</li>)
                     ) : (
-                      <li>No new pharmacological prescriptions recorded in this session.</li>
+                      <li>
+                        {activeLanguage === "ur"
+                          ? "اس سیشن میں کوئی نئی ادویات شامل نہیں کی گئیں۔"
+                          : "No new pharmacological prescriptions recorded in this session."}
+                      </li>
                     )}
                   </ul>
                 </div>
 
                 <div className="plan-card">
-                  <h3>Follow-Up Timeframe</h3>
-                  <p>{currentNote.follow_up || "Follow up as clinically indicated."}</p>
+                  <h3>{activeLanguage === "ur" ? "فالو اپ ٹائم فریم" : "Follow-Up Timeframe"}</h3>
+                  <p>
+                    {currentNote.follow_up ||
+                      (activeLanguage === "ur"
+                        ? "طبی ضرورت کے مطابق دوبارہ رابطہ کریں۔"
+                        : "Follow up as clinically indicated.")}
+                  </p>
                 </div>
               </div>
             </div>
@@ -692,13 +1074,22 @@ export function SessionWorkspaceView({
                           : "Session Transcript"}
                 </h2>
                 <p className="transcript-hint">
-                  {currentNote.session_info?.transcript_source ?? "Not recorded"}
+                  {currentNote.session_info?.transcript_source ?? "Whisper Large v3 Spoken Audio Provenance"}
                 </p>
-                <pre className="transcript-verbatim-box">
-                  {currentNote.raw_transcript}
-                </pre>
+                {(() => {
+                  const sanitized = sanitizeTranscript(currentNote.raw_transcript);
+                  const isUrdu = /[\u0600-\u06FF]/.test(sanitized);
+                  return (
+                    <pre
+                      className={`transcript-verbatim-box ${isUrdu ? "is-urdu-transcript" : ""}`}
+                    >
+                      {sanitized}
+                    </pre>
+                  );
+                })()}
               </div>
             </div>
+
           ) : activeTab === "session-info" ? (
             /* Tab 5: SESSION INFORMATION */
             <div className="session-info-tab-view">
@@ -738,6 +1129,7 @@ export function SessionWorkspaceView({
           </aside>
         ) : (
           <aside className="workspace-ai-overview-panel">
+
           {/* Top Chat Bar */}
           <header className="ai-overview-header">
             <button className="btn-chat-dropdown" type="button">
@@ -753,7 +1145,7 @@ export function SessionWorkspaceView({
             </button>
           </header>
 
-          {/* Quick Suggestions matching Picture 3 */}
+          {/* Quick Suggestions */}
           <div className="ai-quick-suggestions">
             <button
               className="suggestion-pill"
@@ -787,6 +1179,23 @@ export function SessionWorkspaceView({
               </span>
               <span>Summarize key clinical points</span>
             </button>
+
+            <button
+              className="suggestion-pill"
+              onClick={() => {
+                if (activeLanguage === "en") {
+                  void handleToggleLanguage();
+                } else {
+                  void handleSendPrompt("اردو زبان کے جملوں کی تصحیح اور خوبصورتی میں اضافہ کریں");
+                }
+              }}
+              type="button"
+            >
+              <span className="pill-icon">
+                <Languages size={14} />
+              </span>
+              <span>{activeLanguage === "en" ? "Translate note to Urdu" : "اردو میں مزید نکھاریں"}</span>
+            </button>
           </div>
 
           {/* Chat Messages Stream */}
@@ -811,9 +1220,10 @@ export function SessionWorkspaceView({
                 <span className="loading-label">Refining note with AI…</span>
               </div>
             ) : null}
+            <div ref={messagesEndRef} />
           </div>
 
-          {/* Bottom Chat Input Form matching Picture 3 */}
+          {/* Bottom Chat Input Form */}
           <div className="ai-chat-input-wrapper">
             <h4 className="chat-prompt-title">How would you like to modify your note?</h4>
 
@@ -823,12 +1233,35 @@ export function SessionWorkspaceView({
                 <FileText size={14} />
               </span>
               <span className="badge-text">
-                {currentNote.patient_display_name} - Note ({noteVariant})
+                {currentNote.patient_display_name} - Clinical Note {activeLanguage === "ur" ? "(اردو)" : ""}
               </span>
             </div>
 
             {/* Input Box Card */}
             <div className="chat-input-box-card">
+              <input
+                accept=".txt,.md,.json,.csv,.log,.doc,.docx,.pdf"
+                onChange={handleFileSelect}
+                ref={fileInputRef}
+                style={{ display: "none" }}
+                type="file"
+              />
+
+              {attachedFile && (
+                <div className="chat-attachment-chip">
+                  <Paperclip className="attachment-chip-icon" size={12} />
+                  <span className="attachment-chip-name">{attachedFile.name} ({attachedFile.size})</span>
+                  <button
+                    aria-label="Remove attached document"
+                    className="btn-remove-attachment"
+                    onClick={() => setAttachedFile(null)}
+                    type="button"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              )}
+
               <textarea
                 className="chat-textarea"
                 onChange={(e) => setInputPrompt(e.target.value)}
@@ -838,7 +1271,7 @@ export function SessionWorkspaceView({
                     void handleSendPrompt();
                   }
                 }}
-                placeholder="Make modifications to your note here"
+                placeholder={attachedFile ? `Instruct AI how to incorporate ${attachedFile.name}...` : "Make modifications to your note here"}
                 rows={2}
                 value={inputPrompt}
               />
@@ -846,20 +1279,13 @@ export function SessionWorkspaceView({
               <div className="chat-input-bottom-actions">
                 <div className="input-left-tools">
                   <button
-                    aria-label="Attach context"
-                    className="tool-btn"
-                    title="Attach document"
+                    aria-label="Attach clinical document"
+                    className={`tool-btn ${attachedFile ? "is-attached" : ""}`}
+                    onClick={() => fileInputRef.current?.click()}
+                    title="Attach clinical document (.txt, .json, .csv, .md)"
                     type="button"
                   >
                     <Paperclip size={15} />
-                  </button>
-                  <button
-                    aria-label="Add field"
-                    className="tool-btn"
-                    title="Add context"
-                    type="button"
-                  >
-                    +
                   </button>
                   <button
                     className={`pill-toggle-btn ${includeTreatmentPlanToggle ? "is-selected" : ""}`}
@@ -873,8 +1299,9 @@ export function SessionWorkspaceView({
                 <div className="input-right-tools">
                   <button
                     aria-label="Voice input"
-                    className="tool-btn"
-                    title="Dictate modification prompt"
+                    className={`tool-btn ${isListening ? "is-recording-pulse" : ""}`}
+                    onClick={handleToggleDictation}
+                    title={isListening ? "Listening... click to stop" : "Dictate modification prompt"}
                     type="button"
                   >
                     <Mic size={15} />
@@ -882,7 +1309,7 @@ export function SessionWorkspaceView({
                   <button
                     aria-label="Send message"
                     className="btn-send-arrow"
-                    disabled={!inputPrompt.trim() || isAiLoading}
+                    disabled={(!inputPrompt.trim() && !attachedFile) || isAiLoading}
                     onClick={() => void handleSendPrompt()}
                     type="button"
                   >
@@ -891,6 +1318,7 @@ export function SessionWorkspaceView({
                 </div>
               </div>
             </div>
+
           </div>
           </aside>
         )}

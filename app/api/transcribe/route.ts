@@ -10,6 +10,8 @@ import {
   validateAudioUpload,
   validateTranscriptionText,
 } from "@/lib/transcription/validate-audio";
+import { createTranscriptTranslator, type TranscriptTranslator } from "@/lib/llm/translate-transcript";
+import { createLlmProviderFromEnv } from "@/lib/llm/provider";
 
 const manualFallbackFailure: TranscriptionFailure = {
   ok: false,
@@ -32,7 +34,26 @@ function resultResponse(
   return NextResponse.json(result, { status });
 }
 
-export function createTranscriptionPost(provider: TranscriptionProvider) {
+// Translates the full transcript to English when a Groq key is configured.
+// Whisper transcribes Urdu speech in the source script (often Devanagari);
+// Groq's endpoint has no translation mode, so the LLM does the conversion.
+function createDefaultTranscriptTranslator(): TranscriptTranslator | undefined {
+  try {
+    return createTranscriptTranslator(
+      createLlmProviderFromEnv({
+        GROQ_API_KEY: process.env.GROQ_API_KEY,
+        LLM_MODEL: process.env.LLM_MODEL,
+      }),
+    );
+  } catch {
+    return undefined;
+  }
+}
+
+export function createTranscriptionPost(
+  provider: TranscriptionProvider,
+  translator?: TranscriptTranslator,
+) {
   return async function POST(request: Request): Promise<NextResponse<TranscriptionResult>> {
     let formData: FormData;
 
@@ -56,7 +77,10 @@ export function createTranscriptionPost(provider: TranscriptionProvider) {
 
     try {
       const transcription = await provider.transcribe({ audio });
-      const result = validateTranscriptionText(transcription.transcript);
+      const translatedTranscript = translator
+        ? await translator.translate(transcription.transcript)
+        : transcription.transcript;
+      const result = validateTranscriptionText(translatedTranscript);
 
       return resultResponse(result, result.ok ? 200 : 502);
     } catch {
@@ -65,4 +89,7 @@ export function createTranscriptionPost(provider: TranscriptionProvider) {
   };
 }
 
-export const POST = createTranscriptionPost(createGroqWhisperProvider());
+export const POST = createTranscriptionPost(
+  createGroqWhisperProvider(),
+  createDefaultTranscriptTranslator(),
+);

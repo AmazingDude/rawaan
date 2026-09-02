@@ -31,3 +31,14 @@
 
 **Why:** Matches the clinician UX patterns in high-fidelity clinical scribes, keeps patient assignment explicit, provides instant multi-tab clinical context, and gives clinicians conversational AI transformations (e.g. paragraph format, de-identification/remove names, summarize key clinical points) without losing grounding or data provenance.
 
+## 2026-09-02 — Dedicated Urdu Clinical Translation Engine & RTL Document View
+
+**Decision:**
+1. **Urdu Translation Strategy:** Implement a dual-layer translation pipeline (`lib/llm/translate-note-urdu.ts`) combining LLM-powered prompt execution (`NOTE_URDU_TRANSLATION_SYSTEM_PROMPT`) with a high-accuracy offline medical Urdu dictionary fallback (`translatePhraseToUrdu`, `translateSummaryToUrdu`).
+2. **Language Boundary:** The language switch button translates strictly into Urdu (`اردو`) with RTL layout and Nastaliq typography (`.is-urdu-doc`, `.is-urdu-transcript`), preventing drift into other languages.
+3. **Whisper Script Locking & Devanagari Sanitization:** Whisper STT is configured with `language: "ur"` and Urdu prompt context. Any residual Devanagari output is automatically transliterated to Perso-Arabic Urdu script via `devanagariToUrdu` to ensure provenance records strictly display in Urdu or English.
+4. **Clinical Context File Attachment:** The workspace chat input allows clinicians to upload and attach external clinical reference documents (`.txt`, `.md`, `.json`, `.csv`, `.pdf`), injecting document context directly into the AI note modification prompt.
+
+**Why:** Addresses Pakistani clinical workflow requirements where spoken consultations occur in Urdu or bilingual English/Urdu, ensures consistent localized documentation, eliminates non-intended Devanagari script output from Whisper, and enables clinicians to enrich notes with external lab/referral records.
+
+
