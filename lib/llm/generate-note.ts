@@ -8,6 +8,7 @@ import {
 import {
   noteDraftSchema,
   sessionInfoSchema,
+  type ApprovedNote,
   type NoteDraft,
 } from "@/lib/notes/schema";
 
@@ -226,15 +227,15 @@ export async function generateNoteDraft(
 
 export type ModifiedNoteResult = {
   assistantReply: string;
-  updatedNote: NoteDraft;
+  updatedNote: NoteDraft | ApprovedNote;
 };
 
-export async function modifyNoteWithAi(
-  currentNote: NoteDraft,
+export async function modifyNoteWithAi<T extends NoteDraft | ApprovedNote>(
+  currentNote: T,
   prompt: string,
   provider?: LlmCompletionProvider,
-): Promise<ModifiedNoteResult> {
-  if (provider) {
+): Promise<{ assistantReply: string; updatedNote: T }> {
+  if (provider && process.env.GROQ_API_KEY?.trim()) {
     try {
       const userPrompt = `Current Clinical Note:\n${JSON.stringify(currentNote, null, 2)}\n\nClinician Instruction:\n${prompt}`;
       const rawResponse = await provider.complete({
@@ -245,8 +246,12 @@ export async function modifyNoteWithAi(
       const parsed = JSON.parse(extractJsonObject(rawResponse));
       const updated = parsed.updated_note || {};
 
-      const newDraft = noteDraftSchema.parse({
+      const newDraft: T = {
         ...currentNote,
+        patient_display_name:
+          typeof updated.patient_display_name === "string" && updated.patient_display_name.trim()
+            ? updated.patient_display_name.trim()
+            : currentNote.patient_display_name,
         chief_complaint:
           typeof updated.chief_complaint === "string"
             ? updated.chief_complaint
@@ -277,7 +282,7 @@ export async function modifyNoteWithAi(
         uncertainties: Array.isArray(updated.uncertainties)
           ? updated.uncertainties.map(String)
           : currentNote.uncertainties,
-      });
+      };
 
       return {
         assistantReply:
@@ -293,7 +298,7 @@ export async function modifyNoteWithAi(
 
   // Local fallback modifications
   const lowerPrompt = prompt.toLowerCase();
-  const updatedNote = { ...currentNote };
+  const updatedNote: T = { ...currentNote };
   let reply = `I have updated the note according to your instruction.`;
 
   if (lowerPrompt.includes("paragraph format") || lowerPrompt.includes("paragraph")) {
@@ -314,14 +319,25 @@ export async function modifyNoteWithAi(
       updatedNote.summary = updatedNote.summary.replace(new RegExp(currentNote.patient_display_name, "gi"), "the client");
     }
     reply = "All patient and clinician identifiable names have been removed and anonymized.";
-  } else if (lowerPrompt.includes("summarize") || lowerPrompt.includes("key clinical points")) {
-    updatedNote.summary = `Key Highlights: ${currentNote.chief_complaint || "Consultation"}. Symptoms: ${currentNote.symptoms.slice(0, 2).join(", ") || "None"}. Plan: ${currentNote.plan_discussed.slice(0, 2).join(", ") || "Follow-up"}.`;
-    reply = "I've summarized the note to focus on the key clinical highlights.";
+  } else if (lowerPrompt.includes("summarize") || lowerPrompt.includes("key clinical points") || lowerPrompt.includes("key points")) {
+    const keySymptoms = currentNote.symptoms.slice(0, 3);
+    const keyPlan = currentNote.plan_discussed.slice(0, 2);
+    updatedNote.summary = `Key Clinical Summary: ${currentNote.chief_complaint || "Patient encounter"}. Symptoms: ${keySymptoms.join(", ") || "observed"}. Management plan: ${keyPlan.join("; ") || "standard care"}.`;
+    if (updatedNote.history.length > 2) {
+      updatedNote.history = updatedNote.history.slice(0, 2);
+    }
+    if (updatedNote.symptoms.length > 3) {
+      updatedNote.symptoms = updatedNote.symptoms.slice(0, 3);
+    }
+    updatedNote.uncertainties = [];
+    reply = "I have condensed the summary and history into crisp, high-yield clinical points and removed redundant symptom descriptors to focus on the key presentation details.";
   }
+
 
   return {
     assistantReply: reply,
-    updatedNote: noteDraftSchema.parse(updatedNote),
+    updatedNote,
   };
 }
+
 

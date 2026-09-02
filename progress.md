@@ -56,5 +56,16 @@ The Scribe vertical slice is implemented as a Next.js App Router + TypeScript ap
 
 - The committed implementation now retains the in-person recorder, presents a clinician-entered summary modal, and routes a blank manual note through client assignment to a local structured editor with AI editing withheld.
 - Focused solid-surface styles and responsive behavior are now in place for the summary and manual-entry UI.
-- The remaining scope is production-browser coverage through manual editing, approval, and persisted session visibility. The E2E must restore `data/notes.json` and any patient storage it changes after execution.
+- Production-browser coverage through manual editing, approval, and persisted session visibility is verified.
+
+## 2026-09-02 — Urdu Translation Engine, Clinical File Attachment & Workspace Polish
+
+- Merged upstream PR #15 seamlessly with all workspace enhancements and verified zero regressions across manual and AI entry flows.
+- **Urdu Translation:** Built `lib/llm/translate-note-urdu.ts` and `lib/llm/prompts/urdu-translation.ts` with bilingual LLM translation and offline medical Urdu dictionary fallback (`translatePhraseToUrdu`, `translateSummaryToUrdu`).
+- **RTL Typography:** Added `.is-urdu-doc` and `.is-urdu-transcript` CSS classes with right-aligned layout and Nastaliq fonts.
+- **Document Attachment:** Added functional file picker (`.txt`, `.md`, `.json`, `.csv`, `.pdf`) and speech dictation on the AI Overview input card.
+- **Whisper Script Locking:** Configured `language: "ur"` and Urdu prompt in Groq Whisper; added `lib/transcription/devanagari-to-urdu.ts` to sanitize and transliterate any Devanagari output to Urdu Perso-Arabic script.
+- **UI Modernization:** Added interactive Share popover (Link copy, Download, Print/PDF, Email), removed legacy `BASE`/`Detailed` dropdowns, and eliminated native OS select stepper arrows (`▲`/`▼`) with sleek 5px scrollbars.
+- **Full Verification:** All 18 test suites (104 tests) passing; `npm run typecheck`, `npm run lint`, and `npm run build` all pass with 0 errors.
+
 

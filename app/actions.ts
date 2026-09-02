@@ -25,7 +25,7 @@ import {
   type LlmCompletionProvider,
 } from "@/lib/llm/provider";
 import { createNoteRepository } from "@/lib/notes/repository";
-import { type NoteDraft } from "@/lib/notes/schema";
+import { type ApprovedNote, type NoteDraft } from "@/lib/notes/schema";
 import demoSeedNotes from "@/data/seed/demo-patients.json";
 
 function createLazyBrainProvider(): LlmCompletionProvider {
@@ -352,9 +352,9 @@ export async function createClientAction(data: {
 }
 
 export async function modifyNoteAction(data: {
-  note: NoteDraft;
+  note: NoteDraft | ApprovedNote;
   prompt: string;
-}): Promise<{ assistantReply: string; ok: true; updatedNote: NoteDraft } | ActionFailure> {
+}): Promise<{ assistantReply: string; ok: true; updatedNote: NoteDraft | ApprovedNote } | ActionFailure> {
   try {
     const { modifyNoteWithAi } = await import("@/lib/llm/generate-note");
     const result = await modifyNoteWithAi(
@@ -376,6 +376,30 @@ export async function modifyNoteAction(data: {
   }
 }
 
+export async function translateNoteToUrduAction(
+  note: NoteDraft | ApprovedNote,
+): Promise<{ ok: true; urduNote: NoteDraft | ApprovedNote } | ActionFailure> {
+  try {
+    const { translateNoteToUrdu } = await import("@/lib/llm/translate-note-urdu");
+    const urduNote = await translateNoteToUrdu(
+      note,
+      createLazyBrainProvider(),
+    );
+
+    return {
+      ok: true,
+      urduNote,
+    };
+  } catch (error) {
+    console.error("translateNoteToUrduAction error:", error);
+    return {
+      message: "Could not translate note to Urdu. Please try again.",
+      ok: false,
+    };
+  }
+}
+
+
 export async function getPatientInsightsAction(
   patientId: string,
 ) {
@@ -385,5 +409,6 @@ export async function getPatientInsightsAction(
   const notes = await noteRepository.listByPatient(patientId);
   return extractPatientSessionInsights(notes);
 }
+
 
 

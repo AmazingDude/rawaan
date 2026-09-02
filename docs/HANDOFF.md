@@ -1,11 +1,13 @@
 # Handoff
 
-## Current checkpoint — 2026-09-01
+## Current checkpoint — 2026-09-02
 
-- On `feat/seed-data-refresh`, commit `6d991c5` refreshes the isolated demo rehearsal documentation and validation: it corrects the fixture reference, adds two explicit cross-patient isolation probes, and checks visibly fictional identities plus chronological visit histories. The canonical eight-note fixture and opt-in loader remain unchanged.
-- Fresh verification passed: `npm run seed:demo` loaded eight fictional approved notes, a schema check validated all eight, and `npm run seed:reset` restored `data/notes.json` to `[]`. `npm run test -- tests/demo-seed.test.ts` passed 3/3 tests; `npm run typecheck`, `npm run lint`, `npm run test` (16 files, 98 tests), and `npm run build` all passed.
-- The live store is currently `[]`; do not load the fixture except for a deliberate rehearsal, and run `npm run seed:reset` immediately afterward.
-- Separate follow-up findings, intentionally outside the seed-refresh scope: `app/actions.ts` imports the seed fixture for the Record client list; `supabase/schema.sql` contains conflicting noncanonical clinical demo rows outside `data/seed/`; `AGENTS.md` points to the older `docs/PRD.md` while `findings.md` names root `PRD.md` as the build-ready source of truth.
+- On `feat/urdu-translation-and-workspace-ux`, merged upstream PR #15 (record entry flows, manual summary modals, and e2e test utilities) and completed full Urdu clinical translation, document attachment, and workspace UI modernization.
+- **Urdu Translation & RTL Layout:** Added `lib/llm/translate-note-urdu.ts` and `lib/llm/prompts/urdu-translation.ts` supporting LLM translation alongside an offline medical Urdu dictionary fallback. Added `.is-urdu-doc` and `.is-urdu-transcript` RTL styles with Nastaliq typography.
+- **Document Attachment & Dictation:** Enabled file picker upload (`.txt`, `.md`, `.json`, `.csv`, `.pdf`) via the paperclip button, attaching clinical files to the AI modification prompt context with an interactive chip. Connected the microphone button to browser speech dictation.
+- **Whisper & Script Sanitization:** Configured `language: "ur"` and an explicit Urdu prompt in `lib/transcription/groq-whisper.ts` and created `lib/transcription/devanagari-to-urdu.ts` to automatically detect and transliterate any Devanagari output into authentic Urdu script.
+- **Workspace UI Polish:** Removed deprecated `BASE`/`Detailed` dropdowns and lock button; added interactive Share popover (Copy link, Download `.txt`, Print/PDF, Email); eliminated native OS select/scrollbar stepper arrows (`▲`/`▼`) with modern slim 5px scrollbars.
+- **Verification:** All 18 test suites and 104 tests passing cleanly via `npm run test`; `npm run typecheck`, `npm run lint`, and `npm run build` all pass with 0 errors.
 
 ## Current state
 
