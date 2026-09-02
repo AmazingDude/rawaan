@@ -31,4 +31,21 @@ describe("fictional Brain demo seed", () => {
     ]);
     expect([...notesByPatient.values()].sort()).toEqual([2, 3, 3]);
   });
+
+  it("uses fictional identities with chronological visit histories", () => {
+    const datesByPatient = new Map<string, string[]>();
+
+    for (const note of demoNotes) {
+      expect(note.patient_display_name).toMatch(/^Fictional /);
+      expect(note.raw_transcript).toMatch(/^Fictional patient /);
+
+      const consultationDates = datesByPatient.get(note.patient_id) ?? [];
+      consultationDates.push(note.consultation_date);
+      datesByPatient.set(note.patient_id, consultationDates);
+    }
+
+    for (const consultationDates of datesByPatient.values()) {
+      expect(consultationDates).toEqual([...consultationDates].sort());
+    }
+  });
 });

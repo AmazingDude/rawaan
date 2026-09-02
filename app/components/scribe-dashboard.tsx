@@ -9,6 +9,7 @@ import {
   type ClientRecord,
 } from "@/app/actions";
 import { AssignSessionModal } from "@/app/components/assign-session-modal";
+import { ManualSummaryModal } from "@/app/components/manual-summary-modal";
 import { RecordSessionModal } from "@/app/components/record-session-modal";
 import { SessionWorkspaceView } from "@/app/components/session-workspace-view";
 import type { ApprovedNote, NoteDraft } from "@/lib/notes/schema";
@@ -26,6 +27,15 @@ interface RecentSession {
 interface ScribeDashboardProps {
   initialNotes?: ApprovedNote[];
 }
+
+type PendingSession = {
+  consultationDate: string;
+  recordingDevice?: string;
+  recordingDurationSeconds?: number;
+  sessionType: "in-person" | "summary" | "upload" | "manual";
+  transcript: string;
+  transcriptSource: string;
+};
 
 function formatSessionTime(isoString?: string): string {
   if (!isoString) return "9:18 PM";
@@ -93,14 +103,10 @@ export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
   const [notification, setNotification] = useState<string | null>(null);
 
   // Workflow State Modals & Workspace Views
-  const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
+  const [isInPersonRecordModalOpen, setIsInPersonRecordModalOpen] = useState(false);
+  const [isManualSummaryModalOpen, setIsManualSummaryModalOpen] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
-  const [pendingRecording, setPendingRecording] = useState<{
-    consultationDate: string;
-    recordingDevice?: string;
-    recordingDurationSeconds?: number;
-    transcript: string;
-  } | null>(null);
+  const [pendingSession, setPendingSession] = useState<PendingSession | null>(null);
   const [activeWorkspaceDraft, setActiveWorkspaceDraft] = useState<
     NoteDraft | ApprovedNote | null
   >(null);
@@ -123,43 +129,94 @@ export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
     recordingDurationSeconds?: number;
     transcript: string;
   }) {
-    setIsRecordModalOpen(false);
-    setPendingRecording({
+    setIsInPersonRecordModalOpen(false);
+    setPendingSession({
       consultationDate: data.consultationDate,
       recordingDevice: data.recordingDevice,
       recordingDurationSeconds: data.recordingDurationSeconds,
+      sessionType: "in-person",
       transcript: data.transcript,
+      transcriptSource: "Whisper Large v3",
     });
     setIsAssignModalOpen(true);
   }
 
+  function handleSummaryComplete(data: { consultationDate: string; transcript: string }) {
+    setIsManualSummaryModalOpen(false);
+    setPendingSession({
+      consultationDate: data.consultationDate,
+      sessionType: "summary",
+      transcript: data.transcript,
+      transcriptSource: "Clinician-entered session summary",
+    });
+    setIsAssignModalOpen(true);
+  }
+
+  function createManualDraft(client: ClientRecord, session: PendingSession): NoteDraft {
+    return {
+      approval_status: "draft",
+      assessment_discussed: [],
+      chief_complaint: "",
+      consultation_date: session.consultationDate,
+      email: client.email,
+      first_name: client.firstName,
+      follow_up: "",
+      history: [],
+      last_name: client.lastName,
+      medications_mentioned: [],
+      mobile_number: client.mobileNumber,
+      patient_display_name: client.displayName,
+      patient_id: client.patientId,
+      plan_discussed: [],
+      raw_transcript: session.transcript,
+      session_info: {
+        recorded_at: new Date().toISOString(),
+        session_type: session.sessionType,
+        transcript_source: session.transcriptSource,
+      },
+      summary: "",
+      symptoms: [],
+      uncertainties: [],
+    };
+  }
+
+  function buildSessionInfo(
+    session: PendingSession,
+  ): NonNullable<NoteDraft["session_info"]> {
+    return {
+      ...(session.recordingDurationSeconds === undefined
+        ? {}
+        : { duration_seconds: session.recordingDurationSeconds }),
+      ...(session.recordingDevice ? { recording_device: session.recordingDevice } : {}),
+      recorded_at: new Date().toISOString(),
+      session_type: session.sessionType,
+      transcript_source: session.transcriptSource,
+    };
+  }
+
   // Step 2: Client chosen in Assign Session Modal -> Generate Draft & Open Workspace View (Picture 3)
   async function handleAssignClient(client: ClientRecord) {
-    if (!pendingRecording) return;
+    if (!pendingSession) return;
     setIsAssignModalOpen(false);
+
+    if (pendingSession.sessionType === "manual") {
+      setActiveWorkspaceDraft(createManualDraft(client, pendingSession));
+      setNotification(null);
+      return;
+    }
+
     setNotification("Generating structured clinical note with AI Overview…");
 
-    const sessionInfo: NoteDraft["session_info"] =
-      pendingRecording.recordingDurationSeconds || pendingRecording.recordingDevice
-        ? {
-            duration_seconds: pendingRecording.recordingDurationSeconds,
-            recorded_at: new Date().toISOString(),
-            recording_device: pendingRecording.recordingDevice,
-            session_type: "in-person",
-            transcript_source: "Whisper Large v3",
-          }
-        : buildUploadSessionInfo();
-
     const result = await generateDraftAction({
-      consultation_date: pendingRecording.consultationDate,
+      consultation_date: pendingSession.consultationDate,
       email: client.email,
       first_name: client.firstName,
       last_name: client.lastName,
       mobile_number: client.mobileNumber,
       patient_display_name: client.displayName,
       patient_id: client.patientId,
-      session_info: sessionInfo,
-      transcript: pendingRecording.transcript,
+      session_info: buildSessionInfo(pendingSession),
+      transcript: pendingSession.transcript,
     });
 
     if (result.ok) {
@@ -229,6 +286,16 @@ export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
     setNotification("Approved note saved to patient record.");
   }
 
+  function handleCreateEmptyNote() {
+    setPendingSession({
+      consultationDate: new Date().toISOString().slice(0, 10),
+      sessionType: "manual",
+      transcript: "No transcript was provided. This note was created manually.",
+      transcriptSource: "Clinician-created manual note",
+    });
+    setIsAssignModalOpen(true);
+  }
+
   async function handleFileUpload(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -249,19 +316,15 @@ export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
       transcript = await file.text();
     }
 
-    setPendingRecording({
+    setPendingSession({
       consultationDate: new Date().toISOString().slice(0, 10),
+      sessionType: "upload",
       transcript,
+      transcriptSource: file.type.startsWith("audio/")
+        ? "Whisper Large v3"
+        : "Uploaded text file",
     });
     setIsAssignModalOpen(true);
-  }
-
-  function buildUploadSessionInfo(): NoteDraft["session_info"] {
-    return {
-      recorded_at: new Date().toISOString(),
-      session_type: "upload",
-      transcript_source: "Whisper Large v3",
-    };
   }
 
   // If viewing a note workspace (Picture 3), render full Session Workspace View!
@@ -269,6 +332,7 @@ export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
     return (
       <SessionWorkspaceView
         draft={activeWorkspaceDraft}
+        isManualEntry={activeWorkspaceDraft.session_info?.session_type === "manual"}
         onApprove={handleApproveSuccess}
         onBack={() => setActiveWorkspaceDraft(null)}
       />
@@ -312,7 +376,7 @@ export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
       <section className="action-cards-grid" aria-label="Recording options">
         <button
           className="action-card"
-          onClick={() => setIsRecordModalOpen(true)}
+          onClick={() => setIsInPersonRecordModalOpen(true)}
           type="button"
         >
           <div className="action-card-top">
@@ -347,7 +411,7 @@ export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
 
         <button
           className="action-card"
-          onClick={() => setIsRecordModalOpen(true)}
+          onClick={() => setIsManualSummaryModalOpen(true)}
           type="button"
         >
           <div className="action-card-top">
@@ -421,7 +485,7 @@ export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
           />
           <button
             className="btn-create-empty"
-            onClick={() => setIsRecordModalOpen(true)}
+            onClick={handleCreateEmptyNote}
             type="button"
           >
             <span className="btn-plus">+</span> Create empty note
@@ -533,13 +597,21 @@ export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
 
       {/* In-Person Recording Modal — mounted only while open so every session
           starts from a clean setup state instead of a stale phase. */}
-      {isRecordModalOpen ? (
+      {isInPersonRecordModalOpen ? (
         <RecordSessionModal
           initialClients={clients}
           isOpen
-          onClose={() => setIsRecordModalOpen(false)}
+          onClose={() => setIsInPersonRecordModalOpen(false)}
           onComplete={handleRecordingComplete}
           requestTranscription={requestTranscription}
+        />
+      ) : null}
+
+      {isManualSummaryModalOpen ? (
+        <ManualSummaryModal
+          isOpen
+          onClose={() => setIsManualSummaryModalOpen(false)}
+          onContinue={handleSummaryComplete}
         />
       ) : null}
 
@@ -547,17 +619,42 @@ export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
       {isAssignModalOpen ? (
         <AssignSessionModal
           clients={clients}
+          deleteLabel={
+            pendingSession?.sessionType === "manual"
+              ? "Discard note"
+              : pendingSession?.sessionType === "summary"
+                ? "Discard summary"
+                : undefined
+          }
           isOpen
           onAssign={handleAssignClient}
           onClose={() => {
             setIsAssignModalOpen(false);
-            setPendingRecording(null);
+            setPendingSession(null);
           }}
           onDelete={() => {
             setIsAssignModalOpen(false);
-            setPendingRecording(null);
-            setNotification("Recording deleted.");
+            setNotification(
+              pendingSession?.sessionType === "manual"
+                ? "Manual note discarded."
+                : pendingSession?.sessionType === "summary"
+                  ? "Summary discarded."
+                  : "Recording deleted.",
+            );
+            setPendingSession(null);
           }}
+          recordingSubtitle={
+            pendingSession?.sessionType === "manual"
+              ? "Manual Note"
+              : pendingSession?.sessionType === "summary"
+                ? "Dictated Summary"
+                : pendingSession?.sessionType === "upload"
+                  ? "Uploaded Recording"
+                  : undefined
+          }
+          recordingTitle={
+            pendingSession?.sessionType === "manual" ? "Untitled manual note" : undefined
+          }
         />
       ) : null}
     </div>

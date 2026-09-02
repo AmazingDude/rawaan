@@ -4,7 +4,7 @@ const requiredText = z.string().trim().min(1);
 const noteDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD");
 
 export const sessionInfoSchema = z.object({
-  session_type: z.enum(["in-person", "telehealth", "summary", "upload"]),
+  session_type: z.enum(["in-person", "telehealth", "summary", "upload", "manual"]),
   duration_seconds: z.number().optional(),
   recording_device: z.string().optional(),
   recorded_at: z.string().optional(),

@@ -22,6 +22,7 @@ function formatSessionType(type?: string): string {
     telehealth: "Telehealth Session",
     summary: "Dictated Summary",
     upload: "Uploaded Recording",
+    manual: "Manual Note",
   };
   return labels[type] || type;
 }
@@ -68,7 +69,7 @@ export function SessionInfoView({ note }: SessionInfoViewProps) {
         </div>
         <div className="session-info-body">
           <span className="session-info-label">Audio Source</span>
-          <span className="session-info-value">{info?.recording_device || "Default Microphone"}</span>
+          <span className="session-info-value">{info?.recording_device || "Not recorded"}</span>
         </div>
       </div>
 
@@ -76,7 +77,7 @@ export function SessionInfoView({ note }: SessionInfoViewProps) {
         <div className="session-info-body">
           <span className="session-info-label">Transcript Provenance</span>
           <span className="session-info-value">
-            {info?.transcript_source || "Whisper Large v3 Spoken Audio"}
+            {info?.transcript_source || "Not recorded"}
           </span>
           <span className="session-info-meta">
             {transcriptWordCount.toLocaleString()} words captured

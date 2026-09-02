@@ -39,3 +39,22 @@ The Scribe vertical slice is implemented as a Next.js App Router + TypeScript ap
 - Updated seed data in `data/notes.json` with narrative summaries and client details.
 - Validated with strict TypeScript (`tsc --noEmit`), ESLint (`eslint .`), Vitest test suite (55 passed), and production build (`next build`).
 
+## 2026-09-01 — Record entry-flow correction in progress
+
+- Confirmed that `Record a summary` and `Create empty note` both open the in-person recorder because all three controls use the same `isRecordModalOpen` state.
+- The approved focused implementation will add summary and manual entry flows, preserve the microphone recorder unchanged, retain explicit provenance, and replace stale Record E2E coverage.
+- Rebuilt the production app successfully, then ran the refreshed `tests/e2e-scribe.mjs` against `next start`. The test now reaches the intended regression and fails waiting for the `Record a Summary` modal after clicking `Record a summary`, confirming that action still opens the in-person recorder.
+- Confirmed the dashboard, assignment dialog, workspace, schema, and session-information boundaries. The next source change is a dedicated summary modal, followed by a discriminated pending-session handoff.
+
+## 2026-09-01 — Manual-entry workspace continuation
+
+- The Record dashboard now sends in-person recording, clinician-entered summary, upload, and manual-note sessions through typed provenance-aware handoff state.
+- The workspace now keeps manual fields blank until direct clinician input, withholds AI modification controls, and persists only through `approveDraftAction`.
+- The manual editor conditional, `isManualEntry` prop, and provenance-aware Transcript labels are resolved; focused styles and full browser coverage remain.
+
+## 2026-09-01 — Record entry-flow status
+
+- The committed implementation now retains the in-person recorder, presents a clinician-entered summary modal, and routes a blank manual note through client assignment to a local structured editor with AI editing withheld.
+- Focused solid-surface styles and responsive behavior are now in place for the summary and manual-entry UI.
+- The remaining scope is production-browser coverage through manual editing, approval, and persisted session visibility. The E2E must restore `data/notes.json` and any patient storage it changes after execution.
+

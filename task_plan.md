@@ -130,9 +130,18 @@
 - [x] Implement note modification LLM action (`modifyNoteAction`) allowing real-time AI transformations (paragraph format, de-identification/remove names, summarize key clinical points).
 - [x] Pass all verification gates (`typecheck`, `lint`, `test`, `build`).
 
+### Phase 9 — Record Entry-Flow Correction
+**Status:** in_progress
+- [x] Replace the stale Scribe E2E with a failing dashboard-entry regression test.
+- [x] Route manual-summary capture through client assignment with summary provenance.
+- [x] Route blank manual notes through client assignment with direct structured editing and manual provenance.
+- [x] Style the summary modal and manual-entry workspace with the established solid-surface system.
+- [ ] Extend dashboard E2E through manual edit, approval, and persisted-session confirmation without retaining test data.
+- [ ] Run unit, static, production-build, and browser verification.
+
 ## Next Step
 
-Raise the PR with all verified features.
+Add the focused solid-surface styles, then extend the Record E2E to restore any local demo storage after the manual approval flow.
 
 ## Decisions Made
 
