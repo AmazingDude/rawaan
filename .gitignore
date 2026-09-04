@@ -16,3 +16,4 @@ out/
 
 # local patient fallback store (per-machine runtime data)
 data/patients.json
+data/chats.json

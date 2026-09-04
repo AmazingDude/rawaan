@@ -41,4 +41,12 @@
 
 **Why:** Addresses Pakistani clinical workflow requirements where spoken consultations occur in Urdu or bilingual English/Urdu, ensures consistent localized documentation, eliminates non-intended Devanagari script output from Whisper, and enables clinicians to enrich notes with external lab/referral records.
 
+## 2026-09-04 — Per-Client Chat History Stored Locally, Display-Only
+
+**Decision:** Brain chat conversations are persisted per client in a local JSON store (`data/chats.json`, via `lib/db/chats.ts`) so the client detail page's Chats tab and the Rawaan AI page stay in sync. The store is local-first and gitignored like `data/patients.json`; Supabase sync for chats is deliberately deferred. A new chat deep-links to `/rawaan-ai?patient=<id>` with the client preselected, and selecting a patient resumes their most recent thread.
+
+**Grounding boundary:** Persisted chat entries are **display-only** — they are never fed back into the Brain query pipeline, which still receives exactly `(patientId, question)` per turn. The Task-3 stateless-per-turn isolation contract is unchanged and remains test-enforced.
+
+**Why:** Clinicians need continuity of the questions they asked about a client across sessions, but recall answers must stay grounded solely in approved notes. Local-first storage matches the hackathon deployment reality (Supabase optional) and avoids a schema migration for a demo-scale feature.
+
 

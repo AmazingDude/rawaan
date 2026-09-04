@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { z } from "zod";
 
 const GROQ_CHAT_COMPLETIONS_URL =
@@ -7,6 +9,25 @@ const GROQ_CHAT_COMPLETIONS_URL =
 // reasoning tokens that eat the max_tokens budget and truncate the JSON.
 const DEFAULT_GROQ_MODEL = "qwen/qwen3.8-27b";
 const REQUEST_TIMEOUT_MS = 30_000;
+
+export function getGroqApiKeyFromDisk(): string | undefined {
+  try {
+    const envPath = join(process.cwd(), ".env.local");
+    if (existsSync(envPath)) {
+      const content = readFileSync(envPath, "utf-8");
+      const match = content.match(/^\s*GROQ_API_KEY\s*=\s*(.*)?\s*$/m);
+      if (match && match[1]) {
+        let val = match[1].trim();
+        if (val.startsWith('"') && val.endsWith('"')) val = val.slice(1, -1);
+        if (val.startsWith("'") && val.endsWith("'")) val = val.slice(1, -1);
+        return val.trim();
+      }
+    }
+  } catch {
+    // Ignore fallback failure
+  }
+  return undefined;
+}
 
 const groqChatCompletionSchema = z.object({
   choices: z
@@ -43,10 +64,11 @@ async function fetchGroqChatCompletion(
   body: string,
 ): Promise<Response> {
   let lastNetworkError: unknown;
+  let lastResponse: Response | undefined;
 
-  for (let attempt = 0; attempt < 2; attempt += 1) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      return await fetch(GROQ_CHAT_COMPLETIONS_URL, {
+      const response = await fetch(GROQ_CHAT_COMPLETIONS_URL, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${apiKey}`,
@@ -55,9 +77,29 @@ async function fetchGroqChatCompletion(
         body,
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
+
+      if (response.status === 429 && attempt < 2) {
+        lastResponse = response;
+        const retryAfter = response.headers.get("retry-after");
+        const delayMs = Math.min(
+          (retryAfter ? Number.parseFloat(retryAfter) || 1.5 : 1.5) * 1000,
+          3000,
+        );
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        continue;
+      }
+
+      return response;
     } catch (error) {
       lastNetworkError = error;
+      if (attempt >= 1) {
+        break;
+      }
     }
+  }
+
+  if (lastResponse) {
+    return lastResponse;
   }
 
   throw new Error("Groq chat completion request failed.", {
@@ -68,6 +110,7 @@ async function fetchGroqChatCompletion(
 export function createGroqProvider(
   apiKey: string,
   model: string,
+  maxTokens = 1024,
 ): LlmCompletionProvider {
   const configuredApiKey = readConfiguredValue(apiKey, "GROQ_API_KEY");
   const configuredModel = readConfiguredValue(model, "LLM_MODEL");
@@ -82,14 +125,15 @@ export function createGroqProvider(
             { role: "system", content: system },
             { role: "user", content: user },
           ],
-          max_tokens: 1024,
+          max_tokens: maxTokens,
           temperature: 0,
           stream: false,
         }),
       );
 
       if (!response.ok) {
-        throw new Error(`LLM provider returned ${response.status}`);
+        const errorText = await response.text().catch(() => "");
+        throw new Error(`LLM provider returned ${response.status}: ${errorText || response.statusText}`);
       }
 
       const payload = groqChatCompletionSchema.safeParse(await response.json());
@@ -104,14 +148,17 @@ export function createGroqProvider(
 
 export function createLlmProviderFromEnv(
   env: LlmProviderEnvironment,
+  maxTokens = 1024,
 ): LlmCompletionProvider {
   const apiKey = env.GROQ_API_KEY?.trim();
+
   if (!apiKey) {
     throw new Error("LLM provider is not configured: GROQ_API_KEY missing");
   }
 
   return createGroqProvider(
     apiKey,
-    env.LLM_MODEL?.trim() || DEFAULT_GROQ_MODEL,
+    env.LLM_MODEL?.trim() || process.env.LLM_MODEL?.trim() || DEFAULT_GROQ_MODEL,
+    maxTokens,
   );
 }

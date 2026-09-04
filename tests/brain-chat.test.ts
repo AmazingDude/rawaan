@@ -105,6 +105,53 @@ describe("brainChatReducer", () => {
     expect(next.isSubmitting).toBe(false);
   });
 
+  it("loadThread replaces entries with the loaded thread and clears draft/submitting", () => {
+    const loaded: BrainChatEntry[] = [
+      {
+        question: "old q",
+        response: { status: "error", message: "m" },
+        timestamp: "2026-09-01T09:00:00.000Z",
+      },
+    ];
+    const busy: BrainChatState = {
+      ...initialBrainChatState,
+      patientId: "p1",
+      draftQuestion: "half-typed",
+      isSubmitting: true,
+    };
+
+    const next = brainChatReducer(busy, { type: "load-thread", entries: loaded });
+
+    expect(next.entries).toEqual(loaded);
+    expect(next.draftQuestion).toBe("");
+    expect(next.isSubmitting).toBe(false);
+    expect(next.patientId).toBe("p1");
+  });
+
+  it("select-patient after load-thread still wipes entries (no cross-patient leak)", () => {
+    const loaded = brainChatReducer(
+      { ...initialBrainChatState, patientId: "p1" },
+      {
+        type: "load-thread",
+        entries: [
+          {
+            question: "p1 history",
+            response: { status: "error", message: "m" },
+            timestamp: "2026-09-01T09:00:00.000Z",
+          },
+        ],
+      },
+    );
+
+    const switched = brainChatReducer(loaded, {
+      type: "select-patient",
+      patientId: "p2",
+    });
+
+    expect(switched.entries).toEqual([]);
+    expect(switched.patientId).toBe("p2");
+  });
+
   it("newChat clears only in-memory entries and draft, keeping the patient", () => {
     const withThread: BrainChatState = {
       patientId: "p1",

@@ -10,6 +10,10 @@ import { deriveRosterSummary } from "@/lib/actions/roster";
 import { createScribeService, type NoteRepository } from "@/lib/actions/scribe";
 import type { BrainResponse } from "@/lib/brain/types";
 import {
+  createChatStore,
+  type StoredChatEntry,
+} from "@/lib/db/chats";
+import {
   ensureLocalNotesSynced,
   listSupabaseNotes,
   mergeNotes,
@@ -22,6 +26,7 @@ import {
 } from "@/lib/db/patients";
 import {
   createLlmProviderFromEnv,
+  getGroqApiKeyFromDisk,
   type LlmCompletionProvider,
 } from "@/lib/llm/provider";
 import { createNoteRepository } from "@/lib/notes/repository";
@@ -31,15 +36,20 @@ import demoSeedNotes from "@/data/seed/demo-patients.json";
 function createLazyBrainProvider(): LlmCompletionProvider {
   return {
     async complete(input) {
-      return createLlmProviderFromEnv({
-        GROQ_API_KEY: process.env.GROQ_API_KEY,
-        LLM_MODEL: process.env.LLM_MODEL,
-      }).complete(input);
+      const apiKey = process.env.GROQ_API_KEY?.trim() || getGroqApiKeyFromDisk();
+      return createLlmProviderFromEnv(
+        {
+          GROQ_API_KEY: apiKey,
+          LLM_MODEL: process.env.LLM_MODEL,
+        },
+        4096,
+      ).complete(input);
     },
   };
 }
 
 const notesStoragePath = join(process.cwd(), "data", "notes.json");
+const chatStore = createChatStore(join(process.cwd(), "data", "chats.json"));
 
 // Local JSON is the durable source of truth for notes; Supabase is synced on
 // top when configured. Reads merge both so nothing created elsewhere is lost.
@@ -408,6 +418,56 @@ export async function getPatientInsightsAction(
   );
   const notes = await noteRepository.listByPatient(patientId);
   return extractPatientSessionInsights(notes);
+}
+
+// --- Per-client chat history (display-only; never re-enters the Brain query
+// pipeline — see docs/superpowers/specs/2026-09-04-client-detail-page-design.md)
+
+export async function listChatThreadsAction(patientId: string) {
+  try {
+    return await chatStore.listThreads(patientId);
+  } catch {
+    return [];
+  }
+}
+
+export async function appendChatEntryAction(input: {
+  entry: {
+    question: string;
+    response: StoredChatEntry["response"];
+    timestamp: string;
+  };
+  patientId: string;
+  threadId: string;
+}): Promise<{ ok: true } | ActionFailure> {
+  try {
+    await chatStore.append({
+      ...input.entry,
+      id: `chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      patientId: input.patientId,
+      threadId: input.threadId,
+    });
+    return { ok: true };
+  } catch {
+    return { message: "The chat could not be saved.", ok: false };
+  }
+}
+
+export async function getClientDetailAction(patientId: string): Promise<{
+  client: ClientRecord | null;
+  notes: ApprovedNote[];
+}> {
+  const [clients, notes] = await Promise.all([
+    listClientsAction(),
+    noteRepository.listByPatient(patientId),
+  ]);
+
+  return {
+    client: clients.find((c) => c.patientId === patientId) ?? null,
+    notes: notes.sort((a, b) =>
+      b.consultation_date.localeCompare(a.consultation_date),
+    ),
+  };
 }
 
 

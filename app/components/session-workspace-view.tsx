@@ -420,6 +420,9 @@ ${currentNote.raw_transcript}
   }
 
   async function handleApproveAndSave() {
+    // Re-approving an already-approved note would save a duplicate.
+    if (currentNote.approval_status === "approved") return;
+
     setIsSaving(true);
     setSaveError(null);
 
@@ -852,20 +855,22 @@ ${currentNote.raw_transcript}
                 </div>
 
                 <div className="doc-approval-footer-bar">
-                  {saveSuccess ? (
+                  {saveSuccess || currentNote.approval_status === "approved" ? (
                     <span className="save-success-tag">
                       <Check size={14} /> Approved & Saved to Patient Record
                     </span>
                   ) : null}
                   {saveError ? <span className="save-error-tag">{saveError}</span> : null}
-                  <button
-                    className="primary-button btn-approve-doc"
-                    disabled={isSaving}
-                    onClick={handleApproveAndSave}
-                    type="button"
-                  >
-                    {isSaving ? "Saving…" : "Approve & Save Note"}
-                  </button>
+                  {currentNote.approval_status !== "approved" ? (
+                    <button
+                      className="primary-button btn-approve-doc"
+                      disabled={isSaving}
+                      onClick={handleApproveAndSave}
+                      type="button"
+                    >
+                      {isSaving ? "Saving…" : "Approve & Save Note"}
+                    </button>
+                  ) : null}
                 </div>
               </div>
             ) : (
@@ -956,7 +961,7 @@ ${currentNote.raw_transcript}
 
               {/* Approval Bar */}
               <div className="doc-approval-footer-bar">
-                {saveSuccess ? (
+                {saveSuccess || currentNote.approval_status === "approved" ? (
                   <span className="save-success-tag">
                     <Check size={14} /> Approved & Saved to Patient Record
                   </span>
@@ -964,14 +969,16 @@ ${currentNote.raw_transcript}
                 {saveError ? (
                   <span className="save-error-tag">{saveError}</span>
                 ) : null}
-                <button
-                  className="primary-button btn-approve-doc"
-                  disabled={isSaving}
-                  onClick={handleApproveAndSave}
-                  type="button"
-                >
-                  {isSaving ? "Saving…" : "Approve & Save Note"}
-                </button>
+                {currentNote.approval_status !== "approved" ? (
+                  <button
+                    className="primary-button btn-approve-doc"
+                    disabled={isSaving}
+                    onClick={handleApproveAndSave}
+                    type="button"
+                  >
+                    {isSaving ? "Saving…" : "Approve & Save Note"}
+                  </button>
+                ) : null}
               </div>
             </div>
           )
