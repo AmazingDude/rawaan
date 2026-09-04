@@ -23,6 +23,7 @@ export type BrainChatAction =
   | { type: "set-draft"; text: string }
   | { type: "submit-start" }
   | { type: "append-entry"; entry: BrainChatEntry }
+  | { type: "load-thread"; entries: BrainChatEntry[] }
   | { type: "new-chat" };
 
 export const initialBrainChatState: BrainChatState = {
@@ -59,8 +60,18 @@ export function brainChatReducer(
         draftQuestion: "",
         isSubmitting: false,
       };
+    case "load-thread":
+      // Hydrates a persisted thread for display. Stored history is never
+      // sent back into the query pipeline — display only.
+      return {
+        ...state,
+        entries: action.entries,
+        draftQuestion: "",
+        isSubmitting: false,
+      };
     case "new-chat":
-      // Clears only in-memory messages; never touches persisted notes.
+      // Clears only in-memory messages; never touches persisted notes or the
+      // stored chat history.
       return { ...state, entries: [], draftQuestion: "", isSubmitting: false };
     default:
       return state;

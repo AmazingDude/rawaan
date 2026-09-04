@@ -1,13 +1,15 @@
 "use client";
 
 import { Sprout, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { createClientAction, type ClientRecord } from "@/app/actions";
 
 interface AssignSessionModalProps {
   clients: ClientRecord[];
   deleteLabel?: string;
+  /** Deep-linked client (e.g. /record?patient=<id>) preselected in the list. */
+  initialClientId?: string;
   isOpen: boolean;
   onAssign: (client: ClientRecord) => void;
   onClose: () => void;
@@ -19,6 +21,7 @@ interface AssignSessionModalProps {
 export function AssignSessionModal({
   clients = [],
   deleteLabel,
+  initialClientId,
   isOpen,
   onAssign,
   onClose,
@@ -39,6 +42,21 @@ export function AssignSessionModal({
   const [mobileNumber, setMobileNumber] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Deep-linked arrival preselects the client once the list is available.
+  // The clinician can still change the selection before continuing.
+  useEffect(() => {
+    if (!isOpen || !initialClientId || selectedClient) return;
+    const match = [...createdClients, ...clients].find(
+      (c) => c.patientId === initialClientId,
+    );
+    // Deferred: state must not be set synchronously inside an effect body
+    // (react-hooks/set-state-in-effect).
+    if (match) {
+      const id = window.setTimeout(() => setSelectedClient(match), 0);
+      return () => window.clearTimeout(id);
+    }
+  }, [isOpen, initialClientId, selectedClient, createdClients, clients]);
 
   if (!isOpen) return null;
 

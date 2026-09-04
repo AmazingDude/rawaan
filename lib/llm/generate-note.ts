@@ -76,16 +76,15 @@ function listFromValue(value: string | undefined): string[] {
     .filter(Boolean);
 }
 
-function containsNonLatinText(value: string): boolean {
-  return /[^\x00-\x7F]/.test(value);
-}
-
 /**
  * Extracts the JSON object from an LLM response, tolerating reasoning blocks
  * (`<think>…</think>`), markdown fences, and surrounding prose.
  */
 function extractJsonObject(raw: string): string {
   let cleaned = raw.replace(/<think>[\s\S]*?<\/think>/gi, "");
+  if (cleaned.includes("<think>")) {
+    cleaned = cleaned.replace(/<think>[\s\S]*$/gi, "");
+  }
   cleaned = cleaned
     .replace(/^```(?:json)?\s*/i, "")
     .replace(/\s*```$/i, "")
@@ -100,6 +99,10 @@ function extractJsonObject(raw: string): string {
   return cleaned;
 }
 
+function containsNonLatinText(value: string): boolean {
+  return /[^\x00-\x7F]/.test(value);
+}
+
 function createLocalDemoDraft(input: GenerateNoteInput): NoteDraft {
   const transcript = input.transcript.trim();
   const lines = transcript.split(/\r?\n/).map((line) => line.trim());
@@ -112,8 +115,6 @@ function createLocalDemoDraft(input: GenerateNoteInput): NoteDraft {
   const hasStructuredLabels = Object.values(values).some(
     (value) => value !== undefined,
   );
-  // An unstructured non-English transcript must never be dumped verbatim into
-  // the clinical fields; the raw transcript stays in raw_transcript instead.
   const isUnstructuredForeignTranscript =
     !hasStructuredLabels && containsNonLatinText(transcript);
 
@@ -130,7 +131,7 @@ function createLocalDemoDraft(input: GenerateNoteInput): NoteDraft {
       ? `Consultation encounter with ${input.patient_display_name} regarding ${values.chief_complaint || "clinical evaluation"}.`
       : isUnstructuredForeignTranscript
         ? `Clinical encounter with ${input.patient_display_name}. Automatic note structuring was unavailable; review the transcript for the verbatim record.`
-        : `Clinical encounter with ${input.patient_display_name}. Key discussions and recommendations documented from consultation recording.`,
+        : `Clinical encounter with ${input.patient_display_name}. Key discussions and clinical observations documented from consultation recording.`,
     history: hasStructuredLabels
       ? listFromValue(values.history)
       : isUnstructuredForeignTranscript
@@ -214,7 +215,8 @@ export async function generateNoteDraft(
         draft,
         source: "groq",
       };
-    } catch {
+    } catch (error) {
+      console.error("[generateNoteDraft] Error generating structured note via LLM:", error);
       // Fallback to local demo parser if LLM completion or parsing fails
     }
   }
@@ -235,7 +237,7 @@ export async function modifyNoteWithAi<T extends NoteDraft | ApprovedNote>(
   prompt: string,
   provider?: LlmCompletionProvider,
 ): Promise<{ assistantReply: string; updatedNote: T }> {
-  if (provider && process.env.GROQ_API_KEY?.trim()) {
+  if (provider) {
     try {
       const userPrompt = `Current Clinical Note:\n${JSON.stringify(currentNote, null, 2)}\n\nClinician Instruction:\n${prompt}`;
       const rawResponse = await provider.complete({

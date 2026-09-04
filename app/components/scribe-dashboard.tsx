@@ -15,6 +15,8 @@ import { SessionWorkspaceView } from "@/app/components/session-workspace-view";
 import type { ApprovedNote, NoteDraft } from "@/lib/notes/schema";
 import type { TranscriptionResult } from "@/lib/transcription/types";
 
+const WORKSPACE_DRAFT_STORAGE_KEY = "rawaan-active-workspace-draft";
+
 interface RecentSession {
   date: string;
   id: string;
@@ -26,6 +28,7 @@ interface RecentSession {
 
 interface ScribeDashboardProps {
   initialNotes?: ApprovedNote[];
+  initialPatientId?: string;
 }
 
 type PendingSession = {
@@ -76,7 +79,10 @@ async function requestTranscription(audio: File): Promise<TranscriptionResult> {
   return payload as TranscriptionResult;
 }
 
-export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
+export function ScribeDashboard({
+  initialNotes = [],
+  initialPatientId,
+}: ScribeDashboardProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [clients, setClients] = useState<ClientRecord[]>([]);
   const [recentSessions, setRecentSessions] = useState<RecentSession[]>(() => {
@@ -120,7 +126,68 @@ export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
     });
   }, []);
 
-  // Step 1: Recording stops -> Open Assign Session Modal (Picture 1)
+  // Page components lose React state on client-side navigation (e.g. visiting
+  // the Brain and coming back), which used to destroy an unapproved draft.
+  // Keep it in sessionStorage so the workspace survives in-tab navigation.
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(WORKSPACE_DRAFT_STORAGE_KEY);
+      if (!raw) return;
+      const draft = JSON.parse(raw) as NoteDraft | ApprovedNote;
+      // Defer the update so hydration stays clean and the state is not set
+      // synchronously inside the effect body (react-hooks/set-state-in-effect).
+      const id = window.setTimeout(() => setActiveWorkspaceDraft(draft), 0);
+      return () => window.clearTimeout(id);
+    } catch {
+      sessionStorage.removeItem(WORKSPACE_DRAFT_STORAGE_KEY);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      if (activeWorkspaceDraft) {
+        sessionStorage.setItem(
+          WORKSPACE_DRAFT_STORAGE_KEY,
+          JSON.stringify(activeWorkspaceDraft),
+        );
+      } else {
+        sessionStorage.removeItem(WORKSPACE_DRAFT_STORAGE_KEY);
+      }
+    } catch {
+      // Storage unavailable/full — the draft just won't survive navigation.
+    }
+  }, [activeWorkspaceDraft]);
+
+  async function generateDraftForSession(client: ClientRecord, session: PendingSession) {
+    if (session.sessionType === "manual") {
+      setActiveWorkspaceDraft(createManualDraft(client, session));
+      setNotification(null);
+      return;
+    }
+
+    setNotification("Generating structured clinical note with AI Overview…");
+
+    const result = await generateDraftAction({
+      consultation_date: session.consultationDate,
+      email: client.email,
+      first_name: client.firstName,
+      last_name: client.lastName,
+      mobile_number: client.mobileNumber,
+      patient_display_name: client.displayName,
+      patient_id: client.patientId,
+      session_info: buildSessionInfo(session),
+      transcript: session.transcript,
+    });
+
+    if (result.ok) {
+      setActiveWorkspaceDraft(result.draft);
+      setNotification(null);
+    } else {
+      setNotification(result.message);
+    }
+  }
+
+  // Step 1: Recording stops -> Auto-generate note if client selected, or open Assign Modal
   function handleRecordingComplete(data: {
     consultationDate: string;
     patientDisplayName: string;
@@ -130,15 +197,23 @@ export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
     transcript: string;
   }) {
     setIsInPersonRecordModalOpen(false);
-    setPendingSession({
+    const session: PendingSession = {
       consultationDate: data.consultationDate,
       recordingDevice: data.recordingDevice,
       recordingDurationSeconds: data.recordingDurationSeconds,
       sessionType: "in-person",
       transcript: data.transcript,
       transcriptSource: "Whisper Large v3",
-    });
-    setIsAssignModalOpen(true);
+    };
+    setPendingSession(session);
+
+    // If client was already selected in RecordSessionModal, immediately generate draft!
+    const matchingClient = clients.find((c) => c.patientId === data.patientId);
+    if (matchingClient) {
+      void generateDraftForSession(matchingClient, session);
+    } else {
+      setIsAssignModalOpen(true);
+    }
   }
 
   function handleSummaryComplete(data: { consultationDate: string; transcript: string }) {
@@ -198,33 +273,7 @@ export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
   async function handleAssignClient(client: ClientRecord) {
     if (!pendingSession) return;
     setIsAssignModalOpen(false);
-
-    if (pendingSession.sessionType === "manual") {
-      setActiveWorkspaceDraft(createManualDraft(client, pendingSession));
-      setNotification(null);
-      return;
-    }
-
-    setNotification("Generating structured clinical note with AI Overview…");
-
-    const result = await generateDraftAction({
-      consultation_date: pendingSession.consultationDate,
-      email: client.email,
-      first_name: client.firstName,
-      last_name: client.lastName,
-      mobile_number: client.mobileNumber,
-      patient_display_name: client.displayName,
-      patient_id: client.patientId,
-      session_info: buildSessionInfo(pendingSession),
-      transcript: pendingSession.transcript,
-    });
-
-    if (result.ok) {
-      setActiveWorkspaceDraft(result.draft);
-      setNotification(null);
-    } else {
-      setNotification(result.message);
-    }
+    await generateDraftForSession(client, pendingSession);
   }
 
   function handleSelectSession(session: RecentSession) {
@@ -283,6 +332,9 @@ export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
     };
 
     setRecentSessions((prev) => [newSession, ...prev]);
+    // Store the approved note (not the draft) so a restored workspace shows
+    // the saved state and cannot be approved a second time.
+    setActiveWorkspaceDraft(savedNote);
     setNotification("Approved note saved to patient record.");
   }
 
@@ -599,6 +651,7 @@ export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
           starts from a clean setup state instead of a stale phase. */}
       {isInPersonRecordModalOpen ? (
         <RecordSessionModal
+          initialClientId={initialPatientId}
           initialClients={clients}
           isOpen
           onClose={() => setIsInPersonRecordModalOpen(false)}
@@ -619,6 +672,7 @@ export function ScribeDashboard({ initialNotes = [] }: ScribeDashboardProps) {
       {isAssignModalOpen ? (
         <AssignSessionModal
           clients={clients}
+          initialClientId={initialPatientId}
           deleteLabel={
             pendingSession?.sessionType === "manual"
               ? "Discard note"

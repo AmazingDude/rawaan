@@ -45,6 +45,13 @@ export default async function ClientsPage() {
         <section className="client-cards-grid" aria-label="Clients list">
           {patients.map((patient) => (
             <article className="client-card" key={patient.patientId}>
+              <Link
+                aria-label={`Open ${patient.displayName}`}
+                className="client-card-arrow"
+                href={`/clients/${encodeURIComponent(patient.patientId)}`}
+              >
+                <ArrowUpRight aria-hidden="true" size={16} />
+              </Link>
               <div className="client-card-header">
                 <div className="client-avatar">
                   {patient.displayName
@@ -76,10 +83,16 @@ export default async function ClientsPage() {
               </div>
 
               <div className="client-card-footer">
-                <Link className="ghost-button" href="/record">
+                <Link
+                  className="ghost-button"
+                  href={`/record?patient=${encodeURIComponent(patient.patientId)}`}
+                >
                   Start Session
                 </Link>
-                <Link className="secondary-button" href="/rawaan-ai">
+                <Link
+                  className="secondary-button"
+                  href={`/clients/${encodeURIComponent(patient.patientId)}?tab=chats`}
+                >
                   Query with Brain
                   <ArrowUpRight aria-hidden="true" size={14} />
                 </Link>

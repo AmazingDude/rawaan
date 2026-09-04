@@ -1621,6 +1621,7 @@ textarea:focus {
 }
 
 .client-card {
+  position: relative;
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: var(--radius-cards);
@@ -5198,3 +5199,260 @@ textarea:focus {
   }
 }
 
+/* ==========================================================================
+   Client detail page (2026-09-04) — per-client tabs: Details, Sessions,
+   Chats, Mind map. Reuses DESIGN.md tokens; flat surfaces.
+   ========================================================================== */
+
+.client-card-arrow {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: var(--color-graphite);
+  background: #f1f5f9;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.client-card-arrow:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.client-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.client-detail-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.client-detail-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-graphite);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.client-detail-back:hover {
+  color: #0f172a;
+}
+
+.client-detail-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.client-detail-title-row .wireframe-title {
+  margin: 0;
+}
+
+.client-detail-badge {
+  padding: 4px 10px;
+  border-radius: var(--radius-pills);
+  background: #f1f5f9;
+  color: #475569;
+  font-size: var(--text-caption);
+  font-weight: 600;
+}
+
+.client-detail-tabs {
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 10px;
+}
+
+/* The shared tab underline is offset for the session workspace topbar;
+   pull it back inside the detail page's own tab row. */
+.client-detail-tabs .workspace-tab-btn.is-active::after {
+  bottom: -11px;
+}
+
+.client-detail-panel {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-cards);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.client-detail-panel-sub {
+  margin: 0;
+  color: var(--color-graphite);
+  font-size: var(--text-body-sm);
+}
+
+.client-detail-empty {
+  margin: 0;
+  color: var(--color-graphite);
+  font-size: var(--text-body-sm);
+}
+
+.client-profile-fields {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  max-width: 560px;
+}
+
+.client-profile-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.client-profile-field:last-child {
+  border-bottom: none;
+}
+
+.client-profile-field dt {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.client-profile-field dd {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+/* Sessions tab — accordion of approved notes */
+.client-session-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.client-session-item {
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-inputs);
+  overflow: hidden;
+}
+
+.client-session-summary {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: #ffffff;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-size: 14px;
+}
+
+.client-session-summary:hover {
+  background: #f8fafc;
+}
+
+.client-session-date {
+  font-weight: 600;
+  color: var(--color-canopy-green);
+  white-space: nowrap;
+}
+
+.client-session-complaint {
+  flex: 1;
+  color: #1e293b;
+}
+
+.client-session-chevron {
+  color: #94a3b8;
+  transition: transform 0.15s ease;
+}
+
+.client-session-chevron.is-rotated {
+  transform: rotate(180deg);
+}
+
+.client-session-detail {
+  padding: 0 16px 16px;
+  border-top: 1px solid #f1f5f9;
+  font-size: 14px;
+  color: #334155;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.client-session-detail h4 {
+  margin: 8px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.client-session-detail p,
+.client-session-detail ul {
+  margin: 0;
+}
+
+.client-session-detail ul {
+  padding-left: 18px;
+}
+
+/* Chats tab — persisted Brain threads for this client */
+.client-chats-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.client-chats-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.client-chats-hint {
+  margin: 0;
+  color: var(--color-graphite);
+  font-size: var(--text-body-sm);
+}
+
+.client-chat-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.client-chat-thread-date {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.client-mindmap-picker {
+  max-width: 420px;
+}

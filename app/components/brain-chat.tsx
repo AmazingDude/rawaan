@@ -1,65 +1,31 @@
 "use client";
 
 import { MessageSquare } from "lucide-react";
-import { useEffect, useReducer, useState } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 
 import {
+  appendChatEntryAction,
   listBrainPatientsAction,
+  listChatThreadsAction,
   queryPatientRecordAction,
   type BrainPatient,
 } from "@/app/actions";
+import { ChatEntryCard } from "@/app/components/brain-chat-entry-card";
 import {
   brainChatReducer,
   initialBrainChatState,
   runBrainChatQuery,
-  type BrainChatEntry,
 } from "@/app/components/brain-chat-state";
 import { BrainQuickActions } from "@/app/components/brain-quick-actions";
 
-function ChatEntryCard({ entry }: { entry: BrainChatEntry }) {
-  const response = entry.response;
-
-  return (
-    <article className="brain-chat-entry" data-status={response.status}>
-      <p className="brain-chat-question">{entry.question}</p>
-
-      {response.status === "supported" ? (
-        <div className="brain-chat-body is-supported">
-          <p className="brain-chat-answer">{response.answer}</p>
-          <div className="brain-chat-citations">
-            {response.sources.map((source, index) => (
-              <span
-                className="brain-chat-citation-chip"
-                key={`${source.noteId}-${source.consultationDate}-${index}`}
-              >
-                {source.consultationDate} · {source.noteId}
-              </span>
-            ))}
-          </div>
-        </div>
-      ) : response.status === "no_supporting_record" ? (
-        <div className="brain-chat-body is-no-record">
-          <p className="brain-chat-state-title">No record of that for this patient.</p>
-          <p className="brain-chat-state-body">{response.message}</p>
-        </div>
-      ) : response.status === "refused" ? (
-        <div className="brain-chat-body is-refused">
-          <p className="brain-chat-state-title">Unable to answer this question.</p>
-          <p className="brain-chat-state-body">{response.message}</p>
-        </div>
-      ) : (
-        <div className="brain-chat-body is-error">
-          <p className="brain-chat-state-body">{response.message}</p>
-        </div>
-      )}
-    </article>
-  );
-}
-
-export function BrainChat() {
+export function BrainChat({ initialPatientId }: { initialPatientId?: string }) {
   const [state, dispatch] = useReducer(brainChatReducer, initialBrainChatState);
   const [patients, setPatients] = useState<BrainPatient[]>([]);
   const [patientsLoaded, setPatientsLoaded] = useState(false);
+  // The thread new entries are persisted under. Null until history loads or
+  // the first question of a fresh thread is answered.
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
+  const requestedPatientRef = useRef<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -84,6 +50,43 @@ export function BrainChat() {
     };
   }, []);
 
+  // Selecting a patient resumes their most recent persisted thread so the
+  // conversation picks up where it left off. Stored entries are display-only
+  // and are never sent back into the query pipeline.
+  function handleSelectPatient(patientId: string) {
+    requestedPatientRef.current = patientId;
+    setActiveThreadId(null);
+    dispatch({ type: "select-patient", patientId });
+    if (!patientId) return;
+    void listChatThreadsAction(patientId).then((threads) => {
+      // Ignore stale responses if the clinician switched patients mid-load.
+      if (requestedPatientRef.current !== patientId) return;
+      const latest = threads[threads.length - 1];
+      if (latest) {
+        setActiveThreadId(latest.threadId);
+        dispatch({ type: "load-thread", entries: latest.entries });
+      }
+    });
+  }
+
+  // Deep-linked arrival (e.g. from a client's Chats tab) preselects the
+  // patient once the roster has loaded.
+  useEffect(() => {
+    if (
+      !patientsLoaded ||
+      !initialPatientId ||
+      state.patientId ||
+      !patients.some((p) => p.patientId === initialPatientId)
+    ) {
+      return;
+    }
+    // Deferred: handleSelectPatient dispatches state updates, which must not
+    // run synchronously inside an effect (react-hooks/set-state-in-effect).
+    const id = window.setTimeout(() => handleSelectPatient(initialPatientId), 0);
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [patientsLoaded, initialPatientId]);
+
   const selectedPatient = patients.find((p) => p.patientId === state.patientId);
 
   async function submitQuestion(rawQuestion: string) {
@@ -99,6 +102,20 @@ export function BrainChat() {
       now: () => new Date().toISOString(),
     });
     dispatch({ type: "append-entry", entry });
+
+    // Persist the turn so the client's Chats tab stays in sync. A failed save
+    // never blocks the on-screen answer.
+    const threadId =
+      activeThreadId ??
+      `thread-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    if (!activeThreadId) setActiveThreadId(threadId);
+    void appendChatEntryAction({
+      patientId: state.patientId,
+      threadId,
+      entry,
+    }).then((result) => {
+      if (!result.ok) console.warn("Chat history save failed:", result.message);
+    });
   }
 
   function handleSubmit(event: React.FormEvent) {
@@ -129,9 +146,7 @@ export function BrainChat() {
           <select
             className="select-input"
             disabled={state.isSubmitting}
-            onChange={(event) =>
-              dispatch({ type: "select-patient", patientId: event.target.value })
-            }
+            onChange={(event) => handleSelectPatient(event.target.value)}
             value={state.patientId}
           >
             <option value="">Select a patient…</option>
@@ -147,7 +162,12 @@ export function BrainChat() {
           <button
             className="ghost-button"
             disabled={state.isSubmitting}
-            onClick={() => dispatch({ type: "new-chat" })}
+            onClick={() => {
+              // Starts a fresh thread; stored history stays intact and remains
+              // visible on the client's Chats tab.
+              setActiveThreadId(null);
+              dispatch({ type: "new-chat" });
+            }}
             type="button"
           >
             New chat

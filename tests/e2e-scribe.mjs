@@ -47,7 +47,9 @@ let browser;
 
 try {
   browser = await chromium.launch({
-    ...(executablePath ? { executablePath } : {}),
+    ...(executablePath
+      ? { executablePath }
+      : { channel: process.env.PLAYWRIGHT_CHROMIUM_CHANNEL ?? "chrome" }),
     headless: true,
   });
 

@@ -74,6 +74,17 @@ describe("Task 2 transcription validation boundary", () => {
     ).toBeNull();
   });
 
+  it("accepts audio/webm with codecs parameter from browser MediaRecorder", () => {
+    expect(
+      validateAudioUpload(makeAudioFile(1024, "audio/webm;codecs=opus")),
+    ).toBeNull();
+  });
+
+  it("accepts mp3 and wav audio uploads", () => {
+    expect(validateAudioUpload(makeAudioFile(1024, "audio/mp3"))).toBeNull();
+    expect(validateAudioUpload(makeAudioFile(1024, "audio/wav"))).toBeNull();
+  });
+
   it.each(["", "   \n\t  "])(
     "rejects a blank fake-provider transcript (%j)",
     async (transcript) => {

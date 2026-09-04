@@ -53,6 +53,17 @@ export async function generateGroundedAnswer(
     throw new Error("Brain answer cannot cite evidence without an answer.");
   }
 
+  // An empty answer is the model declining because the retrieved excerpts do
+  // not support the question — surface that as "no record", never as a
+  // "supported" response with blank text.
+  if (answer.answer.trim().length === 0) {
+    return {
+      status: "no_supporting_record",
+      reason: "no_relevant_evidence",
+      message: "No record of that for this patient.",
+    };
+  }
+
   const datesByNoteId = new Map(
     evidence.evidence.map((note) => [note.noteId, note.consultationDate]),
   );

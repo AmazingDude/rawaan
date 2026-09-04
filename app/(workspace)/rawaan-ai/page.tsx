@@ -1,6 +1,12 @@
 import { BrainChat } from "@/app/components/brain-chat";
 
-export default function RawaanAiPage() {
+export default async function RawaanAiPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ patient?: string }>;
+}) {
+  const { patient } = await searchParams;
+
   return (
     <div className="wireframe-page page-ai">
       <header className="wireframe-header">
@@ -13,7 +19,7 @@ export default function RawaanAiPage() {
         <div className="safety-label">Documentation support only</div>
       </header>
 
-      <BrainChat />
+      <BrainChat initialPatientId={patient} />
     </div>
   );
 }

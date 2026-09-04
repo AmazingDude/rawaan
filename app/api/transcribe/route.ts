@@ -10,8 +10,7 @@ import {
   validateAudioUpload,
   validateTranscriptionText,
 } from "@/lib/transcription/validate-audio";
-import { createTranscriptTranslator, type TranscriptTranslator } from "@/lib/llm/translate-transcript";
-import { createLlmProviderFromEnv } from "@/lib/llm/provider";
+import type { TranscriptTranslator } from "@/lib/llm/translate-transcript";
 
 const manualFallbackFailure: TranscriptionFailure = {
   ok: false,
@@ -32,22 +31,6 @@ function resultResponse(
   status: number,
 ): NextResponse<TranscriptionResult> {
   return NextResponse.json(result, { status });
-}
-
-// Translates the full transcript to English when a Groq key is configured.
-// Whisper transcribes Urdu speech in the source script (often Devanagari);
-// Groq's endpoint has no translation mode, so the LLM does the conversion.
-function createDefaultTranscriptTranslator(): TranscriptTranslator | undefined {
-  try {
-    return createTranscriptTranslator(
-      createLlmProviderFromEnv({
-        GROQ_API_KEY: process.env.GROQ_API_KEY,
-        LLM_MODEL: process.env.LLM_MODEL,
-      }),
-    );
-  } catch {
-    return undefined;
-  }
 }
 
 export function createTranscriptionPost(
@@ -91,5 +74,4 @@ export function createTranscriptionPost(
 
 export const POST = createTranscriptionPost(
   createGroqWhisperProvider(),
-  createDefaultTranscriptTranslator(),
 );

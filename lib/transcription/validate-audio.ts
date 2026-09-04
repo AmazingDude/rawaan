@@ -7,13 +7,36 @@ export const MAX_AUDIO_UPLOAD_BYTES = 25 * 1024 * 1024;
 
 const supportedAudioMimeTypes = new Set([
   "audio/flac",
+  "audio/x-flac",
   "audio/m4a",
+  "audio/x-m4a",
   "audio/mp4",
+  "video/mp4",
   "audio/mpeg",
+  "audio/mp3",
+  "audio/x-mpeg",
   "audio/mpga",
   "audio/ogg",
+  "audio/opus",
+  "audio/x-ogg",
   "audio/wav",
+  "audio/x-wav",
+  "audio/wave",
   "audio/webm",
+  "video/webm",
+]);
+
+const supportedAudioExtensions = new Set([
+  "flac",
+  "m4a",
+  "mp4",
+  "mpeg",
+  "mp3",
+  "mpga",
+  "ogg",
+  "opus",
+  "wav",
+  "webm",
 ]);
 
 function invalidAudio(message: string): TranscriptionFailure {
@@ -37,10 +60,22 @@ export function validateAudioUpload(audio: File): TranscriptionFailure | null {
     );
   }
 
-  if (!supportedAudioMimeTypes.has(audio.type.toLowerCase())) {
-    return invalidAudio(
-      "This audio format is not supported. Please try the demo browser or type/paste the transcript manually.",
-    );
+  const rawType = (audio.type || "").toLowerCase();
+  const baseMime = rawType.split(";")[0]?.trim() || "";
+
+  if (baseMime) {
+    if (!supportedAudioMimeTypes.has(baseMime)) {
+      return invalidAudio(
+        "This audio format is not supported. Please try the demo browser or type/paste the transcript manually.",
+      );
+    }
+  } else {
+    const extMatch = audio.name ? audio.name.split(".").pop()?.toLowerCase() : null;
+    if (!extMatch || !supportedAudioExtensions.has(extMatch)) {
+      return invalidAudio(
+        "This audio format is not supported. Please try the demo browser or type/paste the transcript manually.",
+      );
+    }
   }
 
   return null;

@@ -1,7 +1,7 @@
 "use client";
 
 import { Mic, Sprout, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   createClientAction,
@@ -12,6 +12,7 @@ import {
 import type { PatientSessionInsights } from "@/lib/notes/insights";
 
 interface RecordSessionModalProps {
+  initialClientId?: string;
   initialClients?: ClientRecord[];
   isOpen: boolean;
   onClose: () => void;
@@ -27,6 +28,7 @@ interface RecordSessionModalProps {
 }
 
 export function RecordSessionModal({
+  initialClientId,
   initialClients = [],
   isOpen,
   onClose,
@@ -65,6 +67,42 @@ export function RecordSessionModal({
   const timerIntervalRef = useRef<number | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
+  const handleSelectClient = useCallback(
+    (client: ClientRecord | null) => {
+      // If clicking the already selected client, toggle off (unselect)
+      if (
+        selectedClient &&
+        client &&
+        selectedClient.patientId === client.patientId
+      ) {
+        setSelectedClient(null);
+        setInsights(null);
+        setIsClientDropdownOpen(false);
+        return;
+      }
+
+      setSelectedClient(client);
+      setIsClientDropdownOpen(false);
+      if (!client) {
+        setInsights(null);
+        return;
+      }
+
+      setIsLoadingInsights(true);
+      void getPatientInsightsAction(client.patientId)
+        .then((data) => {
+          setInsights(data);
+        })
+        .catch(() => {
+          setInsights(null);
+        })
+        .finally(() => {
+          setIsLoadingInsights(false);
+        });
+    },
+    [selectedClient],
+  );
+
   // Load clients if none passed
   useEffect(() => {
     if (isOpen && clients.length === 0) {
@@ -75,6 +113,16 @@ export function RecordSessionModal({
       });
     }
   }, [isOpen, clients.length]);
+
+  // Preselect initial client if provided
+  useEffect(() => {
+    if (!isOpen || !initialClientId || selectedClient) return;
+    const match = clients.find((c) => c.patientId === initialClientId);
+    if (match) {
+      const id = window.setTimeout(() => handleSelectClient(match), 0);
+      return () => window.clearTimeout(id);
+    }
+  }, [isOpen, initialClientId, clients, selectedClient, handleSelectClient]);
 
   // Enumerate Audio Devices
   useEffect(() => {
@@ -97,39 +145,6 @@ export function RecordSessionModal({
 
     void getDevices();
   }, [isOpen, selectedDeviceId]);
-
-  function handleSelectClient(client: ClientRecord | null) {
-    // If clicking the already selected client, toggle off (unselect)
-    if (
-      selectedClient &&
-      client &&
-      selectedClient.patientId === client.patientId
-    ) {
-      setSelectedClient(null);
-      setInsights(null);
-      setIsClientDropdownOpen(false);
-      return;
-    }
-
-    setSelectedClient(client);
-    setIsClientDropdownOpen(false);
-    if (!client) {
-      setInsights(null);
-      return;
-    }
-
-    setIsLoadingInsights(true);
-    void getPatientInsightsAction(client.patientId)
-      .then((data) => {
-        setInsights(data);
-      })
-      .catch(() => {
-        setInsights(null);
-      })
-      .finally(() => {
-        setIsLoadingInsights(false);
-      });
-  }
 
   // Cleanup on close or unmount
   useEffect(() => {
@@ -300,7 +315,21 @@ export function RecordSessionModal({
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       recordingStreamRef.current = stream;
-      const recorder = new MediaRecorder(stream);
+
+      let preferredMimeType = "audio/webm";
+      if (typeof MediaRecorder !== "undefined" && typeof MediaRecorder.isTypeSupported === "function") {
+        if (MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) {
+          preferredMimeType = "audio/webm;codecs=opus";
+        } else if (MediaRecorder.isTypeSupported("audio/webm")) {
+          preferredMimeType = "audio/webm";
+        } else if (MediaRecorder.isTypeSupported("audio/mp4")) {
+          preferredMimeType = "audio/mp4";
+        } else if (MediaRecorder.isTypeSupported("audio/ogg")) {
+          preferredMimeType = "audio/ogg";
+        }
+      }
+
+      const recorder = new MediaRecorder(stream, preferredMimeType ? { mimeType: preferredMimeType } : undefined);
       mediaRecorderRef.current = recorder;
 
       recorder.ondataavailable = (event) => {
@@ -315,8 +344,18 @@ export function RecordSessionModal({
           recordedChunksRef.current = [];
           return;
         }
-        const audioBlob = new Blob(recordedChunksRef.current, { type: "audio/webm" });
-        const audioFile = new File([audioBlob], "consultation-recording.webm", { type: "audio/webm" });
+        const actualMime = recorder.mimeType || preferredMimeType || "audio/webm";
+        const cleanMime = actualMime.split(";")[0] || "audio/webm";
+        const audioBlob = new Blob(recordedChunksRef.current, { type: cleanMime });
+        const ext =
+          cleanMime.includes("mp4") || cleanMime.includes("m4a")
+            ? "m4a"
+            : cleanMime.includes("ogg")
+              ? "ogg"
+              : cleanMime.includes("wav")
+                ? "wav"
+                : "webm";
+        const audioFile = new File([audioBlob], `consultation-recording.${ext}`, { type: cleanMime });
         void processRecording(audioFile);
       };
 

@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { getGroqApiKeyFromDisk } from "@/lib/llm/provider";
 import { sanitizeTranscript } from "@/lib/transcription/devanagari-to-urdu";
 import type { TranscriptionProvider } from "@/lib/transcription/types";
 
@@ -12,7 +13,7 @@ const groqTranscriptionResponseSchema = z.object({
 });
 
 function readGroqApiKey(): string {
-  const apiKey = process.env.GROQ_API_KEY?.trim();
+  const apiKey = process.env.GROQ_API_KEY?.trim() || getGroqApiKeyFromDisk();
 
   if (!apiKey) {
     throw new Error("Groq transcription is not configured.");
@@ -28,10 +29,9 @@ export function createGroqWhisperProvider(): TranscriptionProvider {
       formData.append("file", audio);
       formData.append("model", GROQ_WHISPER_MODEL);
       formData.append("response_format", "json");
-      formData.append("language", "ur");
       formData.append(
         "prompt",
-        "طبی معائنہ اور مشاورت، ڈاکٹر اور مریض کے درمیان گفتگو۔ Transcribe conversation strictly in Urdu (اردو) or English.",
+        "Clinical consultation, medical examination, doctor and patient conversation in Urdu or English. طبی معائنہ اور مشاورت، ڈاکٹر اور مریض کے درمیان گفتگو۔ Transcribe in Urdu (اردو) or English as spoken.",
       );
       formData.append("temperature", "0");
 

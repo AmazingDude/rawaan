@@ -7,6 +7,8 @@ const STOP_WORDS = new Set([
   "has", "have", "the", "a", "an", "is", "was", "been", "before", "this",
   "that", "patient", "she", "he", "they", "their", "any", "ever", "mentioned",
   "reported", "did", "does", "what", "of", "in", "on", "with", "for", "to", "and", "i",
+  // Conversational filler common in Brain questions; these dilute scores.
+  "were", "are", "documented", "visit", "visits", "recall", "summarize", "tell",
 ]);
 
 function tokenize(text: string): string[] {
@@ -30,14 +32,57 @@ function noteText(note: ApprovedNote): string {
   ].join("\n");
 }
 
-function extractExcerpts(note: ApprovedNote, terms: Set<string>): string[] {
+function extractExcerpts(
+  note: ApprovedNote,
+  terms: Set<string>,
+  intentMatches: string[],
+): string[] {
   const sentences = note.raw_transcript.split(/(?<=[.!?])\s+/).concat(
     [...note.symptoms, ...note.history].map((entry) => `${entry}.`),
   );
   const matches = sentences.filter((sentence) =>
     tokenize(sentence).some((token) => terms.has(token)),
   );
-  return matches.slice(0, 3);
+  return [...new Set([...intentMatches, ...matches.slice(0, 3)])].slice(0, 6);
+}
+
+// Lexical matching alone cannot answer "What symptoms were reported?" — the
+// structured symptoms entries ("Lower abdominal pain") do not contain the
+// literal word "symptoms". Map a question's clinical intent to the structured
+// field that holds the answer. Only fires when the note actually has content
+// for that field, so questions about undocumented facts still decline.
+const FIELD_INTENTS: Array<{
+  pattern: RegExp;
+  pick: (note: ApprovedNote) => string[];
+}> = [
+  { pattern: /\bsymptoms?\b/i, pick: (note) => note.symptoms },
+  {
+    pattern: /\b(medications?|medicines?|drugs?|prescri\w*)\b/i,
+    pick: (note) => note.medications_mentioned,
+  },
+  { pattern: /\b(plan|treatment|manag\w*)\b/i, pick: (note) => note.plan_discussed },
+  {
+    pattern: /\bfollow[- ]?up\b/i,
+    pick: (note) => (note.follow_up ? [note.follow_up] : []),
+  },
+  { pattern: /\bhistory\b/i, pick: (note) => note.history },
+  {
+    // Deliberately excludes "diagnos*": "diagnosed with diabetes?" asks
+    // about a specific condition, not the assessment category, and must
+    // decline when that condition is undocumented (adversarial money shot).
+    pattern: /\b(assessment|impression)\b/i,
+    pick: (note) => note.assessment_discussed,
+  },
+  {
+    pattern: /\b(chief complaint|complaint)\b/i,
+    pick: (note) => (note.chief_complaint ? [note.chief_complaint] : []),
+  },
+];
+
+function intentMatchesFor(note: ApprovedNote, question: string): string[] {
+  return FIELD_INTENTS.filter(({ pattern }) => pattern.test(question)).flatMap(
+    ({ pick }) => pick(note),
+  );
 }
 
 // A patient's own name appears in nearly every sentence of a realistic
@@ -84,13 +129,21 @@ export function rankNotes(
       }
       return { note, score: matched / questionTerms.size, termsMatched };
     })
+    .map(({ note, score, termsMatched }) => {
+      const intentMatches = intentMatchesFor(note, question);
+      // A note that has content in the field the question asks about is
+      // relevant even when the lexical score is weak.
+      const effectiveScore =
+        intentMatches.length > 0 ? Math.max(score, RELEVANCE_THRESHOLD) : score;
+      return { intentMatches, note, score: effectiveScore, termsMatched };
+    })
     .filter(({ score }) => score >= RELEVANCE_THRESHOLD)
     .sort((a, b) => b.score - a.score)
-    .map(({ note, score, termsMatched }) => ({
+    .map(({ note, score, termsMatched, intentMatches }) => ({
       noteId: note.id,
       patientId: note.patient_id,
       consultationDate: note.consultation_date,
-      excerpts: extractExcerpts(note, termsMatched),
+      excerpts: extractExcerpts(note, termsMatched, intentMatches),
       relevanceScore: Number(score.toFixed(4)),
     }));
 }
