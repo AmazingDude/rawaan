@@ -24,7 +24,6 @@ export function ChatEntryCard({ entry }: { entry: BrainChatEntry }) {
       ) : response.status === "no_supporting_record" ? (
         <div className="brain-chat-body is-no-record">
           <p className="brain-chat-state-title">No record of that for this patient.</p>
-          <p className="brain-chat-state-body">{response.message}</p>
         </div>
       ) : response.status === "refused" ? (
         <div className="brain-chat-body is-refused">

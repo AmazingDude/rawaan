@@ -78,25 +78,95 @@ export function brainChatReducer(
   }
 }
 
-type RunQueryInput = {
+export function isFollowUpQuery(question: string): boolean {
+  const q = question.trim().toLowerCase();
+  // Common follow-up / elaboration / clarification starters
+  if (
+    /^(in\s+detail|details?\s+please|more\s+details?|elaborate|tell\s+me\s+more|expand|explain\s+further|(why|how)(\?|\b\s*$)|what\s+else\??|can\s+you\s+elaborate|can\s+you\s+explain|give\s+more\s+details?|summarize\s+in\s+detail|provide\s+more\s+detail|expand\s+on\s+this|expand\s+on\s+that|what\s+about\b|describe\s+in\s+detail|tell\s+me\s+in\s+detail|break\s+it\s+down)/i.test(
+      q,
+    )
+  ) {
+    return true;
+  }
+  // Short phrases (< 45 chars) containing follow-up keywords
+  if (
+    q.length < 45 &&
+    /\b(in detail|details?\s+please|elaborate|tell me more|what about|how about|how so|what else|expand|explain further|more info|more information|specifics)\b/i.test(
+      q,
+    )
+  ) {
+    return true;
+  }
+  return false;
+}
+
+export function findRootQuestion(history: BrainChatEntry[]): string | undefined {
+  const supported = history.filter((e) => e.response.status === "supported");
+  if (supported.length === 0) return undefined;
+
+  for (let i = supported.length - 1; i >= 0; i--) {
+    if (!isFollowUpQuery(supported[i].question)) {
+      return supported[i].question;
+    }
+  }
+  return supported[0]?.question;
+}
+
+export function buildContextualQuery(
+  currentQuestion: string,
+  baseQuestion: string,
+): string {
+  return `${baseQuestion} (Follow-up: ${currentQuestion})`;
+}
+
+export type RunQueryInput = {
   patientId: string;
   question: string;
   query: (patientId: string, question: string) => Promise<ChatQueryResult>;
   now: () => string;
+  history?: BrainChatEntry[];
 };
 
 /**
- * Runs one stateless turn. The injected query receives ONLY (patientId,
- * question) — no prior-turn context — preserving the hard per-turn isolation
- * rule. The result is mapped verbatim onto a timestamped chat entry.
+ * Runs one conversational turn. If the turn is a follow-up or elaboration,
+ * it contextualizes the query against the previous supported clinical topic so
+ * that retrieval and generation can answer in detail while preserving strict grounding.
  */
 export async function runBrainChatQuery({
   patientId,
   question,
   query,
   now,
+  history = [],
 }: RunQueryInput): Promise<BrainChatEntry> {
-  const result = await query(patientId, question);
+  const rootQuestion = findRootQuestion(history);
+  let result: ChatQueryResult;
+
+  if (rootQuestion && isFollowUpQuery(question)) {
+    result = await query(
+      patientId,
+      buildContextualQuery(question, rootQuestion),
+    );
+  } else {
+    result = await query(patientId, question);
+    // If standalone query returned no supporting record, retry with conversation context
+    if (
+      result.ok &&
+      result.response.status === "no_supporting_record" &&
+      rootQuestion
+    ) {
+      const contextualResult = await query(
+        patientId,
+        buildContextualQuery(question, rootQuestion),
+      );
+      if (
+        contextualResult.ok &&
+        contextualResult.response.status === "supported"
+      ) {
+        result = contextualResult;
+      }
+    }
+  }
 
   const response = result.ok
     ? result.response
@@ -104,3 +174,4 @@ export async function runBrainChatQuery({
 
   return { question, response, timestamp: now() };
 }
+

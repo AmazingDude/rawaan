@@ -103,6 +103,7 @@ export function BrainChat({ initialPatientId }: { initialPatientId?: string }) {
     const entry = await runBrainChatQuery({
       patientId: state.patientId,
       question,
+      history: state.entries,
       query: async (patientId, recordQuestion) => {
         const apiKey = getStoredGroqByokKey();
         if (!apiKey) return queryPatientRecordAction(patientId, recordQuestion);
