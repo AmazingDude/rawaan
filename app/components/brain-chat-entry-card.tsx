@@ -28,7 +28,11 @@ export function ChatEntryCard({ entry }: { entry: BrainChatEntry }) {
         </div>
       ) : response.status === "refused" ? (
         <div className="brain-chat-body is-refused">
-          <p className="brain-chat-state-title">Unable to answer this question.</p>
+          <p className="brain-chat-state-title">
+            {response.reason === "treatment_or_medication"
+              ? "Treatment or medication advice is not available."
+              : "General medical information is not available."}
+          </p>
           <p className="brain-chat-state-body">{response.message}</p>
         </div>
       ) : (
