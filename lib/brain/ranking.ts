@@ -9,6 +9,7 @@ const STOP_WORDS = new Set([
   "reported", "did", "does", "what", "of", "in", "on", "with", "for", "to", "and", "i",
   // Conversational filler common in Brain questions; these dilute scores.
   "were", "are", "documented", "visit", "visits", "recall", "summarize", "tell",
+  "detail", "details", "please", "more", "elaborate", "explain", "follow",
 ]);
 
 function tokenize(text: string): string[] {

@@ -23,7 +23,10 @@ import type { BrainResponse } from "@/lib/brain/types";
 
 import {
   brainChatReducer,
+  buildContextualQuery,
+  findRootQuestion,
   initialBrainChatState,
+  isFollowUpQuery,
   runBrainChatQuery,
   type BrainChatEntry,
   type BrainChatState,
@@ -408,3 +411,167 @@ describe("BRAIN_QUICK_ACTIONS", () => {
     expect(state.entries[1].response).toEqual(manualEntry.response);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Conversational follow-up queries (e.g. "In detail please")
+// ---------------------------------------------------------------------------
+
+describe("Conversational follow-up query support", () => {
+  it("isFollowUpQuery recognizes follow-up and detail phrases", () => {
+    expect(isFollowUpQuery("In detail please")).toBe(true);
+    expect(isFollowUpQuery("in detail")).toBe(true);
+    expect(isFollowUpQuery("Can you elaborate?")).toBe(true);
+    expect(isFollowUpQuery("Tell me more")).toBe(true);
+    expect(isFollowUpQuery("Explain further")).toBe(true);
+    expect(isFollowUpQuery("Why?")).toBe(true);
+    expect(isFollowUpQuery("What about his pain?")).toBe(true);
+    expect(isFollowUpQuery("What else?")).toBe(true);
+
+    // Standalone clinical questions are not follow-up phrases
+    expect(
+      isFollowUpQuery("What symptoms were reported in the documented visits?"),
+    ).toBe(false);
+    expect(isFollowUpQuery("Did he have asthma?")).toBe(false);
+  });
+
+  it("findRootQuestion finds the base question and skips chained follow-ups", () => {
+    const supportedRoot: BrainChatEntry = {
+      question: "What symptoms were reported in the documented visits?",
+      response: {
+        status: "supported",
+        answer: "Abdominal pain was documented.",
+        sources: [{ noteId: "n1", consultationDate: "2026-08-31" }],
+      },
+      timestamp: NOW,
+    };
+    const supportedFollowUp: BrainChatEntry = {
+      question: "In detail please",
+      response: {
+        status: "supported",
+        answer: "More details about abdominal pain.",
+        sources: [{ noteId: "n1", consultationDate: "2026-08-31" }],
+      },
+      timestamp: NOW,
+    };
+
+    expect(findRootQuestion([supportedRoot])).toBe(
+      "What symptoms were reported in the documented visits?",
+    );
+    // Chained follow-up: skips "In detail please" and finds the root clinical topic
+    expect(findRootQuestion([supportedRoot, supportedFollowUp])).toBe(
+      "What symptoms were reported in the documented visits?",
+    );
+  });
+
+  it("contextualizes follow-up questions with the prior root question", () => {
+    const contextual = buildContextualQuery(
+      "In detail please",
+      "What symptoms were reported in the documented visits?",
+    );
+    expect(contextual).toBe(
+      "What symptoms were reported in the documented visits? (Follow-up: In detail please)",
+    );
+  });
+
+  it("runBrainChatQuery uses contextual question for follow-ups while keeping user question on entry", async () => {
+    const calls: Array<[string, string]> = [];
+    const spy = async (
+      patientId: string,
+      question: string,
+    ): Promise<ChatQueryResult> => {
+      calls.push([patientId, question]);
+      return {
+        ok: true,
+        response: {
+          status: "supported",
+          answer: "Detailed symptoms: abdominal pain with sharp and dull character.",
+          sources: [{ noteId: "n1", consultationDate: "2026-08-31" }],
+        },
+      };
+    };
+
+    const priorEntry: BrainChatEntry = {
+      question: "What symptoms were reported in the documented visits?",
+      response: {
+        status: "supported",
+        answer: "Abdominal pain was reported.",
+        sources: [{ noteId: "n1", consultationDate: "2026-08-31" }],
+      },
+      timestamp: NOW,
+    };
+
+    const entry = await runBrainChatQuery({
+      patientId: "patient-1",
+      question: "In detail please",
+      history: [priorEntry],
+      query: spy,
+      now: () => NOW,
+    });
+
+    // The query called the underlying provider with contextualized question
+    expect(calls).toEqual([
+      [
+        "patient-1",
+        "What symptoms were reported in the documented visits? (Follow-up: In detail please)",
+      ],
+    ]);
+    // The entry returned keeps the user's exact question and timestamp
+    expect(entry.question).toBe("In detail please");
+    expect(entry.response.status).toBe("supported");
+  });
+
+  it("falls back to context when standalone query yields no supporting record", async () => {
+    const calls: Array<[string, string]> = [];
+    const spy = async (
+      patientId: string,
+      question: string,
+    ): Promise<ChatQueryResult> => {
+      calls.push([patientId, question]);
+      if (question.includes("Follow-up")) {
+        return {
+          ok: true,
+          response: {
+            status: "supported",
+            answer: "Duration was 5 days.",
+            sources: [{ noteId: "n1", consultationDate: "2026-08-31" }],
+          },
+        };
+      }
+      return {
+        ok: true,
+        response: {
+          status: "no_supporting_record",
+          reason: "no_relevant_evidence",
+          message: "No record of that for this patient.",
+        },
+      };
+    };
+
+    const priorEntry: BrainChatEntry = {
+      question: "What symptoms were reported in the documented visits?",
+      response: {
+        status: "supported",
+        answer: "Abdominal pain.",
+        sources: [{ noteId: "n1", consultationDate: "2026-08-31" }],
+      },
+      timestamp: NOW,
+    };
+
+    const entry = await runBrainChatQuery({
+      patientId: "patient-1",
+      question: "How long has he had it?",
+      history: [priorEntry],
+      query: spy,
+      now: () => NOW,
+    });
+
+    expect(calls).toHaveLength(2);
+    expect(calls[0]).toEqual(["patient-1", "How long has he had it?"]);
+    expect(calls[1]).toEqual([
+      "patient-1",
+      "What symptoms were reported in the documented visits? (Follow-up: How long has he had it?)",
+    ]);
+    expect(entry.response.status).toBe("supported");
+  });
+});
+
