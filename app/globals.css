@@ -6265,4 +6265,151 @@ textarea:focus {
   margin: 8px 0 0;
 }
 
+@media (max-width: 760px) {
+  .chatgpt-page-wrapper {
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+  }
+
+  .chatgpt-container {
+    flex-direction: column !important;
+    min-height: 0;
+  }
+
+  .chatgpt-sidebar {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: auto !important;
+    max-height: 158px;
+    border-right: none;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .chatgpt-sidebar-header {
+    padding: 8px 12px;
+    flex-direction: row;
+    border-bottom: none;
+  }
+
+  .chatgpt-new-chat-btn {
+    width: auto;
+    padding: 8px 12px;
+  }
+
+  .chatgpt-threads-scroll {
+    flex: initial;
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-direction: row;
+    gap: 8px;
+    padding: 0 12px 10px;
+  }
+
+  .chatgpt-threads-section-title,
+  .chatgpt-sidebar-footer {
+    display: none;
+  }
+
+  .chatgpt-thread-item {
+    width: min(220px, 68vw);
+    flex: 0 0 min(220px, 68vw);
+    padding: 8px 10px;
+  }
+
+  .chatgpt-thread-empty {
+    min-width: 230px;
+    padding: 6px 0 10px;
+    text-align: left;
+  }
+
+  .chatgpt-main {
+    min-height: 0;
+    height: auto !important;
+  }
+
+  .chatgpt-topbar {
+    height: auto;
+    min-height: 60px;
+    padding: 10px 14px;
+    align-items: stretch;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .chatgpt-topbar-patient {
+    min-width: 0;
+  }
+
+  .chatgpt-topbar-actions {
+    width: 100%;
+    gap: 8px;
+  }
+
+  .chatgpt-topbar-patient-picker {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .chatgpt-topbar-select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .chatgpt-topbar-pill {
+    align-self: center;
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+
+  .chatgpt-messages-container {
+    padding: 16px 14px;
+    gap: 16px;
+  }
+
+  .chatgpt-messages-stream {
+    gap: 14px;
+  }
+
+  .chatgpt-welcome-state {
+    padding: 28px 16px;
+    gap: 12px;
+  }
+
+  .chatgpt-welcome-title {
+    font-size: 21px;
+  }
+
+  .chatgpt-message-row.is-assistant {
+    max-width: 100%;
+    gap: 8px;
+  }
+
+  .chatgpt-user-bubble {
+    max-width: 92%;
+  }
+
+  .chatgpt-card-supported {
+    padding: 14px 16px;
+  }
+
+  .chatgpt-input-container {
+    padding: 10px 12px calc(14px + env(safe-area-inset-bottom));
+  }
+
+  .chatgpt-input-capsule {
+    border-radius: 20px;
+    padding: 4px 6px 4px 14px;
+  }
+
+  .chatgpt-send-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .chatgpt-composer-hint {
+    padding: 0 8px;
+  }
+}
+
 
