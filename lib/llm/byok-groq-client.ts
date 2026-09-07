@@ -76,7 +76,7 @@ export async function generateByokGroundedAnswer(input: {
           }),
         },
       ],
-      max_tokens: 4096,
+      max_tokens: 600,
       temperature: 0,
       stream: false,
     }),

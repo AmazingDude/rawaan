@@ -44,7 +44,7 @@ function createLazyBrainProvider(): LlmCompletionProvider {
           GROQ_API_KEY: apiKey,
           LLM_MODEL: process.env.LLM_MODEL,
         },
-        4096,
+        600,
       ).complete(input);
     },
   };
