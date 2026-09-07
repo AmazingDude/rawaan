@@ -1,0 +1,12 @@
+node_modules
+.next
+.git
+.agents
+.claude
+.github
+tests
+*.log
+.system_generated
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

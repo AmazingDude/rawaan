@@ -41,7 +41,6 @@
     "approved_at": "2026-08-31T06:36:43.228Z"
   },
   {
-    "id": "note-amina-001-2026-01-14",
     "patient_id": "patient-amina-001",
     "patient_display_name": "Fictional Amina Bashir",
     "consultation_date": "2026-01-14",
@@ -68,11 +67,11 @@
       "Frequency between study weeks was not yet clear."
     ],
     "raw_transcript": "Fictional patient Amina Bashir described afternoon frontal headaches after long screen sessions during examinations. She also described neck stiffness and missed lunches. The clinician discussed keeping a headache and routine diary, hydration breaks, and screen breaks.",
+    "id": "note-amina-001-2026-01-14",
     "approval_status": "approved",
     "approved_at": "2026-01-14T10:30:00.000Z"
   },
   {
-    "id": "note-amina-001-2026-02-11",
     "patient_id": "patient-amina-001",
     "patient_display_name": "Fictional Amina Bashir",
     "consultation_date": "2026-02-11",
@@ -98,11 +97,11 @@
       "The diary did not establish every trigger."
     ],
     "raw_transcript": "Fictional patient Amina Bashir said the diary showed fewer headache days after regular breaks. She described one frontal headache after a late-night study session. The clinician documented the improvement and discussed continuing the diary and breaks.",
+    "id": "note-amina-001-2026-02-11",
     "approval_status": "approved",
     "approved_at": "2026-02-11T11:15:00.000Z"
   },
   {
-    "id": "note-hassan-002-2026-01-22",
     "patient_id": "patient-hassan-002",
     "patient_display_name": "Fictional Hassan Ali",
     "consultation_date": "2026-01-22",
@@ -129,11 +128,11 @@
       "No clear daily pattern had been established."
     ],
     "raw_transcript": "Fictional patient Hassan Ali described a dry cough for ten days and a scratchy throat after seasonal colds in the household. He said warm drinks felt soothing and the cough interrupted sleep. The clinician documented the history and discussed tracking changes over the next week.",
+    "id": "note-hassan-002-2026-01-22",
     "approval_status": "approved",
     "approved_at": "2026-01-22T09:45:00.000Z"
   },
   {
-    "id": "note-hassan-002-2026-01-30",
     "patient_id": "patient-hassan-002",
     "patient_display_name": "Fictional Hassan Ali",
     "consultation_date": "2026-01-30",
@@ -159,11 +158,11 @@
       "The cause of the original cough was not established in these notes."
     ],
     "raw_transcript": "Fictional patient Hassan Ali said his dry cough was less frequent and his sleep was less interrupted than the previous week. The clinician documented the improvement and discussed continuing the agreed tracking plan.",
+    "id": "note-hassan-002-2026-01-30",
     "approval_status": "approved",
     "approved_at": "2026-01-30T14:00:00.000Z"
   },
   {
-    "id": "note-hassan-002-2026-03-18",
     "patient_id": "patient-hassan-002",
     "patient_display_name": "Fictional Hassan Ali",
     "consultation_date": "2026-03-18",
@@ -190,11 +189,11 @@
       "No single environmental trigger was confirmed."
     ],
     "raw_transcript": "Fictional patient Hassan Ali described nasal congestion, sneezing, and watery eyes during a dusty week. He said the earlier dry cough had resolved. The clinician documented the seasonal pattern and discussed a short symptom and environment log.",
+    "id": "note-hassan-002-2026-03-18",
     "approval_status": "approved",
     "approved_at": "2026-03-18T13:20:00.000Z"
   },
   {
-    "id": "note-sara-003-2026-02-05",
     "patient_id": "patient-sara-003",
     "patient_display_name": "Fictional Sara Majeed",
     "consultation_date": "2026-02-05",
@@ -221,11 +220,11 @@
       "The notes do not establish every contributor to the sleep change."
     ],
     "raw_transcript": "Fictional patient Sara Majeed described difficulty falling asleep for two weeks during a project deadline. She described late-evening laptop work, racing thoughts about deadlines, and morning tiredness. The clinician documented the context and discussed a wind-down routine and a sleep diary.",
+    "id": "note-sara-003-2026-02-05",
     "approval_status": "approved",
     "approved_at": "2026-02-05T15:10:00.000Z"
   },
   {
-    "id": "note-sara-003-2026-02-26",
     "patient_id": "patient-sara-003",
     "patient_display_name": "Fictional Sara Majeed",
     "consultation_date": "2026-02-26",
@@ -251,11 +250,11 @@
       "The diary covered only part of the deadline period."
     ],
     "raw_transcript": "Fictional patient Sara Majeed said she fell asleep more easily when she stopped laptop work earlier. She still described morning tiredness after very late project meetings. The clinician documented the pattern and discussed continuing the sleep and workload diary.",
+    "id": "note-sara-003-2026-02-26",
     "approval_status": "approved",
     "approved_at": "2026-02-26T16:00:00.000Z"
   },
   {
-    "id": "note-sara-003-2026-04-09",
     "patient_id": "patient-sara-003",
     "patient_display_name": "Fictional Sara Majeed",
     "consultation_date": "2026-04-09",
@@ -281,7 +280,54 @@
       "The notes do not quantify sleep duration."
     ],
     "raw_transcript": "Fictional patient Sara Majeed described fewer difficult nights after her project deadline ended. She still noticed daytime fatigue after shorter nights. The clinician documented the improvement and discussed continuing the agreed sleep routine.",
+    "id": "note-sara-003-2026-04-09",
     "approval_status": "approved",
     "approved_at": "2026-04-09T12:40:00.000Z"
+  },
+  {
+    "patient_id": "patient-aashir-aslam-8574",
+    "patient_display_name": "Aashir Aslam",
+    "first_name": "Aashir",
+    "last_name": "Aslam",
+    "consultation_date": "2026-09-07",
+    "chief_complaint": "Upper abdominal pain for two days",
+    "summary": "The patient presented with upper abdominal pain for two days, which worsens after eating and is accompanied by a burning sensation. The physician assessed the symptoms as consistent with acidity and gastritis, noting that the condition does not appear serious. A treatment plan involving medication and dietary modifications was discussed.",
+    "history": [
+      "Pain is located in the upper part of the abdomen",
+      "Pain worsens after eating",
+      "Patient reports a burning sensation in the abdomen"
+    ],
+    "symptoms": [
+      "Upper abdominal pain",
+      "Burning sensation",
+      "Pain aggravated by food intake"
+    ],
+    "assessment_discussed": [
+      "Acidity",
+      "Gastritis",
+      "Condition assessed as not serious"
+    ],
+    "plan_discussed": [
+      "Prescription of medication",
+      "Dietary advice to avoid spicy and fried foods",
+      "Instruction to take medication regularly",
+      "Advice to return for re-evaluation if symptoms persist or worsen"
+    ],
+    "medications_mentioned": [],
+    "follow_up": "Return for re-evaluation if symptoms do not improve or if they worsen",
+    "uncertainties": [
+      "Specific name or dosage of the prescribed medication was not explicitly stated in the transcript"
+    ],
+    "raw_transcript": "آپکو کیا تکلِاے ہے? ڈاکٹر مُجھے دو دن سے پےٹ کے اُپر ہِسسے میں دردھ ہو رہا ہے. کیا دردھ کھانا کھانے کے باد جاد ہوتا ہے? اور ارکارانارنار اُہرا ہے زیادہ اُنہاٹا ہے کیا آپکو ACTU A T T T Yes, we are a part of you. تو کِ امسیا کھانے کے بادا دیا ہو, کیا آپکو ACTU A T T T میں جالن بھی ہوتی ہے کیا آپ پہر کا بھوت کا جتِک سوںدِکتا مےں। ٹھیک ہے میں آپکا چےک اپ کرتا ہوں, آپکے سِںٹمس دےکھکر لگتا ہے کِ آپکو acidity اور casteritis کی وزا سے بےٹ میں درد ہو رہا ہے. تو ڈاکٹر کیا یہ serious problem ہےں? پھِلہال serious نہیں لگ رہے ہےں, میں آپکو کُچھ دوا دےتا ہوں اور آپکو spicy اور اور اور پھورٹ سے پرےس کرنا ہوگا. ٹھیک ہے, ڈاکٹر مُجھے دوا دےنے کِتنے دن کے لِاے لےنی ہوگی, آپکے آپ یے دوا کُچھ regular لےں, اگر دٹھ ٹھیک نا ہو یا symptoms بر جانے تو دوبارا چےک کروانا ہوگا. ڈاکٹر بہت شکریہ, کوئی بات نہیں, اپنا کھیار رکھیں اور کھانے پینے میں احتیاط کریں.",
+    "session_info": {
+      "session_type": "in-person",
+      "duration_seconds": 0,
+      "recording_device": "Default - Microphone (Cirrus Logic Superior High Definition Audio)",
+      "recorded_at": "2026-09-07T13:23:40.144Z",
+      "transcript_source": "Whisper Large v3"
+    },
+    "id": "2a472395-cdbf-40df-afd5-0ee3b9bb84b2",
+    "approval_status": "approved",
+    "approved_at": "2026-09-07T13:23:58.852Z"
   }
 ]

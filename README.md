@@ -4,7 +4,16 @@ Rawaan is a clinician-facing **documentation support** prototype for the AI Hack
 
 > This demo uses **fictional data only**. It does not diagnose, recommend treatment, provide general medical advice, connect to an EHR, or support real patient use.
 
-## Current vertical slice
+## 🐳 Run with Docker (Hackathon Judges)
+
+To run the entire engine in one command without installing Node/dependencies:
+
+```bash
+docker compose up --build
+```
+Then open **[http://localhost:3000](http://localhost:3000)** in your browser! See [DOCKER.md](./DOCKER.md) for full judging details and test questions.
+
+---
 
 The implemented flow is deliberately narrow:
 
