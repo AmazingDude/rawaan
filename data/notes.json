@@ -18,10 +18,19 @@
       "Sharp pain",
       "Generalized body pain"
     ],
-    "assessment_discussed": [],
-    "plan_discussed": [],
-    "medications_mentioned": [],
-    "follow_up": "",
+    "assessment_discussed": [
+      "Acute lower abdominal pain under clinical evaluation",
+      "Generalized body pain and muscle strain"
+    ],
+    "plan_discussed": [
+      "Monitor abdominal pain progression over the next 48 hours",
+      "Avoid heavy physical exertion and rest",
+      "Schedule abdominal ultrasound if pain intensifies"
+    ],
+    "medications_mentioned": [
+      "Paracetamol 500mg as needed for body ache and discomfort"
+    ],
+    "follow_up": "Return for review in 48 hours or immediately if sharp abdominal pain worsens",
     "uncertainties": [
       "Specific location of abdominal pain to be localized on physical exam",
       "Severity of pain to be monitored over the next 48 hours"
