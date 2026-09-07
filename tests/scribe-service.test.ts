@@ -59,4 +59,27 @@ describe("scribe service", () => {
       }),
     ).rejects.toThrow();
   });
+
+  it("does not create duplicates when approve is called twice on the same note", async () => {
+    const service = await createTestService();
+
+    const generated = await service.createDraft(draftInput);
+    const firstApproval = await service.approve(generated.draft);
+
+    // Simulate a second approval attempt with the same patient and date
+    // (e.g., user double-clicked or race condition)
+    const duplicateDraft = await service.createDraft({
+      ...draftInput,
+      transcript: "Different transcript but same patient/date",
+    });
+    const secondApproval = await service.approve(duplicateDraft.draft);
+
+    // Both calls should return the same note — no duplicate created
+    expect(secondApproval.id).toBe(firstApproval.id);
+
+    // Only one approved note should exist in storage
+    const storedNotes = await service.listByPatient(draftInput.patient_id);
+    expect(storedNotes).toHaveLength(1);
+    expect(storedNotes[0].id).toBe(firstApproval.id);
+  });
 });
