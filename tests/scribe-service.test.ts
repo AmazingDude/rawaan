@@ -29,7 +29,10 @@ async function createTestService() {
 
   return createScribeService({
     approvalTime: () => "2026-08-22T10:00:00.000Z",
-    createId: () => "note-amina-001",
+    createId: (() => {
+      let count = 0;
+      return () => `note-amina-${++count}`;
+    })(),
     storagePath: join(directory, "notes.json"),
   });
 }
@@ -45,7 +48,7 @@ describe("scribe service", () => {
     const approved = await service.approve(generated.draft);
 
     expect(approved.approval_status).toBe("approved");
-    expect(approved.id).toBe("note-amina-001");
+    expect(approved.id).toBe("note-amina-1");
     expect(await service.listByPatient(draftInput.patient_id)).toEqual([approved]);
   });
 
@@ -60,19 +63,13 @@ describe("scribe service", () => {
     ).rejects.toThrow();
   });
 
-  it("does not create duplicates when approve is called twice on the same note", async () => {
+  it("does not create duplicates when approve is called twice on the same draft", async () => {
     const service = await createTestService();
 
     const generated = await service.createDraft(draftInput);
     const firstApproval = await service.approve(generated.draft);
 
-    // Simulate a second approval attempt with the same patient and date
-    // (e.g., user double-clicked or race condition)
-    const duplicateDraft = await service.createDraft({
-      ...draftInput,
-      transcript: "Different transcript but same patient/date",
-    });
-    const secondApproval = await service.approve(duplicateDraft.draft);
+    const secondApproval = await service.approve(generated.draft);
 
     // Both calls should return the same note — no duplicate created
     expect(secondApproval.id).toBe(firstApproval.id);
@@ -81,5 +78,20 @@ describe("scribe service", () => {
     const storedNotes = await service.listByPatient(draftInput.patient_id);
     expect(storedNotes).toHaveLength(1);
     expect(storedNotes[0].id).toBe(firstApproval.id);
+  });
+
+  it("allows separate same-day consultations for the same patient", async () => {
+    const service = await createTestService();
+    const firstDraft = await service.createDraft(draftInput);
+    const secondDraft = await service.createDraft({
+      ...draftInput,
+      transcript: "Chief complaint: New dizziness\nPlan discussed: Keep a symptom diary",
+    });
+
+    const firstApproval = await service.approve(firstDraft.draft);
+    const secondApproval = await service.approve(secondDraft.draft);
+
+    expect(secondApproval.id).not.toBe(firstApproval.id);
+    expect(await service.listByPatient(draftInput.patient_id)).toHaveLength(2);
   });
 });

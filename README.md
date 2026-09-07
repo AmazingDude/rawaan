@@ -54,4 +54,10 @@ The project starts as a single **Next.js App Router + TypeScript** application. 
 - The persisted demo store is `data/notes.json`, initially empty and never seeded by business logic.
 - LLM prompts live in `lib/llm/prompts/`, while generator integration lives in `lib/llm/`.
 
-The next product slice is patient-specific Brain retrieval over **approved** notes, with strict patient isolation and a `no_supporting_record` result when the history does not support the question.
+### Brain retrieval and optional personal Groq key
+
+Brain retrieves only **approved** notes for the selected patient on the server. If that evidence cannot support a question, it returns `no_supporting_record`; general-medical and treatment-or-medication questions are refused before answer generation.
+
+The sidebar **Settings** panel offers an optional Bring-Your-Own-Key (BYOK) path for Brain. A personal Groq key is stored only in that browser's `localStorage` and is sent directly from the browser to Groq's chat-completions API. It is not included in a Server Action, written to the demo store, or logged by Rawaan. The question and the server-prepared, approved-note excerpts are sent directly to Groq to generate the answer. Without a personal key, Brain keeps using the existing shared server-side demo capacity, which may be rate-limited.
+
+The repository is public so this boundary can be inspected: [verify the implementation on GitHub](https://github.com/AmazingDude/rawaan).

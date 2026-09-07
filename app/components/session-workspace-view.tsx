@@ -429,11 +429,11 @@ ${currentNote.raw_transcript}
     setSaveError(null);
 
     // Persist through the server action so the approved note lands in the
-    // store (Supabase + local JSON) instead of only updating this view.
+    // store (Supabase + local JSON) exactly as it is currently reviewed.
     const result = await approveDraftAction({
       ...currentNote,
       approval_status: "draft",
-      summary: noteSummary,
+      summary: currentNote.summary ?? "",
     });
 
     setIsSaving(false);
@@ -448,7 +448,7 @@ ${currentNote.raw_transcript}
       approval_status: "approved",
       approved_at: result.approvedAt,
       id: result.noteId,
-      summary: noteSummary,
+      summary: currentNote.summary ?? "",
     };
 
     if (onApprove) {

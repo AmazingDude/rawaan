@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { ByokSettings } from "@/app/components/byok-settings";
+
 interface NavItem {
   href: string;
   icon: (active: boolean) => React.ReactNode;
@@ -104,23 +106,9 @@ export function WorkspaceSidebar() {
   return (
     <aside className="workspace-sidebar" aria-label="Main navigation">
       <div className="sidebar-clinic-header">
-        <div className="clinic-profile-button" role="button" tabIndex={0}>
+        <div className="clinic-profile-button">
           <span className="clinic-avatar">A</span>
           <span className="clinic-name">Aashir&apos;s Clinic</span>
-          <svg
-            aria-hidden="true"
-            className="clinic-chevron"
-            fill="none"
-            height="16"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-            viewBox="0 0 24 24"
-            width="16"
-          >
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
         </div>
       </div>
 
@@ -149,6 +137,7 @@ export function WorkspaceSidebar() {
           })}
         </ul>
       </nav>
+      <ByokSettings />
     </aside>
   );
 }
