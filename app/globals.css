@@ -1180,20 +1180,20 @@ textarea:focus {
   width: 100%;
 }
 
+.sidebar-settings-trigger.is-active {
+  background: #ffffff;
+  color: var(--color-canopy-green);
+}
+
 .byok-settings-panel {
   background: var(--color-paper-white);
   border: 1px solid var(--color-frost-gray);
   border-radius: var(--radius-cards);
-  bottom: 24px;
   box-sizing: border-box;
   color: var(--color-charcoal);
-  left: 50%;
   max-width: 420px;
   padding: 20px;
-  position: fixed;
-  transform: translateX(-50%);
-  width: calc(100vw - 32px);
-  z-index: 20;
+  width: 100%;
 }
 
 .byok-settings-panel p,
@@ -1222,6 +1222,42 @@ textarea:focus {
 .byok-settings-heading h2 {
   font-size: var(--text-body);
   margin: 0;
+}
+
+.settings-page {
+  max-width: 760px;
+  padding: 48px 40px;
+}
+
+.settings-page-header {
+  margin-bottom: 24px;
+}
+
+.settings-page-header h1,
+.byok-settings-heading h1 {
+  color: var(--color-charcoal);
+  font-family: var(--font-display);
+  font-size: var(--text-heading);
+  margin: 0;
+}
+
+.settings-page-header p,
+.settings-intro {
+  color: var(--color-slate);
+  margin: 8px 0 0;
+}
+
+.settings-eyebrow {
+  color: var(--color-deep-teal);
+  font-size: var(--text-caption);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  margin: 0 0 8px;
+  text-transform: uppercase;
+}
+
+.byok-settings-panel > p {
+  max-width: 620px;
 }
 
 .byok-settings-heading button {
@@ -1266,6 +1302,17 @@ textarea:focus {
 
 .sidebar-nav-icon.accent-learn {
   color: var(--color-canopy-green);
+}
+
+.landing-settings-hint {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: var(--text-body-sm);
+  margin: 16px 0 0;
+}
+
+.landing-settings-hint a {
+  color: #ffffff;
+  font-weight: 600;
 }
 
 .workspace-content-pane {

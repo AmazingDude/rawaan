@@ -48,6 +48,9 @@ export function LandingPage() {
             <Link className="landing-demo-link" href="/record">
               Try the Demo
             </Link>
+            <p className="landing-settings-hint">
+              Using your own Groq key? <Link href="/settings">Configure it in Settings.</Link>
+            </p>
           </div>
         </div>
       </section>

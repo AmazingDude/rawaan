@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Settings } from "lucide-react";
 
-import { ByokSettings } from "@/app/components/byok-settings";
 
 interface NavItem {
   href: string;
@@ -137,7 +137,12 @@ export function WorkspaceSidebar() {
           })}
         </ul>
       </nav>
-      <ByokSettings />
+      <div className="sidebar-settings">
+        <Link className={`sidebar-settings-trigger ${pathname === "/settings" ? "is-active" : ""}`} href="/settings">
+          <Settings aria-hidden="true" size={20} />
+          Settings
+        </Link>
+      </div>
     </aside>
   );
 }
