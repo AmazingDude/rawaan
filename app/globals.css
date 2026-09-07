@@ -6195,12 +6195,19 @@ textarea:focus {
 
 .chatgpt-text-input {
   flex: 1;
+  min-height: 36px;
+  max-height: 132px;
   border: none;
   outline: none;
   background: transparent;
   font-size: 15px;
   color: #0f172a;
   padding: 10px 0;
+  line-height: 1.45;
+  resize: none;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  font-family: inherit;
 }
 
 .chatgpt-text-input::placeholder {
@@ -6232,6 +6239,14 @@ textarea:focus {
   color: #94a3b8;
   cursor: not-allowed;
   transform: none;
+}
+
+.chatgpt-composer-hint {
+  max-width: 780px;
+  margin: 5px auto 0;
+  padding: 0 18px;
+  color: #94a3b8;
+  font-size: 11.5px;
 }
 
 .chatgpt-disclaimer {

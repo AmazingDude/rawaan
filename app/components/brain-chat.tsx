@@ -64,7 +64,7 @@ export function BrainChat({ initialPatientId }: { initialPatientId?: string }) {
 
   const requestedPatientRef = useRef<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const loadPatientThreads = useCallback(async (patientId: string) => {
     if (!patientId) {
@@ -213,6 +213,14 @@ export function BrainChat({ initialPatientId }: { initialPatientId?: string }) {
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     void submitQuestion(state.draftQuestion);
+  }
+
+  function handleComposerKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) return;
+    event.preventDefault();
+    if (!state.isSubmitting && state.draftQuestion.trim()) {
+      void submitQuestion(state.draftQuestion);
+    }
   }
 
   if (!patientsLoaded) {
@@ -425,19 +433,20 @@ export function BrainChat({ initialPatientId }: { initialPatientId?: string }) {
             className="chatgpt-input-capsule brain-chat-input-row"
             onSubmit={handleSubmit}
           >
-            <input
+            <textarea
               ref={inputRef}
               className="chatgpt-text-input brain-chat-input"
               disabled={!state.patientId || state.isSubmitting}
               onChange={(event) =>
                 dispatch({ type: "set-draft", text: event.target.value })
               }
+              onKeyDown={handleComposerKeyDown}
               placeholder={
                 selectedPatient
                   ? `Ask about ${selectedPatient.displayName}'s symptoms, history, or plans…`
                   : "Select a patient on the top right to ask questions…"
               }
-              type="text"
+              rows={1}
               value={state.draftQuestion}
             />
 
@@ -455,6 +464,7 @@ export function BrainChat({ initialPatientId }: { initialPatientId?: string }) {
             </button>
           </form>
 
+          <p className="chatgpt-composer-hint">Press Enter to ask · Shift+Enter for a new line</p>
           <p className="chatgpt-disclaimer">
             Rawaan AI answers strictly from approved clinician records · Documentation support only
           </p>
