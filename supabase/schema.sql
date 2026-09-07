@@ -129,3 +129,17 @@ alter table if exists public.patients
 alter table if exists public.notes
   add column if not exists summary text default '';
 
+-- 6. Chats Table (Brain conversations per patient)
+create table if not exists public.chats (
+  id text primary key,
+  patient_id text not null references public.patients(id) on delete cascade,
+  thread_id text not null,
+  question text not null,
+  response jsonb not null,
+  timestamp text not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+create index if not exists idx_chats_patient_id on public.chats (patient_id);
+create index if not exists idx_chats_thread_id on public.chats (thread_id);
+

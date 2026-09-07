@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 
 import type { BrainResponse } from "@/lib/brain/types";
+import { getSupabaseClient } from "@/lib/db/supabase";
 
 /**
  * Response shape persisted per chat turn — structurally identical to the
@@ -49,10 +50,9 @@ async function readEntries(storagePath: string): Promise<StoredChatEntry[]> {
 }
 
 /**
- * Local-first per-patient chat history backing the client Chats tab and the
- * Brain chat's resumed threads. Stored entries are DISPLAY ONLY — they must
- * never be fed back into the Brain query pipeline (grounding rule, PRD
- * §5.5/§8/§10). Local JSON is the durable store; no Supabase sync for chats.
+ * Per-patient chat history store with Supabase sync and local JSON fallback.
+ * Stored entries are DISPLAY ONLY — they must never be fed back into the Brain
+ * query pipeline (grounding rule, PRD §5.5/§8/§10).
  */
 export function createChatStore(storagePath: string) {
   return {
@@ -63,14 +63,68 @@ export function createChatStore(storagePath: string) {
         storagePath,
         JSON.stringify([...entries, entry], null, 2),
       );
+
+      const client = getSupabaseClient();
+      if (client) {
+        try {
+          await client.from("chats").upsert({
+            id: entry.id,
+            patient_id: entry.patientId,
+            thread_id: entry.threadId,
+            question: entry.question,
+            response: entry.response,
+            timestamp: entry.timestamp,
+          });
+        } catch (error) {
+          console.warn("Supabase chat sync failed:", error);
+        }
+      }
+
       return entry;
     },
 
     async listThreads(patientId: string): Promise<ChatThread[]> {
-      const entries = await readEntries(storagePath);
+      const localEntries = await readEntries(storagePath);
+      let allEntries = [...localEntries];
+
+      const client = getSupabaseClient();
+      if (client) {
+        try {
+          const { data, error } = await client
+            .from("chats")
+            .select("id, patient_id, thread_id, question, response, timestamp")
+            .eq("patient_id", patientId);
+
+          if (!error && data && data.length > 0) {
+            const localIds = new Set(localEntries.map((e) => e.id));
+            for (const row of data as Array<{
+              id: string;
+              patient_id: string;
+              thread_id: string;
+              question: string;
+              response: unknown;
+              timestamp: string;
+            }>) {
+              if (!localIds.has(row.id)) {
+                allEntries.push({
+                  id: row.id,
+                  patientId: row.patient_id,
+                  threadId: row.thread_id,
+                  question: row.question,
+                  response: row.response as StoredChatResponse,
+                  timestamp: row.timestamp,
+                });
+              }
+            }
+          }
+        } catch (error) {
+          console.warn("Supabase chat list failed:", error);
+        }
+      }
+
       const threadsById = new Map<string, ChatThread>();
 
-      for (const entry of entries) {
+      for (const entry of allEntries) {
         if (entry.patientId !== patientId) continue;
         const chatEntry = {
           question: entry.question,
