@@ -1137,9 +1137,7 @@ ${currentNote.raw_transcript}
 
           {/* Top Chat Bar */}
           <header className="ai-overview-header">
-            <button className="btn-chat-dropdown" type="button">
-              New Chat ⌄
-            </button>
+            <span className="ai-overview-chat-label">New Chat</span>
             <button
               aria-label="Close AI Overview"
               className="btn-chat-close"

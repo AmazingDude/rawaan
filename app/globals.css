@@ -4493,15 +4493,10 @@ textarea:focus {
   flex-shrink: 0;
 }
 
-.btn-chat-dropdown {
-  background: transparent;
-  border: none;
+.ai-overview-chat-label {
   font-size: 15px;
   font-weight: 600;
   color: #0f172a;
-  cursor: pointer;
-  padding: 4px 6px;
-  border-radius: 6px;
 }
 
 .btn-chat-close {
