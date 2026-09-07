@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Settings } from "lucide-react";
 
 import {
   clearStoredGroqByokKey,
@@ -35,15 +36,12 @@ export function ByokSettings() {
   return (
     <div className="sidebar-settings">
       <button className="sidebar-settings-trigger" onClick={openSettings} type="button">
-        <svg aria-hidden="true" fill="none" height="20" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="20">
-          <circle cx="12" cy="12" r="3" />
-          <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.12 2.12-.06-.06A1.7 1.7 0 0 0 15.74 18a1.7 1.7 0 0 0-1.02 1.56V19.7h-3v-.14A1.7 1.7 0 0 0 10.7 18a1.7 1.7 0 0 0-1.88.34l-.06.06-2.12-2.12.06-.06A1.7 1.7 0 0 0 7 14.34a1.7 1.7 0 0 0-1.56-1.02H5.3v-3h.14A1.7 1.7 0 0 0 7 9.3a1.7 1.7 0 0 0-.34-1.88L6.6 7.36 8.72 5.24l.06.06A1.7 1.7 0 0 0 10.66 5a1.7 1.7 0 0 0 1.02-1.56V3.3h3v.14A1.7 1.7 0 0 0 15.7 5a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.12 2.12-.06.06A1.7 1.7 0 0 0 19.4 8.66a1.7 1.7 0 0 0 1.56 1.02h.14v3h-.14A1.7 1.7 0 0 0 19.4 15Z" />
-        </svg>
+        <Settings aria-hidden="true" size={20} />
         Settings
       </button>
 
       {isOpen ? (
-        <section aria-label="Groq BYOK settings" className="byok-settings-panel">
+        <section aria-label="Groq BYOK settings" aria-modal="true" className="byok-settings-panel" role="dialog">
           <div className="byok-settings-heading">
             <h2>Bring your own Groq key</h2>
             <button aria-label="Close settings" onClick={() => setIsOpen(false)} type="button">×</button>

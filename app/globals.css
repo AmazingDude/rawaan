@@ -1184,12 +1184,16 @@ textarea:focus {
   background: var(--color-paper-white);
   border: 1px solid var(--color-frost-gray);
   border-radius: var(--radius-cards);
-  bottom: 16px;
+  bottom: 24px;
+  box-sizing: border-box;
   color: var(--color-charcoal);
-  left: 16px;
+  left: 50%;
+  max-width: 420px;
   padding: 20px;
-  position: absolute;
-  right: 16px;
+  position: fixed;
+  transform: translateX(-50%);
+  width: calc(100vw - 32px);
+  z-index: 20;
 }
 
 .byok-settings-panel p,
@@ -1206,8 +1210,13 @@ textarea:focus {
 .byok-settings-actions {
   align-items: center;
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 8px;
+}
+
+.byok-settings-actions button {
+  flex: 1 1 120px;
 }
 
 .byok-settings-heading h2 {
