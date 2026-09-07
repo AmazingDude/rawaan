@@ -4,9 +4,10 @@ const REFUSAL_MESSAGE =
   "This tool only retrieves documented patient history and does not provide general medical or treatment advice.";
 
 const TREATMENT_PATTERNS = [
-  /\bwhat (medication|medicine|drug|dose|dosage)\b/i,
-  /\b(prescribe|prescription|titrate)\b/i,
-  /\bshould we (prescribe|give|administer)\b/i,
+  /\bwhat (medication|medicine|drug|dose|dosage) (should|would|to|can|ought|do you recommend)\b/i,
+  /\bshould (we|i|the doctor|the patient) (prescribe|give|administer|take|start|switch|stop)\b/i,
+  /\b(recommend|suggest) (a |any )?(medication|medicine|drug|treatment|dose)\b/i,
+  /\bhow to (prescribe|titrate|treat)\b/i,
   /\b(start|switch|stop) (the )?(patient )?on\b/i,
 ];
 

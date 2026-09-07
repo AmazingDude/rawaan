@@ -51,6 +51,10 @@ function formatThreadDate(timestamp: string): string {
   }
 }
 
+function createThreadId(): string {
+  return `thread-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 export function BrainChat({ initialPatientId }: { initialPatientId?: string }) {
   const [state, dispatch] = useReducer(brainChatReducer, initialBrainChatState);
   const [patients, setPatients] = useState<BrainPatient[]>([]);
@@ -192,9 +196,7 @@ export function BrainChat({ initialPatientId }: { initialPatientId?: string }) {
 
     dispatch({ type: "append-entry", entry });
 
-    const threadId =
-      activeThreadId ??
-      `thread-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const threadId = activeThreadId ?? createThreadId();
     if (!activeThreadId) setActiveThreadId(threadId);
 
     void appendChatEntryAction({

@@ -1,4 +1,5 @@
 import { ByokSettings } from "@/app/components/byok-settings";
+import { ConsultationHarnessSettings } from "@/app/components/consultation-harness-settings";
 
 export default function SettingsPage() {
   return (
@@ -6,9 +7,10 @@ export default function SettingsPage() {
       <div className="settings-page-header">
         <p className="settings-eyebrow">Workspace settings</p>
         <h1 id="settings-page-title">Settings</h1>
-        <p>Choose how Rawaan AI uses Groq for Brain answers.</p>
+        <p>Configure clinician recall parameters and consultation tools.</p>
       </div>
       <ByokSettings />
+      <ConsultationHarnessSettings />
     </section>
   );
 }

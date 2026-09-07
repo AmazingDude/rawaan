@@ -85,7 +85,7 @@ export function createChatStore(storagePath: string) {
 
     async listThreads(patientId: string): Promise<ChatThread[]> {
       const localEntries = await readEntries(storagePath);
-      let allEntries = [...localEntries];
+      const allEntries = [...localEntries];
 
       const client = getSupabaseClient();
       if (client) {
