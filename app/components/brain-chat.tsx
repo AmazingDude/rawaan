@@ -7,6 +7,7 @@ import {
   appendChatEntryAction,
   listBrainPatientsAction,
   listChatThreadsAction,
+  prepareByokBrainQueryAction,
   queryPatientRecordAction,
   type BrainPatient,
 } from "@/app/actions";
@@ -17,6 +18,10 @@ import {
   runBrainChatQuery,
 } from "@/app/components/brain-chat-state";
 import { BrainQuickActions } from "@/app/components/brain-quick-actions";
+import {
+  generateByokGroundedAnswer,
+  getStoredGroqByokKey,
+} from "@/lib/llm/byok-groq-client";
 
 export function BrainChat({ initialPatientId }: { initialPatientId?: string }) {
   const [state, dispatch] = useReducer(brainChatReducer, initialBrainChatState);
@@ -98,7 +103,35 @@ export function BrainChat({ initialPatientId }: { initialPatientId?: string }) {
     const entry = await runBrainChatQuery({
       patientId: state.patientId,
       question,
-      query: queryPatientRecordAction,
+      query: async (patientId, recordQuestion) => {
+        const apiKey = getStoredGroqByokKey();
+        if (!apiKey) return queryPatientRecordAction(patientId, recordQuestion);
+
+        const preparation = await prepareByokBrainQueryAction(
+          patientId,
+          recordQuestion,
+        );
+        if (!preparation.ok) return preparation;
+        if (preparation.kind === "response") {
+          return { ok: true, response: preparation.response };
+        }
+
+        try {
+          return {
+            ok: true,
+            response: await generateByokGroundedAnswer({
+              apiKey,
+              evidence: preparation.evidence,
+              question: preparation.question,
+            }),
+          };
+        } catch {
+          return {
+            ok: false,
+            message: "The Brain could not answer right now. Try again.",
+          };
+        }
+      },
       now: () => new Date().toISOString(),
     });
     dispatch({ type: "append-entry", entry });

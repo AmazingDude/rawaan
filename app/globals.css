@@ -1161,6 +1161,75 @@ textarea:focus {
   border: 1px solid #e2e8f0;
 }
 
+.sidebar-settings {
+  margin-top: auto;
+  padding-top: 16px;
+}
+
+.sidebar-settings-trigger {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: #475569;
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  font-size: var(--text-body-sm);
+  gap: 12px;
+  padding: 10px 14px;
+  width: 100%;
+}
+
+.byok-settings-panel {
+  background: var(--color-paper-white);
+  border: 1px solid var(--color-frost-gray);
+  border-radius: var(--radius-cards);
+  bottom: 16px;
+  color: var(--color-charcoal);
+  left: 16px;
+  padding: 20px;
+  position: absolute;
+  right: 16px;
+}
+
+.byok-settings-panel p,
+.byok-settings-panel a {
+  font-size: var(--text-caption);
+  line-height: 1.45;
+}
+
+.byok-settings-panel a {
+  color: var(--color-deep-teal);
+}
+
+.byok-settings-heading,
+.byok-settings-actions {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.byok-settings-heading h2 {
+  font-size: var(--text-body);
+  margin: 0;
+}
+
+.byok-settings-heading button {
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-size: var(--text-heading-sm);
+}
+
+.byok-settings-panel .form-field {
+  margin-top: 12px;
+}
+
+.byok-settings-status {
+  color: var(--color-leaf-accent);
+}
+
 .sidebar-nav-icon {
   color: #64748b;
   transition: color 0.15s;

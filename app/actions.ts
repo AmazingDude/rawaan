@@ -8,7 +8,9 @@ import { ZodError } from "zod";
 import { queryPatientRecord } from "@/lib/actions/brain";
 import { deriveRosterSummary } from "@/lib/actions/roster";
 import { createScribeService, type NoteRepository } from "@/lib/actions/scribe";
-import type { BrainResponse } from "@/lib/brain/types";
+import { classifyQuerySafety } from "@/lib/brain/query-safety";
+import { retrieveApprovedEvidence } from "@/lib/brain/retrieval";
+import type { BrainResponse, EvidenceNote } from "@/lib/brain/types";
 import {
   createChatStore,
   type StoredChatEntry,
@@ -106,6 +108,10 @@ export type ApprovalActionResult = ApprovalActionSuccess | ActionFailure;
 export type BrainActionResult =
   | { ok: true; response: BrainResponse }
   | ActionFailure;
+export type ByokBrainPreparationResult =
+  | { evidence: EvidenceNote[]; kind: "evidence"; ok: true; question: string }
+  | { kind: "response"; ok: true; response: BrainResponse }
+  | ActionFailure;
 
 export type BrainPatient = {
   displayName: string;
@@ -175,6 +181,55 @@ export async function queryPatientRecordAction(
     });
 
     return { ok: true, response };
+  } catch {
+    return {
+      ok: false,
+      message: "The Brain could not answer right now. Try again.",
+    };
+  }
+}
+
+export async function prepareByokBrainQueryAction(
+  patientId: string,
+  question: string,
+): Promise<ByokBrainPreparationResult> {
+  try {
+    const safety = classifyQuerySafety(question);
+    if (safety.kind === "refused") {
+      return {
+        kind: "response",
+        ok: true,
+        response: {
+          status: "refused",
+          reason: safety.reason,
+          message: safety.message,
+        },
+      };
+    }
+
+    const retrieval = retrieveApprovedEvidence({
+      patientId,
+      question: safety.normalizedQuestion,
+      notes: await noteRepository.listAll(),
+    });
+    if (retrieval.kind === "no_supporting_record") {
+      return {
+        kind: "response",
+        ok: true,
+        response: {
+          status: "no_supporting_record",
+          reason: retrieval.reason,
+          message: retrieval.message,
+        },
+      };
+    }
+
+    return {
+      evidence: retrieval.evidence,
+      kind: "evidence",
+      ok: true,
+      question: retrieval.question,
+    };
   } catch {
     return {
       ok: false,
