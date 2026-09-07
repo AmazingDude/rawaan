@@ -113,6 +113,8 @@ export function SessionWorkspaceView({
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [includeTreatmentPlanToggle, setIncludeTreatmentPlanToggle] = useState(true);
 
+  const isApproved = currentNote.approval_status === "approved";
+
   // Auto-scroll chat to latest message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -861,16 +863,14 @@ ${currentNote.raw_transcript}
                     </span>
                   ) : null}
                   {saveError ? <span className="save-error-tag">{saveError}</span> : null}
-                  {currentNote.approval_status !== "approved" ? (
-                    <button
-                      className="primary-button btn-approve-doc"
-                      disabled={isSaving}
-                      onClick={handleApproveAndSave}
-                      type="button"
-                    >
-                      {isSaving ? "Saving…" : "Approve & Save Note"}
-                    </button>
-                  ) : null}
+                  <button
+                    className="primary-button btn-approve-doc"
+                    disabled={isSaving || isApproved}
+                    onClick={handleApproveAndSave}
+                    type="button"
+                  >
+                    {isApproved ? "Approved" : isSaving ? "Saving…" : "Approve & Save Note"}
+                  </button>
                 </div>
               </div>
             ) : (
@@ -969,16 +969,14 @@ ${currentNote.raw_transcript}
                 {saveError ? (
                   <span className="save-error-tag">{saveError}</span>
                 ) : null}
-                {currentNote.approval_status !== "approved" ? (
-                  <button
-                    className="primary-button btn-approve-doc"
-                    disabled={isSaving}
-                    onClick={handleApproveAndSave}
-                    type="button"
-                  >
-                    {isSaving ? "Saving…" : "Approve & Save Note"}
-                  </button>
-                ) : null}
+                <button
+                  className="primary-button btn-approve-doc"
+                  disabled={isSaving || isApproved}
+                  onClick={handleApproveAndSave}
+                  type="button"
+                >
+                  {isApproved ? "Approved" : isSaving ? "Saving…" : "Approve & Save Note"}
+                </button>
               </div>
             </div>
           )

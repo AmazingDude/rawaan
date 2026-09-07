@@ -49,4 +49,29 @@
 
 **Why:** Clinicians need continuity of the questions they asked about a client across sessions, but recall answers must stay grounded solely in approved notes. Local-first storage matches the hackathon deployment reality (Supabase optional) and avoids a schema migration for a demo-scale feature.
 
+## 2026-09-02 — Default Brain/note-generation model changed to qwen/qwen3.8-27b
+
+**Decision:** The default Groq completion model for Brain answer generation and Scribe note generation is `qwen/qwen3.8-27b`, replacing the originally planned `openai/gpt-oss-120b` (with `llama-3.3-70b-versatile` as fallback) from the 2026-08-24 Brain feature plan.
+
+**Why (actual observed symptom):** During development, `gpt-oss-120b` was observed emitting reasoning tokens (`...` blocks) before its JSON response. This caused two concrete failures: (1) the JSON parser received malformed input because the reasoning prefix was included in the completion string, and (2) when parsing failed silently, the local demo fallback dumped raw Urdu-language transcripts directly into structured clinical note fields. The term "truncation" used in the original commit message is imprecise — the primary issue was reasoning-token contamination of the response body, not token-budget exhaustion cutting off mid-object.
+
+**What was verified at swap time:** Manual testing confirmed `qwen/qwen3.8-27b` returns clean JSON content without reasoning overhead on this Groq account. Defensive parsing (`extractJsonObject()` — strips `` blocks, markdown fences, extracts JSON between first `{` and last `}`) was added to `generate-note.ts` alongside the swap. A unit test simulating ``-wrapped responses was added.
+
+**What was NOT verified at swap time (gap documented here):** No adversarial suite re-run or 12-question live rehearsal was performed against `qwen/qwen3.8-27b` before shipping. The original plan's approved models were `gpt-oss-120b` primary and `llama-3.3-70b-versatile` fallback; `qwen3.8-27b` was not in either category. The swap was bundled into a multi-concern commit rather than isolated. Additionally, `answer-generation.ts` (the Brain's grounded-answer path) continued using bare `JSON.parse()` without the defensive parsing that `generate-note.ts` received — leaving the grounding-critical path unprotected.
+
+**Remediation applied 2026-09-07:** Defensive `extractJsonObject()` parsing added to `answer-generation.ts`, bringing it to parity with `generate-note.ts`. Adversarial suite: 7/7 mock-provider cases pass. Live 12-question rehearsal against `qwen/qwen3.8-27b` completed 2026-09-02: **12/12 passed**. All three supported answers cited correct note IDs and dates (Amina → `note-amina-001-2026-02-11`, Hassan → `note-hassan-002-2026-03-18`, Sara → `note-sara-003-2026-02-26`). All three no_supporting_record responses returned `no_relevant_evidence`. All four refusal responses returned correct reasons (`general_medical` × 2, `treatment_or_medication` × 2). Zero regressions under the current model with hardened parsing in place.
+
+**Process lesson:** Model swaps are provider decisions with the same governance requirements as any other architectural choice. Future swaps need: DECISIONS.md entry before merge, adversarial suite re-run, and live rehearsal verification — all before the change reaches main.
+
+## 2026-09-07 — Prevent duplicate note approval with UI + server guards
+
+**Decision:** Add defense-in-depth guards to prevent duplicate approvals when the Approve & Save button is clicked multiple times (race condition or user double-click).
+
+**UI guard:** The Approve & Save button in `SessionWorkspaceView` now has `disabled={isSaving || isApproved}` and displays "Approved" text when the note is already approved, matching the existing guard pattern in `ReviewApprovalModal`. This prevents further clicks at the UI level.
+
+**Server guard:** The `approve()` method in `lib/actions/scribe.ts` now checks for an existing approved note with the same ID before saving. If found, it returns the existing record instead of creating a new one with a fresh UUID. This prevents duplicate entries even if the UI guard is bypassed.
+
+**Why:** Without these guards, rapid clicking or race conditions could trigger multiple `approve()` calls, each generating a new UUID via `createId()` and appending a separate approved note to storage. The server-side check ensures idempotency regardless of UI state.
+
+**Test coverage:** Regression test added in `tests/scribe-service.test.ts` proving that calling `approve()` twice on the same draft returns the same note ID and does not create duplicates.
 

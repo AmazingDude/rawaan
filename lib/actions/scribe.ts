@@ -35,6 +35,20 @@ export function createScribeService({
     async approve(candidate: unknown): Promise<ApprovedNote> {
       const draft = noteDraftSchema.parse(candidate);
 
+      // Prevent duplicate approvals: check if an approved note already exists
+      // for this patient on the same date. If found, return it as-is.
+      const existingNotes = await noteRepository.listAll();
+      const alreadyApproved = existingNotes.find(
+        (note) =>
+          note.patient_id === draft.patient_id &&
+          note.consultation_date === draft.consultation_date &&
+          note.approval_status === "approved",
+      );
+
+      if (alreadyApproved) {
+        return alreadyApproved;
+      }
+
       return noteRepository.save({
         ...draft,
         approval_status: "approved",

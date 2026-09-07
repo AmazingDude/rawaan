@@ -23,10 +23,29 @@ function buildEvidenceUserMessage(evidence: RetrievedEvidence): string {
 }
 
 function parseBrainAnswer(completion: string): z.infer<typeof brainAnswerSchema> {
+  // Defensive parsing: strip reasoning tokens, markdown fences, and extract
+  // the JSON object between the first `{` and last `}`. This protects against
+  // models that emit `<think>` blocks or markdown wrappers before the actual
+  // JSON response (observed with qwen3.8-27b on Groq).
+  let cleaned = completion.replace(/<think>[\s\S]*?<\/think>/gi, "");
+  if (cleaned.includes("<think>")) {
+    cleaned = cleaned.replace(/<think>[\s\S]*$/gi, "");
+  }
+  cleaned = cleaned
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim();
+
+  const firstBrace = cleaned.indexOf("{");
+  const lastBrace = cleaned.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    cleaned = cleaned.slice(firstBrace, lastBrace + 1);
+  }
+
   let parsed: unknown;
 
   try {
-    parsed = JSON.parse(completion);
+    parsed = JSON.parse(cleaned);
   } catch {
     throw new Error("Brain answer response was invalid.");
   }
