@@ -8,7 +8,7 @@ import {
   Sparkles,
   User,
 } from "lucide-react";
-import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState } from "react";
 
 import {
   appendChatEntryAction,
@@ -64,7 +64,7 @@ export function BrainChat({ initialPatientId }: { initialPatientId?: string }) {
 
   const requestedPatientRef = useRef<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const loadPatientThreads = useCallback(async (patientId: string) => {
     if (!patientId) {
@@ -214,6 +214,25 @@ export function BrainChat({ initialPatientId }: { initialPatientId?: string }) {
     event.preventDefault();
     void submitQuestion(state.draftQuestion);
   }
+
+  function handleComposerKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) return;
+    event.preventDefault();
+    if (!state.isSubmitting && state.draftQuestion.trim()) {
+      void submitQuestion(state.draftQuestion);
+    }
+  }
+
+  useLayoutEffect(() => {
+    const textarea = inputRef.current;
+    if (!textarea) return;
+
+    const maxHeight = 132;
+    textarea.style.height = "auto";
+    const contentHeight = textarea.scrollHeight;
+    textarea.style.height = `${Math.min(contentHeight, maxHeight)}px`;
+    textarea.style.overflowY = contentHeight > maxHeight ? "auto" : "hidden";
+  }, [state.draftQuestion]);
 
   if (!patientsLoaded) {
     return (
@@ -425,24 +444,25 @@ export function BrainChat({ initialPatientId }: { initialPatientId?: string }) {
             className="chatgpt-input-capsule brain-chat-input-row"
             onSubmit={handleSubmit}
           >
-            <input
+            <textarea
               ref={inputRef}
               className="chatgpt-text-input brain-chat-input"
               disabled={!state.patientId || state.isSubmitting}
               onChange={(event) =>
                 dispatch({ type: "set-draft", text: event.target.value })
               }
+              onKeyDown={handleComposerKeyDown}
               placeholder={
                 selectedPatient
                   ? `Ask about ${selectedPatient.displayName}'s symptoms, history, or plans…`
                   : "Select a patient on the top right to ask questions…"
               }
-              type="text"
+              rows={1}
               value={state.draftQuestion}
             />
 
             <button
-              className="chatgpt-send-btn primary-button"
+              className="chatgpt-send-btn"
               disabled={
                 !state.patientId ||
                 state.isSubmitting ||
@@ -451,10 +471,11 @@ export function BrainChat({ initialPatientId }: { initialPatientId?: string }) {
               type="submit"
               aria-label="Send message"
             >
-              <ArrowUp size={18} />
+              <ArrowUp aria-hidden="true" size={18} strokeWidth={2.75} />
             </button>
           </form>
 
+          <p className="chatgpt-composer-hint">Press Enter to ask · Shift+Enter for a new line</p>
           <p className="chatgpt-disclaimer">
             Rawaan AI answers strictly from approved clinician records · Documentation support only
           </p>
