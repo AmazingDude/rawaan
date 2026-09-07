@@ -21,6 +21,7 @@ function tokenize(text: string): string[] {
 
 function noteText(note: ApprovedNote): string {
   return [
+    note.summary || "",
     note.chief_complaint,
     ...note.history,
     ...note.symptoms,
@@ -39,7 +40,7 @@ function extractExcerpts(
   intentMatches: string[],
 ): string[] {
   const sentences = note.raw_transcript.split(/(?<=[.!?])\s+/).concat(
-    [...note.symptoms, ...note.history].map((entry) => `${entry}.`),
+    [...note.symptoms, ...note.history, ...(note.summary ? [note.summary] : [])].map((entry) => `${entry}.`),
   );
   const matches = sentences.filter((sentence) =>
     tokenize(sentence).some((token) => terms.has(token)),
@@ -75,8 +76,9 @@ const FIELD_INTENTS: Array<{
     pick: (note) => note.assessment_discussed,
   },
   {
-    pattern: /\b(chief complaint|complaint)\b/i,
-    pick: (note) => (note.chief_complaint ? [note.chief_complaint] : []),
+    pattern: /\b(chief complaint|complaint|summary|summarize|overview)\b/i,
+    pick: (note) =>
+      [note.summary, note.chief_complaint].filter(Boolean) as string[],
   },
 ];
 
