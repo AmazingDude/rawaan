@@ -8,7 +8,7 @@ import {
   Sparkles,
   User,
 } from "lucide-react";
-import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState } from "react";
 
 import {
   appendChatEntryAction,
@@ -222,6 +222,17 @@ export function BrainChat({ initialPatientId }: { initialPatientId?: string }) {
       void submitQuestion(state.draftQuestion);
     }
   }
+
+  useLayoutEffect(() => {
+    const textarea = inputRef.current;
+    if (!textarea) return;
+
+    const maxHeight = 132;
+    textarea.style.height = "auto";
+    const contentHeight = textarea.scrollHeight;
+    textarea.style.height = `${Math.min(contentHeight, maxHeight)}px`;
+    textarea.style.overflowY = contentHeight > maxHeight ? "auto" : "hidden";
+  }, [state.draftQuestion]);
 
   if (!patientsLoaded) {
     return (
@@ -451,7 +462,7 @@ export function BrainChat({ initialPatientId }: { initialPatientId?: string }) {
             />
 
             <button
-              className="chatgpt-send-btn primary-button"
+              className="chatgpt-send-btn"
               disabled={
                 !state.patientId ||
                 state.isSubmitting ||
@@ -460,7 +471,7 @@ export function BrainChat({ initialPatientId }: { initialPatientId?: string }) {
               type="submit"
               aria-label="Send message"
             >
-              <ArrowUp size={18} />
+              <ArrowUp aria-hidden="true" size={18} strokeWidth={2.75} />
             </button>
           </form>
 
