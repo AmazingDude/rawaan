@@ -1,23 +1,102 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import seed from "@/data/seed/demo-patients.json";
+import scopeFixture from "@/data/seed/assistant-scope.json";
+import guardFixture from "@/data/seed/clinical-guard-cases.json";
 import { noteSchema } from "@/lib/notes/schema";
 import { runRawaanAgent } from "@/lib/llm/rawaan-agent";
 import { clinicalContextSchema } from "@/lib/clinical/schema";
 import { createTavilySearch } from "@/lib/tools/web-search";
+import { agentOutputTokenBudget } from "@/lib/llm/agent-budget";
 
 const answer = { answer:"A helpful explanation.", note_source_indices:[], web_source_indices:[], clinical:null };
 const clinical = { differential:[{condition:"Anxiety",rationale:"Reported stress is compatible, but requires assessment."}], medication_options:[], missing_information:[], plan:{title:"Proposed review plan",goals:["Clarify current symptoms"],next_steps:["Discuss assessment with the clinician"],monitoring:["Review symptom changes"],follow_up:"Arrange clinician review",red_flags:[]} };
 function provider(plan:object, response:object) {
-  return { complete:vi.fn().mockResolvedValue(JSON.stringify(response)).mockResolvedValueOnce(JSON.stringify(plan)).mockResolvedValueOnce(JSON.stringify(response)) };
+  return { complete:vi.fn().mockResolvedValue(JSON.stringify(response)).mockResolvedValueOnce(JSON.stringify({in_scope:true,...plan})).mockResolvedValueOnce(JSON.stringify(response)) };
 }
 beforeEach(()=>{vi.unstubAllGlobals();});
 
+describe("Assistant output-budget configuration",()=>{
+  it("defaults to 768 without changing other provider budgets",()=>{
+    expect(agentOutputTokenBudget({})).toBe(768);
+    expect(agentOutputTokenBudget({RAWAAN_AI_MAX_OUTPUT_TOKENS:"2048"})).toBe(2048);
+  });
+  it.each(["0","-1","900.5","invalid","999999"])("rejects an invalid server budget %s",value=>{
+    expect(()=>agentOutputTokenBudget({RAWAAN_AI_MAX_OUTPUT_TOKENS:value})).toThrow(/RAWAAN_AI_MAX_OUTPUT_TOKENS/);
+  });
+});
+
 describe("bounded Rawaan agent",()=>{
+  it("returns cited medication discussion with risk warnings without wasting a clinical rewrite",async()=>{
+    const llm=provider({clinical:true,needs_search:true,search_query:"insomnia guidance"},{
+      ...answer,answer:guardFixture.allowed[0],clinical:{...clinical,plan:null,
+        medication_options:[{name:"Reference-supported discussion option",considerations:`${guardFixture.allowed[2]} [W1].`}],
+      },
+    });
+    const search={search:vi.fn().mockResolvedValue([{title:"Clinical reference",url:"https://www.nhs.uk/conditions/insomnia/",content:"Reference text"}])};
+    const result=await runRawaanAgent({question:guardFixture.insomniaQuestion,notes:[],history:[],webEnabled:true},llm,search);
+    expect(llm.complete).toHaveBeenCalledTimes(2);
+    expect(result.answer).toBe(guardFixture.allowed[0]);
+    expect(result.clinical?.medication_options).toHaveLength(1);
+    expect(result.sources).toMatchObject([{kind:"web",citation:"W1",url:"https://www.nhs.uk/conditions/insomnia/"}]);
+  });
+  it.each(scopeFixture.outOfScope)("redirects off-topic requests without answering or searching: %s",async question=>{
+    const llm=provider({in_scope:false,clinical:false,needs_search:true,search_query:"coding"},{...answer,answer:"Unexpected code answer"});
+    const search={search:vi.fn()};
+    const result=await runRawaanAgent({question,notes:[noteSchema.parse(seed[0])],history:[],webEnabled:true},llm,search);
+    expect(result.answer).toMatch(/clinical assistant/i);
+    expect(result.answer).not.toContain("Unexpected code answer");
+    expect(result).toMatchObject({status:"agent",category:"general",sources:[],clinical:null,notice:null});
+    expect(llm.complete).toHaveBeenCalledTimes(1);
+    expect(search.search).not.toHaveBeenCalled();
+  });
+  it("requires an explicit scope classification rather than defaulting missing scope to allowed",async()=>{
+    const llm={complete:vi.fn().mockResolvedValue(JSON.stringify({clinical:false,needs_search:false,search_query:""}))};
+    await expect(runRawaanAgent({question:scopeFixture.outOfScope[0],notes:[],history:[],webEnabled:false},llm)).rejects.toThrow();
+    expect(llm.complete).toHaveBeenCalledTimes(1);
+  });
+  it.each(scopeFixture.inScope)("keeps broad medical conversation available without a selected client: %s",async question=>{
+    const llm=provider({in_scope:true,clinical:false,needs_search:false,search_query:""},answer);
+    const result=await runRawaanAgent({question,notes:[],history:[],webEnabled:false},llm);
+    expect(result.answer).toBe(answer.answer);
+    expect(llm.complete).toHaveBeenCalledTimes(2);
+  });
+  it("supplies redacted recent questions so medical follow-ups retain their context",async()=>{
+    const note=noteSchema.parse(seed[0]);
+    const llm=provider({in_scope:true,clinical:false,needs_search:false,search_query:""},answer);
+    await runRawaanAgent({question:"Why is that?",notes:[note],history:[{question:`Summarize ${note.patient_display_name}'s clinical history`,answer:"Prior response"}],webEnabled:false},llm);
+    const planner=JSON.parse(llm.complete.mock.calls[0][0].user);
+    expect(planner.recent_questions[0]).toContain("clinical history");
+    expect(planner.recent_questions[0]).not.toContain(note.patient_display_name);
+  });
+  it("budgets planning and complete answers below the observed free-tier output allowance",async()=>{
+    const note=noteSchema.parse(seed[0]);
+    const llm=provider({clinical:false,needs_search:false,search_query:""},answer);
+    await runRawaanAgent({question:"What is the main concern?",notes:[note],history:[],webEnabled:false},llm);
+    expect(llm.complete.mock.calls.map(call=>call[0].maxTokens)).toEqual([128,768]);
+    const envelope=JSON.parse(llm.complete.mock.calls[1][0].user);
+    expect(envelope.response_token_budget).toBe(768);
+    expect(envelope.approved_notes[0].raw_transcript).toBe(note.raw_transcript);
+  });
+  it("supports a larger answer budget when the server account has higher quotas",async()=>{
+    const llm=provider({clinical:false,needs_search:false,search_query:""},answer);
+    await runRawaanAgent({question:"Explain clinical note formats",notes:[],history:[],webEnabled:false,outputTokenBudget:2048},llm);
+    expect(llm.complete.mock.calls[1][0].maxTokens).toBe(2048);
+    expect(JSON.parse(llm.complete.mock.calls[1][0].user).response_token_budget).toBe(2048);
+  });
+  it("uses the same bounded budget and full notes for a clinical rewrite",async()=>{
+    const note=noteSchema.parse(seed[0]);
+    const llm=provider({clinical:true,needs_search:false,search_query:""},{...answer,answer:"Start warfarin.",clinical});
+    llm.complete.mockResolvedValueOnce(JSON.stringify({...answer,answer:"Review the documented symptoms [N1].",clinical}));
+    await runRawaanAgent({question:"Discuss treatment",notes:[note],history:[],webEnabled:false},llm);
+    expect(llm.complete.mock.calls.map(call=>call[0].maxTokens)).toEqual([128,768,768]);
+    expect(JSON.parse(llm.complete.mock.calls[2][0].user).approved_notes[0].raw_transcript).toBe(note.raw_transcript);
+  });
   it("answers a selected client's plan question from notes without an intake form or web search",async()=>{
     const note=noteSchema.parse(seed[0]);
     const llm=provider({clinical:true,needs_search:true,search_query:"anxiety"},{...answer,answer:"Review the documented concerns [N1].",note_source_indices:[0],clinical});
     const result=await runRawaanAgent({question:"Help plan the next session",notes:[note],context:clinicalContextSchema.parse({}),history:[],webEnabled:false},llm);
     expect(llm.complete).toHaveBeenCalledTimes(2);
+    expect(llm.complete.mock.calls[0][0].maxTokens).toBe(128);
     expect(result.clinical?.plan).toEqual(clinical.plan);
     expect(result.clinical?.missing_information).toEqual([]);
     expect(result.answer).not.toMatch(/confirm.*context|before I can/i);
@@ -46,10 +125,10 @@ describe("bounded Rawaan agent",()=>{
     expect(result.sources).toHaveLength(24);
     expect(result.sources[23]).toMatchObject({kind:"note",citation:"N24",noteId:notes[23].id});
   });
-  it("answers general questions without a selected client or a search call",async()=>{
+  it("answers clinical education without a selected client or a search call",async()=>{
     const llm=provider({clinical:false,needs_search:false,search_query:""},answer);
     const search={search:vi.fn()};
-    const result=await runRawaanAgent({question:"Explain recursion",notes:[],history:[],webEnabled:true},llm,search);
+    const result=await runRawaanAgent({question:scopeFixture.inScope[0],notes:[],history:[],webEnabled:true},llm,search);
     expect(result).toMatchObject({status:"agent",category:"general",answer:answer.answer,sources:[]});
     expect(llm.complete).toHaveBeenCalledTimes(2);expect(search.search).not.toHaveBeenCalled();
   });
@@ -60,18 +139,18 @@ describe("bounded Rawaan agent",()=>{
     expect(search.search).toHaveBeenCalledExactlyOnceWith("anxiety clinical evaluation treatment guideline",true);
   });
   it("shows search failure honestly and continues without fabricated web sources",async()=>{
-    const llm=provider({clinical:false,needs_search:true,search_query:"current weather"},{...answer,answer:"Current weather could not be verified."});
-    const result=await runRawaanAgent({question:"What is today's weather?",notes:[],history:[],webEnabled:true},llm,{search:async()=>{throw Error("private provider payload");}});
+    const llm=provider({clinical:false,needs_search:true,search_query:"clinical documentation standards"},{...answer,answer:"Current documentation standards could not be verified."});
+    const result=await runRawaanAgent({question:"What are the current clinical documentation standards?",notes:[],history:[],webEnabled:true},llm,{search:async()=>{throw Error("private provider payload");}});
     expect(result.notice).toMatch(/unavailable/);expect(result.sources).toEqual([]);
     expect(JSON.stringify(result)).not.toContain("private provider payload");
   });
   it("retains source positions when the model uses a later search result",async()=>{
-    const llm=provider({clinical:false,needs_search:true,search_query:"recent space news"},{...answer,answer:"Verified finding [W2]",web_source_indices:[1]});
-    const result=await runRawaanAgent({question:"Search space news",notes:[],history:[],webEnabled:true},llm,{search:async()=>[
-      {title:"First",url:"https://www.nasa.gov/first",content:"first"},
-      {title:"Second",url:"https://www.nasa.gov/second",content:"second"},
+    const llm=provider({clinical:false,needs_search:true,search_query:"medical documentation standards"},{...answer,answer:"Verified finding [W2]",web_source_indices:[1]});
+    const result=await runRawaanAgent({question:"Search medical documentation standards",notes:[],history:[],webEnabled:true},llm,{search:async()=>[
+      {title:"First",url:"https://www.who.int/first",content:"first"},
+      {title:"Second",url:"https://www.who.int/second",content:"second"},
     ]});
-    expect(result.sources).toMatchObject([{kind:"web",citation:"W2",url:"https://www.nasa.gov/second"}]);
+    expect(result.sources).toMatchObject([{kind:"web",citation:"W2",url:"https://www.who.int/second"}]);
   });
   it.each([
     {...answer,answer:"Invented source [W3]",web_source_indices:[]},
@@ -136,10 +215,10 @@ describe("bounded Rawaan agent",()=>{
     const result=await runRawaanAgent({question:"Propose treatment options",notes:[],history:[],webEnabled:false},llm);
     expect(result.answer).toBe(text);
   });
-  it("keeps general search available when a client is selected",async()=>{
+  it("keeps medical-workflow search available when a client is selected",async()=>{
     const search={search:vi.fn().mockResolvedValue([])};
-    await runRawaanAgent({question:"Search current weather in Karachi",notes:[],context:clinicalContextSchema.parse({}),privateIdentifiers:["Fixture Client"],history:[],webEnabled:true},provider({clinical:false,needs_search:true,search_query:"Karachi current weather"},answer),search);
-    expect(search.search).toHaveBeenCalledExactlyOnceWith("Karachi current weather",false);
+    await runRawaanAgent({question:"Search current clinical documentation standards",notes:[],context:clinicalContextSchema.parse({}),privateIdentifiers:["Fixture Client"],history:[],webEnabled:true},provider({clinical:false,needs_search:true,search_query:"clinical documentation standards"},answer),search);
+    expect(search.search).toHaveBeenCalledExactlyOnceWith("clinical documentation standards",false);
   });
   it("handles sensitive search text even if classified as general",async()=>{
     const search={search:vi.fn().mockResolvedValue([])};
@@ -165,7 +244,7 @@ describe("bounded Rawaan agent",()=>{
   });
   it("links inline citations omitted from the redundant source arrays only when their envelope positions exist",async()=>{
     const note=noteSchema.parse(seed[0]);
-    const llm=provider({clinical:false,needs_search:true,search_query:"space"},{...answer,answer:"Recorded concern [N1]; external context [W1]."});
+    const llm=provider({clinical:false,needs_search:true,search_query:"clinical documentation"},{...answer,answer:"Recorded concern [N1]; external context [W1]."});
     const result=await runRawaanAgent({question:"Search context",notes:[note],history:[],webEnabled:true},llm,{search:async()=>[{title:"Source",url:"https://www.nasa.gov/",content:"Context"}]});
     expect(result.sources.map(source=>source.citation)).toEqual(["N1","W1"]);
   });

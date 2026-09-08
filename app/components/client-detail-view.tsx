@@ -12,6 +12,7 @@ import { ClientChatsTab } from "@/app/components/client-chats-tab";
 import { SessionMindmap } from "@/app/components/session-mindmap";
 import type { ApprovedNote } from "@/lib/notes/schema";
 import { projectTreatmentPlan } from "@/lib/notes/treatment-plan";
+import { ShareClientButton, ClientImportHistory } from "@/app/components/client-sharing";
 
 const ReviewedPlansPanel = dynamic(() => import("@/app/components/reviewed-plans-panel").then(module => module.ReviewedPlansPanel), { loading: () => <RequestStatus label="Loading reviewed plans…" skeleton/> });
 
@@ -94,14 +95,18 @@ export function ClientDetailView({
             {since ? ` / Since ${since}` : ""}
           </p>
         </div>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+        <ShareClientButton patientId={client.patientId} displayName={client.displayName}/>
         <Link
           className="primary-button"
           href={`/record?patient=${encodeURIComponent(client.patientId)}`}
         >
           <Video aria-hidden="true" size={15} /> Record a session
         </Link>
+        </div>
       </header>
 
+      <ClientImportHistory key={client.patientId} patientId={client.patientId}/>
       <nav
         className="workspace-tabs-nav client-detail-tabs"
         aria-label="Client detail tabs"

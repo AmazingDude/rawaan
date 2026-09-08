@@ -1,0 +1,27 @@
+.root { min-width: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere; line-height: 1.7; text-align: start; }
+.root > :first-child { margin-top: 0; }
+.root > :last-child { margin-bottom: 0; }
+.root p { margin: .65em 0; }
+.root h1, .root h2, .root h3, .root h4, .root h5, .root h6 { margin: 1.1em 0 .45em; color: inherit; font-weight: 700; line-height: 1.4; }
+.root h1 { font-size: 1.35em; }
+.root h2 { font-size: 1.2em; }
+.root h3, .root h4, .root h5, .root h6 { font-size: 1.05em; }
+.root strong { font-weight: 700; }
+.root em { font-style: italic; }
+.root ul, .root ol { margin: .65em 0; padding-inline-start: 1.6em; }
+.root ul { list-style: disc outside; }
+.root ol { list-style: decimal outside; }
+.root ul ul { list-style-type: circle; }
+.root li + li { margin-top: .3em; }
+.root li > p { margin: .3em 0; }
+.root a { color: #07584b; text-decoration: underline; text-underline-offset: 3px; }
+.root a:focus-visible, .tableScroll:focus-visible { outline: 2px solid #079b8a; outline-offset: 3px; }
+.root blockquote { margin: .8em 0; padding-inline-start: 1em; border-inline-start: 3px solid #bdd4ca; color: #48615a; }
+.root code { padding: .1em .3em; border-radius: 4px; background: #eef4f1; font-family: ui-monospace, monospace; font-size: .88em; }
+.root pre { max-width: 100%; margin: .8em 0; padding: 12px; overflow-x: auto; border-radius: 8px; background: #eef4f1; white-space: pre; }
+.root pre code { padding: 0; background: transparent; white-space: pre; overflow-wrap: normal; }
+.root hr { margin: 1em 0; border: 0; border-top: 1px solid #dbe7e1; }
+.tableScroll { max-width: 100%; margin: .8em 0; overflow-x: auto; }
+.root table { width: 100%; border-collapse: collapse; font-size: .94em; }
+.root th, .root td { min-width: 110px; padding: 8px 10px; border: 1px solid #dbe7e1; text-align: start; vertical-align: top; }
+.root th { background: #f1f7f4; font-weight: 700; }

@@ -24,6 +24,7 @@ import {
 } from "@/lib/llm/provider";
 import { createNoteRepository } from "@/lib/notes/repository";
 import { describeAgentFailure } from "@/lib/agent/errors";
+import { agentOutputTokenBudget } from "@/lib/llm/agent-budget";
 import { type ApprovedNote, type NoteDraft } from "@/lib/notes/schema";
 import { StorageError, STORAGE_ERROR_MESSAGE } from "@/lib/db/errors";
 import { requireUserStorage } from "@/lib/auth/session";
@@ -520,11 +521,12 @@ export async function sendAgentMessageAction(candidate: unknown): Promise<
       const {runRawaanAgent}=await import("@/lib/llm/rawaan-agent");
       const {createTavilySearch}=await import("@/lib/tools/web-search");
       const key=process.env.TAVILY_API_KEY?.trim();
+      const outputTokenBudget=agentOutputTokenBudget();
       response=await runRawaanAgent({
-        question:input.question,notes,activeNoteId:input.sessionNoteId,context,privateIdentifiers:patientContext?.identifiers,webEnabled:input.webEnabled,
+        question:input.question,notes,activeNoteId:input.sessionNoteId,context,privateIdentifiers:patientContext?.identifiers,webEnabled:input.webEnabled,outputTokenBudget,
         history:history.filter(entry=>entry.response.status==="agent"||entry.response.status==="supported").slice(-8)
           .map(entry=>({question:entry.question,answer:"answer" in entry.response?entry.response.answer:""})),
-      },createLazyLlmProvider(4096),key?createTavilySearch(key):undefined);
+      },createLazyLlmProvider(outputTokenBudget),key?createTavilySearch(key):undefined);
     }
     const timestamp=new Date().toISOString();
     let persisted=true;

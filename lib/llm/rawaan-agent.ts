@@ -6,10 +6,11 @@ import { agentResponseSchema, type AgentResponse, type AgentSource } from "@/lib
 import type { ClinicalContext } from "@/lib/clinical/schema";
 import type { ApprovedNote } from "@/lib/notes/schema";
 import type { LlmCompletionProvider } from "@/lib/llm/provider";
-import { RAWAAN_AGENT_PLANNER_PROMPT, RAWAAN_AGENT_ANSWER_PROMPT } from "@/lib/llm/prompts/rawaan-agent";
+import { DEFAULT_AGENT_OUTPUT_TOKENS } from "@/lib/llm/agent-budget";
+import { RAWAAN_AGENT_PLANNER_PROMPT, RAWAAN_AGENT_ANSWER_PROMPT, RAWAAN_MEDICAL_SCOPE_REDIRECT } from "@/lib/llm/prompts/rawaan-agent";
 import type { WebSearchTool, WebResult } from "@/lib/tools/web-search";
 
-const plannerSchema = z.object({ clinical: z.boolean(), needs_search: z.boolean(), search_query: z.string().max(400) }).strict();
+const plannerSchema = z.object({ in_scope: z.boolean(), clinical: z.boolean(), needs_search: z.boolean(), search_query: z.string().max(400) }).strict();
 const answerSchema = z.object({
   answer: z.string().min(1).max(20000),
   note_source_indices: z.array(z.number().int().nonnegative()),
@@ -17,7 +18,7 @@ const answerSchema = z.object({
   clinical: agentResponseSchema.shape.clinical,
 }).strict();
 export type AgentTurn = { question: string; answer: string };
-export type AgentInput = { question: string; notes: ApprovedNote[]; activeNoteId?: string; context?: ClinicalContext; privateIdentifiers?: string[]; history: AgentTurn[]; webEnabled: boolean };
+export type AgentInput = { question: string; notes: ApprovedNote[]; activeNoteId?: string; context?: ClinicalContext; privateIdentifiers?: string[]; history: AgentTurn[]; webEnabled: boolean; outputTokenBudget?: number };
 const clinicalQuestionPattern = /diagnos|medicine|medication|prescrib|treatment|dosage|differential|دوا|علاج|تشخیص/i;
 
 function parseJson(text: string): unknown {
@@ -62,14 +63,20 @@ export async function runRawaanAgent(input: AgentInput, provider: LlmCompletionP
     key !== "confirmed_at" && key !== "medication_context_confirmed" && value !== null && value !== ""));
   const notes = [...input.notes].sort((a,b) => b.consultation_date.localeCompare(a.consultation_date) || a.id.localeCompare(b.id));
   const question = input.question.trim();
+  const outputTokenBudget = input.outputTokenBudget ?? DEFAULT_AGENT_OUTPUT_TOKENS;
   const plan = plannerSchema.parse(parseJson(await provider.complete({
+    maxTokens: 128,
     system: RAWAAN_AGENT_PLANNER_PROMPT,
     user: JSON.stringify({
       question: redactSearchText(question, input.notes, input.privateIdentifiers),
+      recent_questions: input.history.slice(-2).map(turn => redactSearchText(turn.question.slice(0,500), input.notes, input.privateIdentifiers)),
       anonymous_symptoms: notes.map(note => redactSearchText([note.chief_complaint, ...note.symptoms].join("; ").slice(0,1000), input.notes)),
       current_date: new Date().toISOString().slice(0,10),
     }),
   })));
+  if (!plan.in_scope) return agentResponseSchema.parse({
+    status:"agent",answer:RAWAAN_MEDICAL_SCOPE_REDIRECT,category:"general",sources:[],notice:null,clinical:null,
+  });
   const clinical = plan.clinical || clinicalQuestionPattern.test(question);
   const needsSearch = plan.needs_search || clinical;
   let results: WebResult[] = [];
@@ -97,9 +104,10 @@ export async function runRawaanAgent(input: AgentInput, provider: LlmCompletionP
     raw_transcript: note.raw_transcript, session_info: note.session_info, approved_at: note.approved_at,
   }));
   const answerRequest = {
+    maxTokens: outputTokenBudget,
     system: RAWAAN_AGENT_ANSWER_PROMPT,
     user: JSON.stringify({
-      question, conversation: input.history.slice(-8).map(turn => ({question:turn.question.slice(0,2000),answer:turn.answer.slice(0,3000)})),
+      question, response_token_budget: outputTokenBudget, conversation: input.history.slice(-8).map(turn => ({question:turn.question.slice(0,2000),answer:turn.answer.slice(0,3000)})),
       patient_selected: input.notes.length > 0 || Boolean(input.context), approved_notes: recordData,
       clinical_context: context, web_results: results, tool_notice: notice,
       clinical_context_confirmed_at: input.context?.confirmed_at ?? null,
@@ -118,6 +126,7 @@ export async function runRawaanAgent(input: AgentInput, provider: LlmCompletionP
     // The rejected text is not promoted into evidence or persisted to history.
     const repairRequest = JSON.parse(answerRequest.user);
     output = answerSchema.parse(parseJson(await provider.complete({
+      maxTokens: outputTokenBudget,
       system: RAWAAN_AGENT_ANSWER_PROMPT,
       user: JSON.stringify({...repairRequest, previous_output: output, revision_required: error.message,
         revision_instruction: "Rewrite the reply as a substantive clinician discussion. Remove medication orders and doses; retain useful supported clinical options, non-medication interventions and the proposed plan. Include medications only with current supporting web references. Never invent or change patient facts or source positions."}),

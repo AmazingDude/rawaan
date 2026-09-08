@@ -1150,10 +1150,13 @@ textarea:focus {
 }
 
 .sidebar-nav-link {
-  display: flex;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
   align-items: center;
+  min-height: 46px;
   gap: 12px;
   padding: 10px 14px;
+  border: 1px solid transparent;
   border-radius: 12px;
   color: #475569;
   text-decoration: none;
@@ -1183,10 +1186,11 @@ textarea:focus {
 .sidebar-settings-trigger {
   align-items: center;
   background: transparent;
-  border: 0;
+  border: 1px solid transparent;
   color: #475569;
   cursor: pointer;
-  display: flex;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
   font: inherit;
   font-size: var(--text-body-sm);
   gap: 12px;
@@ -1268,33 +1272,13 @@ textarea:focus {
   max-width: 620px;
 }
 
-.sidebar-nav-icon {
-  color: #64748b;
+.sidebar-nav-icon,
+.sidebar-settings-trigger > svg {
+  color: var(--color-ink-black);
   transition: color 0.15s;
   flex-shrink: 0;
-}
-
-.sidebar-nav-icon.is-active {
-  color: var(--color-leaf-accent);
-}
-
-/* Coral is reserved for the one primary action per screen (DESIGN.md) and every
-   workspace screen already has a coral primary button, so the decorative Record
-   nav icon uses Deep Teal rather than coral. */
-.sidebar-nav-icon.accent-record {
-  color: var(--color-deep-teal);
-}
-
-.sidebar-nav-icon.accent-clients {
-  color: var(--color-leaf-accent);
-}
-
-.sidebar-nav-icon.accent-ai {
-  color: var(--color-deep-teal);
-}
-
-.sidebar-nav-icon.accent-learn {
-  color: var(--color-canopy-green);
+  justify-self: center;
+  display: block;
 }
 
 .landing-settings-hint {
@@ -6511,6 +6495,8 @@ a.insight-source-note:hover {
 .agent-section p { margin:3px 0 12px; }
 .agent-section ul { padding-left:22px; }
 .agent-plan { margin:20px 0; padding:20px; background:#f6faf8; border:1px solid #dbe7e1; border-radius:14px; }
+.agent-plan h4 { margin:14px 0 5px; font-size:14px; font-weight:700; }
+.agent-plan ul { margin:5px 0; padding-inline-start:22px; list-style:disc; }
 .agent-plan pre { white-space:pre-wrap; overflow-wrap:anywhere; font-family:inherit; line-height:1.7; margin:12px 0; }
 .agent-sources { display:flex; flex-wrap:wrap; gap:8px; margin:20px 0; }
 .agent-sources h4 { width:100%; margin:0; font-size:13px; }

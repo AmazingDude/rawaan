@@ -63,13 +63,13 @@ export const tutorials: Tutorial[] = [
     id: "rawaan-ai", title: "Ask Rawaan AI", description: "Know when to ask the assistant and when to search the record.", durationSeconds: 96,
     ...media("rawaan-ai"), action: { label: "Open Rawaan AI", href: "/rawaan-ai" },
     chapters: [
-      { id: "general", title: "Ask a general question", startSeconds: 0, instruction: "Open Rawaan AI and type a question. General conversations do not need a selected client." },
+      { id: "general", title: "Ask a medical question", startSeconds: 0, instruction: "Open Rawaan AI and type a medical question. Medical conversations do not need a selected client." },
       { id: "records", title: "Search approved notes", startSeconds: 22, instruction: "Select a client and switch to Records only. Ask what was documented, then open the dated source note to check the passage." },
       { id: "assistant", title: "Explore with the assistant", startSeconds: 46, instruction: "Assistant mode includes the selected client's saved session history automatically. Ask your question immediately; Clinical context is optional extra information. Web search is optional and depends on availability." },
       { id: "plan", title: "Review a proposed plan", startSeconds: 70, instruction: "For a proposed plan, choose Review and save plan. Read the references, edit the content, then Confirm review and save. Find saved plans in Treatment Plan." },
     ],
     transcript: [
-      "Open Rawaan AI whenever you need help with a question. In Assistant mode, you can start a general conversation without selecting a client. Type your question and send it. Earlier conversations are available in Chat history. Select a client only when you want their records included.",
+      "Open Rawaan AI whenever you need help with a medical question. In Assistant mode, you can start a medical conversation without selecting a client. Type your question and send it. Earlier conversations are available in Chat history. Select a client only when you want their records included.",
       "For questions about what actually happened in a session, select the client and switch to Records only. Ask what was documented. Rawaan shows matching passages from approved notes, with dated source links. Open the source to check the context. If there is no relevant record, it says so.",
       "Switch back to Assistant for explanations and clinical considerations. Suggestions are different from recorded facts. Confirm current clinical context when Rawaan asks for it. Web search can bring in references when available. Check the references and use your own clinical judgment; generated content does not change a saved session note.",
       "A proposed treatment plan is a draft for clinician review. Choose Review and save plan, read the references, and edit the content. Use Confirm review and save only after that review. The saved plan appears in Treatment Plan separately from the original session note. You remain in control of what enters the record.",

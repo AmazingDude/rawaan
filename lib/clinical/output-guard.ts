@@ -7,6 +7,26 @@ export class ClinicalProposalError extends Error {
   }
 }
 
+function describesClinicalEffect(prefix: string, verb: string, target: string): boolean {
+  if (!/^(?:increase|decrease|reduce)$/i.test(verb)) return false;
+  const clause = prefix.split(/[;:]|\bthen\b/i).at(-1) ?? "";
+  const modal = /\b(?:may|can|could|might|that|which)(?:\s+(?:also|sometimes|often|potentially|further))?\s*$/i.exec(clause);
+  if (!modal) {
+    // A second descriptive predicate can inherit its subject and modal:
+    // "Sedatives can increase fall risk and reduce alertness."
+    const coordinated = /^(.*)\b(increase|decrease|reduce)\b(.*?)\s+\b(?:and|but)\s*$/i.exec(clause);
+    if (!coordinated || !describesClinicalEffect(coordinated[1], coordinated[2], coordinated[3])) return false;
+  }
+  const subject = modal ? clause.slice(0, modal.index).trim() : clause.trim();
+  if (!subject || /\b(?:you|patient|client|should|must|please|recommend|advise|instruct|tell|ask)\b/i.test(subject)) return false;
+  const effect = /^\s*(?:(?:the|a|an)\s+)?(?:fall risk|falls|risk|likelihood|chance|incidence|severity|dependence(?: risk)?|dependency|tolerance|alertness|sedation|drowsiness|impairment|next-day impairment|daytime sleepiness|respiratory depression|sleep latency)\b(?!-)(.*)$/i.exec(target);
+  if (!effect) return false;
+  const explanation = effect[1].trim();
+  // The object must be an effect, not a drug described by an effect adjective
+  // ("sedation medications"). Medicines in an interaction warning are allowed.
+  return !explanation || /^(?:[,([]|(?:of|in|with|when|during|among|for|due to|because|especially|particularly|requires? (?:review|assessment|monitoring))\b)/i.test(explanation);
+}
+
 // This conservative check rejects dose instructions and treatment orders.
 // It is a release guard, not a guarantee of clinical correctness.
 export function assertClinicalProposal(output: { answer: string; clinical: AgentResponse["clinical"] }, clinical: boolean, medicationAllowed: boolean): void {
@@ -18,7 +38,7 @@ export function assertClinicalProposal(output: { answer: string; clinical: Agent
       /(?:روزانہ|خوراک|ملی گرام)\s*\d|\d\s*(?:ملی گرام|ملی لیٹر)/.test(text)) {
     throw new ClinicalProposalError("dosing", "The response contains treatment orders or dosing instructions.");
   }
-  const behavioralTarget = /^\s*(?:(?:a|an|the|regular|daily|evening|morning|brief|structured|individual|group|guided|gentle)\s+)*(?:stress|anxiety|depression|distress|rumination|worry|avoidance|social|support|sleep|study|mood|symptom|diary|journal|log|notes|walk|walking|exercise|physical activity|breathing|relaxation|mindfulness|meditation|grounding|break|time|counselling|counseling|psychotherapy|therapy|CBT|CBT-I|DBT|ACT|EMDR|IPT|exposure|behavioral|behavioural|cognitive|screening|assessment|evaluation|monitoring|follow-up|follow up|referral|sessions?|appointments?|communication|coping|routine|activity|activities|caffeine|alcohol|screen time)\b/i;
+  const behavioralTarget = /^\s*(?:(?:a|an|the|regular|daily|evening|morning|brief|structured|individual|group|guided|gentle|pre-sleep|daytime|functional)\s+)*(?:stress|anxiety|depression|distress|rumination|worry|avoidance|arousal|impairment|social|support|sleep|study|mood|symptom|diary|journal|log|notes|walk|walking|exercise|physical activity|breathing|relaxation|mindfulness|meditation|grounding|break|time|counselling|counseling|psychotherapy|therapy|CBT|CBT-I|DBT|ACT|EMDR|IPT|exposure|behavioral|behavioural|cognitive|screening|assessment|evaluation|monitoring|follow-up|follow up|referral|sessions?|appointments?|communication|coping|routine|activity|activities|caffeine|alcohol|screen time)\b/i;
   if (clinical || output.clinical) {
     // An action verb alone is not a medication order: "reduce stress", "begin
     // CBT" and "increase support" are valid clinician-facing plan language.
@@ -34,14 +54,30 @@ export function assertClinicalProposal(output: { answer: string; clinical: Agent
       for (const sentence of passage.split(/[.!?\n]+/)) {
         for (const action of sentence.matchAll(/\b(prescribe|administer|inject|titrate|taper|discontinue|start|stop|take|begin|resume|continue|increase|decrease|reduce|switch to|use)\b/gi)) {
           const prefix = sentence.slice(0, action.index);
+          const afterAction = sentence.slice(action.index + action[0].length);
+          // "Use of a sedative can increase fall risk" is a noun phrase plus
+          // an effect statement. Later verbs in the sentence are still checked.
+          if (/^use$/i.test(action[0]) && /^\s+of\b/i.test(afterAction) && /\b(?:can|may|could|might)(?:\s+(?:also|sometimes|often|potentially|further))?\s+(?:increase|decrease|reduce)\b/i.test(afterAction)) continue;
           // "Substance use history" and "device use before bed" contain a
           // noun, not a directive. Direct or modal "use <drug>" still checks.
           if (/^use$/i.test(action[0]) && !/(?:^|[;:])\s*$|\b(?:can|could|may|might|should|must|would|please|to|and|then|but)\s*$/i.test(prefix)) continue;
           // Only an immediately preceding negation applies; it must not exempt
           // a later positive command ("do not stop X; start Y" or "but start Y").
           if (/\b(?:cannot|can['’]t|do not|don['’]t|must not|should not|never|not to)\s*(?:\w+ly\s+){0,2}$/i.test(prefix)) continue;
-          const target = sentence.slice(action.index + action[0].length).split(/;|\b(?:but|then|and)\b/i)[0];
-          if (/^(?:prescribe|administer|inject|titrate|taper|discontinue)$/i.test(action[0]) || medicationTarget.test(target) || medicationNames.some(name=>target.toLowerCase().includes(name)) || !behavioralTarget.test(target)) {
+          const target = afterAction.split(/;|\b(?:but|then|and)\b/i)[0];
+          const targetsMedication = medicationTarget.test(target) || medicationNames.some(name=>target.toLowerCase().includes(name));
+          // "Reduce sleep latency by taking <drug>" still directs treatment;
+          // checking its gerund target also retains "by using CBT" as allowed.
+          const means = /\b(?:by|through|via)\s+(?:(?:gradually|slowly)\s+)?(prescrib\w*|administer\w*|inject\w*|titrat\w*|taper\w*|discontinu\w*|start\w*|stop\w*|tak\w*|begin\w*|resum\w*|continu\w*|increas\w*|decreas\w*|reduc\w*|switch\w*|us(?:e|ing))\s+(.*)/i.exec(target);
+          // A mechanism can link two effects without directing a drug change:
+          // "may increase fall risk by reducing alertness".
+          if (means && /^(?:increas|decreas|reduc)/i.test(means[1]) && describesClinicalEffect(prefix, action[0], target.slice(0, means.index)) && describesClinicalEffect(prefix, action[0], means[2])) continue;
+          if (means && (medicationTarget.test(means[2]) || medicationNames.some(name=>means[2].toLowerCase().includes(name)) || !behavioralTarget.test(means[2]))) {
+            throw new ClinicalProposalError("medication_order", "The response contains treatment orders.");
+          }
+          if (!targetsMedication && /^reduce$/i.test(action[0]) && /^\s+reliance on pharmacological interventions\s*$/i.test(target)) continue;
+          if (describesClinicalEffect(prefix, action[0], target)) continue;
+          if (/^(?:prescribe|administer|inject|titrate|taper|discontinue)$/i.test(action[0]) || targetsMedication || !behavioralTarget.test(target)) {
             throw new ClinicalProposalError("medication_order", "The response contains treatment orders.");
           }
         }

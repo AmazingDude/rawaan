@@ -1,0 +1,8 @@
+{
+  "label": "Fictional note-editing voice commands for recognition regression tests",
+  "typedPrefix": "Please update the draft.",
+  "revisions": ["Change", "Change the", "Change the training", "Change the training summary", "Change the training summary heading."] ,
+  "finalCommand": "Change the training summary heading.",
+  "secondCommand": "Keep the recorded follow-up unchanged.",
+  "repeatedCommand": "Keep it unchanged. Keep it unchanged."
+}

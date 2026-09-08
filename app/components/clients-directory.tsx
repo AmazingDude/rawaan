@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 
 import type { ClientRecord } from "@/app/actions";
 import styles from "@/app/components/clients-directory.module.css";
+import { ImportClientButton } from "@/app/components/client-sharing";
 
 type ClientFilter = "all" | "with-sessions" | "without-sessions";
 
@@ -39,7 +40,7 @@ export function ClientsDirectory({ clients }: { clients: ClientRecord[] }) {
           <h1>Clients</h1>
           <p className={styles.subtitle}>Keep each client&apos;s recorded sessions and notes together.</p>
         </div>
-        <Link className="primary-button" href="/record"><Video aria-hidden="true" size={16} /> Record a session</Link>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}><ImportClientButton/><Link className="primary-button" href="/record"><Video aria-hidden="true" size={16} /> Record a session</Link></div>
       </header>
 
       <section className={styles.listCard} aria-label="Client directory">

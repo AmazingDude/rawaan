@@ -205,7 +205,7 @@ export function BrainChat({ initialPatientId, initialQuestion }: { initialPatien
           {!state.entries.length && !pendingQuestion ? <div className="chatgpt-welcome-state brain-chat-empty">
             <div className="chatgpt-welcome-icon"><RawaanLogo className="rawaan-welcome-logo" decorative/></div>
             <h2 className="chatgpt-welcome-title">What can I help you with?</h2>
-            <p className="chatgpt-welcome-desc">{mode === "records" ? "Select a client to recall exact excerpts from their approved notes." : state.patientId ? "Your client's full saved session history is included automatically. Ask about their history or prepare for the next session." : "Ask a question, explore clinical considerations, or draft a plan. Select a client when you want their records included."}</p>
+            <p className="chatgpt-welcome-desc">{mode === "records" ? "Select a client to recall exact excerpts from their approved notes." : state.patientId ? "Your client's full saved session history is included automatically. Ask about their history or prepare for the next session." : "Ask a medical question, explore clinical considerations, or draft a plan. Select a client when you want their records included."}</p>
             {mode === "assistant" ? <div className="chatgpt-quick-prompts-grid">{(state.patientId ? clientPrompts : generalPrompts).map(question => <button className="chatgpt-quick-prompt-card" key={question} onClick={() => dispatch({ type: "set-draft", text: question })} type="button">{question}<ArrowUp size={14}/></button>)}</div> : null}
           </div> : null}
           {state.entries.map((entry, index) => <ChatEntryCard entry={entry} patientId={state.patientId || undefined} key={entry.timestamp + "-" + index}

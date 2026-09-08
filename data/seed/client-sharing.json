@@ -1,0 +1,22 @@
+{
+  "label": "Fictional client handoff test data; no real people or records",
+  "sender": { "id": "handoff-sender", "clinic": "Training Clinic" },
+  "recipient": { "id": "handoff-recipient", "clinic": "Receiving Training Clinic" },
+  "other": { "id": "handoff-other", "clinic": "Other Training Clinic" },
+  "noteIds": ["training-note-one", "training-note-two"],
+  "planId": "training-reviewed-plan",
+  "context": { "age": 25, "allergies": "Not recorded in this fictional example" },
+  "webSource": { "kind": "web", "citation": "W1", "title": "Fictional training reference", "url": "https://example.org/training-reference", "accessedAt": "2026-10-08T09:00:00.000Z" },
+  "plan": {
+    "title": "Review the recorded routine",
+    "reviewed_content": "Review the sleep and study journal at the next session. [N1]",
+    "generated_plan": {
+      "title": "Review the recorded routine",
+      "goals": ["Understand the recorded evening routine"],
+      "next_steps": ["Discuss the journal"],
+      "monitoring": ["Review recorded sleep patterns"],
+      "follow_up": "Next scheduled session",
+      "red_flags": []
+    }
+  }
+}

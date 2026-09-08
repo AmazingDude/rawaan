@@ -18,7 +18,7 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { RequestStatus } from "@/app/components/request-status";
@@ -49,8 +49,10 @@ import { formatClinicalNoteText } from "@/lib/notes/presentation";
 import { noteDraftSchema, type ApprovedNote, type NoteDraft } from "@/lib/notes/schema";
 import type { StoredChatResponse } from "@/lib/db/chats";
 import { AgentAnswer } from "@/app/components/agent-answer";
+import { AssistantMarkdown } from "@/app/components/assistant-markdown";
 import { hasDevanagari } from "@/lib/transcription/devanagari-to-urdu";
 import { formatSessionDate } from "@/app/components/session-date";
+import { appendDictatedText, createPromptDictation, type PromptDictationController, type PromptDictationPhase } from "@/lib/transcription/prompt-dictation";
 
 const ReviewedPlansPanel = dynamic(() => import("@/app/components/reviewed-plans-panel").then(module => module.ReviewedPlansPanel), { loading: () => <RequestStatus label="Loading reviewed plans…" skeleton/> });
 
@@ -73,17 +75,6 @@ interface ChatMessage {
   threadId?: string;
   entryTimestamp?: string;
   persisted?: boolean;
-}
-
-interface SpeechRecognitionInstance {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  onerror: () => void;
-  onend: () => void;
-  onresult: (event: { results: { 0: { 0: { transcript: string } } } }) => void;
-  onstart: () => void;
-  start: () => void;
 }
 
 export function SessionWorkspaceView({
@@ -128,7 +119,16 @@ export function SessionWorkspaceView({
     content: string;
     size: string;
   } | null>(null);
-  const [isListening, setIsListening] = useState(false);
+  const [dictationPhase, setDictationPhase] = useState<PromptDictationPhase | "idle">("idle");
+  const isListening = dictationPhase !== "idle";
+  const isFinishingDictation = dictationPhase === "transcribing";
+  const [dictationError, setDictationError] = useState<string | null>(null);
+  const dictationRef = useRef<PromptDictationController | null>(null);
+  const cancelDictation = useCallback(() => {
+    dictationRef.current?.cancel();
+    dictationRef.current = null;
+    setDictationPhase("idle");
+  }, []);
 
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [inputPrompt, setInputPrompt] = useState("");
@@ -142,7 +142,8 @@ export function SessionWorkspaceView({
   const isDraftValid = !isApproved && noteDraftSchema.safeParse(currentNote).success;
   const canRefineDraft = !isManualEntry && !isApproved && activeLanguage === "en" && !isAiLoading && !isSaving && !isTranslating;
   const hasAssistant = isApproved || !isManualEntry;
-  const canSendPrompt = !isAiLoading && !isSaving && (isApproved || canRefineDraft);
+  const canUsePrompt = !isAiLoading && !isSaving && (isApproved || canRefineDraft);
+  const canSendPrompt = canUsePrompt && !isListening;
   const needsUrduTranscript = hasDevanagari(currentNote.raw_transcript);
   const displayedTranscript = needsUrduTranscript
     ? urduTranscript?.source === currentNote.raw_transcript ? urduTranscript.text : null
@@ -156,7 +157,7 @@ export function SessionWorkspaceView({
 
   useAccessibleDialog(
     assistantPanelRef,
-    () => setIsAiOverviewOpen(false),
+    () => { cancelDictation(); setIsAiOverviewOpen(false); },
     isCompactViewport && isAiOverviewOpen && hasAssistant,
   );
 
@@ -164,12 +165,14 @@ export function SessionWorkspaceView({
     const media = window.matchMedia("(max-width: 1023px)");
     const updateViewport = () => {
       setIsCompactViewport(media.matches);
-      if (media.matches) setIsAiOverviewOpen(false);
+      if (media.matches) { cancelDictation(); setIsAiOverviewOpen(false); }
     };
     updateViewport();
     media.addEventListener("change", updateViewport);
     return () => media.removeEventListener("change", updateViewport);
-  }, []);
+  }, [cancelDictation]);
+
+  useEffect(() => () => { dictationRef.current?.cancel(); }, []);
 
   useEffect(() => {
     const source = currentNote.raw_transcript;
@@ -276,41 +279,38 @@ export function SessionWorkspaceView({
 
   function handleToggleDictation() {
     if (typeof window === "undefined") return;
-    const SpeechRecognition =
-      (window as unknown as { SpeechRecognition?: new () => SpeechRecognitionInstance }).SpeechRecognition ||
-      (window as unknown as { webkitSpeechRecognition?: new () => SpeechRecognitionInstance }).webkitSpeechRecognition;
-
-    if (!SpeechRecognition) {
+    if (dictationRef.current) {
+      dictationRef.current.stop();
       return;
     }
-
-    if (isListening) {
-      setIsListening(false);
+    if (!canUsePrompt) return;
+    if (typeof MediaRecorder === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      setDictationError("Microphone recording is unavailable. Use HTTPS or localhost in a supported browser, or type your request.");
       return;
     }
-
+    setDictationError(null);
     try {
-      const recognition = new SpeechRecognition();
-      recognition.lang = "en-US";
-      recognition.continuous = false;
-      recognition.interimResults = false;
-
-      recognition.onstart = () => setIsListening(true);
-      recognition.onend = () => setIsListening(false);
-      recognition.onerror = () => setIsListening(false);
-      recognition.onresult = (event: { results: { 0: { 0: { transcript: string } } } }) => {
-        const transcript = event.results[0][0].transcript;
-        setInputPrompt((prev) => (prev ? `${prev} ${transcript}` : transcript));
-      };
-
-      recognition.start();
+      const session = createPromptDictation({
+        onPhaseChange: setDictationPhase,
+        onError: setDictationError,
+        onFinish: text => {
+          if (dictationRef.current !== session) return;
+          dictationRef.current = null;
+          setInputPrompt(previous => appendDictatedText(previous, text));
+          setDictationPhase("idle");
+        },
+      });
+      dictationRef.current = session;
+      session.start();
     } catch {
-      setIsListening(false);
+      cancelDictation();
+      setDictationError("Voice input could not start. Please try again or type your request.");
     }
   }
 
   async function handleToggleLanguage() {
     if (isTranslating || isSaving || isAiLoading) return;
+    cancelDictation();
 
     if (activeLanguage === "ur") {
       // Toggle back to English
@@ -368,7 +368,7 @@ export function SessionWorkspaceView({
 
   async function handleSendPrompt(promptToSend?: string) {
     const userText = (promptToSend || inputPrompt).trim();
-    if (!canSendPrompt || (!userText && (isApproved || !attachedFile))) return;
+    if (dictationRef.current || !canSendPrompt || (!userText && (isApproved || !attachedFile))) return;
 
     let effectivePrompt = userText || "Please incorporate the attached document into the clinical note.";
     if (attachedFile) {
@@ -496,6 +496,7 @@ export function SessionWorkspaceView({
 
   function startNewConversation() {
     if (isAiLoading) return;
+    cancelDictation(); setDictationError(null);
     agentThreadRef.current = null;
     setChatMessages([]);
     setInputPrompt("");
@@ -534,6 +535,7 @@ export function SessionWorkspaceView({
   async function handleApproveAndSave() {
     // Re-approving an already-approved note would save a duplicate.
     if (currentNote.approval_status === "approved" || isSaving || isAiLoading || isTranslating) return;
+    cancelDictation();
 
     setIsSaving(true);
     setSaveError(null);
@@ -586,7 +588,7 @@ export function SessionWorkspaceView({
           aria-label={backLabel}
           className={`${styles.back} btn-workspace-back`}
           disabled={isSaving || isAiLoading || isTranslating}
-          onClick={onBack}
+          onClick={() => { cancelDictation(); onBack(); }}
           type="button"
         >
           <svg
@@ -689,7 +691,7 @@ export function SessionWorkspaceView({
                 <button
                   aria-label={isAiOverviewOpen ? "Hide Rawaan assistant" : "Show Rawaan assistant"}
                   className="icon-action-btn"
-                  onClick={() => setIsAiOverviewOpen((open) => !open)}
+                  onClick={() => { if (isAiOverviewOpen) cancelDictation(); setIsAiOverviewOpen((open) => !open); }}
                   type="button"
                 >
                   <RawaanLogo className={styles.assistantToggleLogo} decorative />
@@ -904,20 +906,20 @@ export function SessionWorkspaceView({
 
         {hasAssistant && isAiOverviewOpen ? (
             <>
-            {isCompactViewport ? <button aria-label="Close assistant overlay" className={styles.assistantScrim} onClick={() => setIsAiOverviewOpen(false)} type="button" /> : null}
+            {isCompactViewport ? <button aria-label="Close assistant overlay" className={styles.assistantScrim} onClick={() => { cancelDictation(); setIsAiOverviewOpen(false); }} type="button" /> : null}
             <aside aria-labelledby="rawaan-assistant-title" aria-modal={isCompactViewport ? true : undefined} className={styles.assistant + " workspace-ai-overview-panel"} ref={assistantPanelRef} role={isCompactViewport ? "dialog" : undefined} tabIndex={isCompactViewport ? -1 : undefined}>
               <header className={styles.assistantHeader + " ai-overview-header"}>
                 <RawaanLogo className={styles.assistantBrand + " rawaan-message-logo"} decorative />
                 <h2 id="rawaan-assistant-title">Rawaan assistant</h2>
                 <button aria-label="New conversation" className="assistant-new-conversation" onClick={startNewConversation} type="button">New chat</button>
-                <button aria-label="Close Rawaan assistant" className="btn-chat-close" onClick={() => setIsAiOverviewOpen(false)} type="button"><X aria-hidden="true" size={16} /></button>
+                <button aria-label="Close Rawaan assistant" className="btn-chat-close" onClick={() => { cancelDictation(); setIsAiOverviewOpen(false); }} type="button"><X aria-hidden="true" size={16} /></button>
               </header>
 
               <div className={styles.assistantScroll + " ai-messages-scroll-area"}>
                 {chatMessages.map((msg) => (
                   <div key={msg.id} className={"chat-bubble " + (msg.role === "user" ? "is-user-bubble" : "is-ai-bubble")}>
                     <div className="bubble-header"><span className="bubble-author">{msg.role === "user" ? "You" : "Rawaan assistant"}</span></div>
-                    {msg.response?.status === "agent" ? <AgentAnswer response={msg.response} patientId={currentNote.patient_id} reviewContext={msg.persisted && msg.threadId && msg.entryTimestamp ? {patientId:currentNote.patient_id,threadId:msg.threadId,entryTimestamp:msg.entryTimestamp} : undefined}/> : <div className="bubble-text">{msg.text}</div>}
+                    {msg.response?.status === "agent" ? <AgentAnswer response={msg.response} patientId={currentNote.patient_id} reviewContext={msg.persisted && msg.threadId && msg.entryTimestamp ? {patientId:currentNote.patient_id,threadId:msg.threadId,entryTimestamp:msg.entryTimestamp} : undefined}/> : <div className="bubble-text">{msg.role === "assistant" && !msg.response ? <AssistantMarkdown text={msg.text}/> : msg.text}</div>}
                     {msg.persisted === false ? <p role="alert">This response could not be saved.</p> : null}
                     {msg.response?.status === "supported" ? <div className="session-chat-sources">{msg.response.sources.map(source => <a href={`/clients/${currentNote.patient_id}/sessions/${source.noteId}`} key={source.noteId}>Source: {formatSessionDate(source.consultationDate)}</a>)}</div> : null}
                   </div>
@@ -933,7 +935,9 @@ export function SessionWorkspaceView({
                   <input accept=".txt,.text,.md,.json,.csv,.log" disabled={!canRefineDraft} onChange={handleFileSelect} ref={fileInputRef} style={{ display: "none" }} type="file" />
                   {!isApproved && attachedFile ? <div className="chat-attachment-chip"><Paperclip className="attachment-chip-icon" size={12} /><span className="attachment-chip-name">{attachedFile.name} ({attachedFile.size})</span><button aria-label="Remove attached document" className="btn-remove-attachment" onClick={() => setAttachedFile(null)} type="button"><X size={12} /></button></div> : null}
                   {attachmentError ? <p className="attachment-error" role="alert">{attachmentError}</p> : null}
-                  <textarea aria-label={isApproved ? "Ask Rawaan about this session" : "Ask Rawaan to refine this draft"} className="chat-textarea" disabled={!canSendPrompt} onChange={(event) => setInputPrompt(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void handleSendPrompt(); } }} placeholder={isApproved ? "Ask about the saved session" : activeLanguage !== "en" ? "Switch to English before editing" : attachedFile ? "Instruct Rawaan how to use " + attachedFile.name : "Make a change to this draft"} rows={2} value={inputPrompt} />
+                  {dictationError ? <p className="attachment-error" id="prompt-dictation-error" role="alert">{dictationError}</p> : null}
+                  {isListening ? <p className="transcript-hint" id="prompt-dictation-status" role="status">{dictationPhase === "starting" ? "Allow microphone access to start recording..." : isFinishingDictation ? "Transcribing your voice input..." : "Recording... Speak your request, then click the microphone to finish."}</p> : null}
+                  <textarea aria-describedby={isListening ? "prompt-dictation-status" : dictationError ? "prompt-dictation-error" : undefined} aria-label={isApproved ? "Ask Rawaan about this session" : "Ask Rawaan to refine this draft"} className="chat-textarea" disabled={!canUsePrompt} readOnly={isListening} onChange={(event) => setInputPrompt(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void handleSendPrompt(); } }} placeholder={isApproved ? "Ask about the saved session" : activeLanguage !== "en" ? "Switch to English before editing" : attachedFile ? "Instruct Rawaan how to use " + attachedFile.name : "Make a change to this draft"} rows={2} value={inputPrompt} />
                   <div className="chat-input-bottom-actions">
                     <div className="input-left-tools">{!isApproved ? <button aria-label="Attach text document" className={"tool-btn " + (attachedFile ? "is-attached" : "")} disabled={!canRefineDraft} onClick={() => fileInputRef.current?.click()} title="Attach a text document" type="button"><Paperclip size={15} /></button> : null}
                       <details
@@ -970,7 +974,7 @@ export function SessionWorkspaceView({
                         </div>
                       </details>
                     </div>
-                    <div className="input-right-tools"><button aria-label="Voice input" className={"tool-btn " + (isListening ? "is-recording-pulse" : "")} disabled={!canSendPrompt} onClick={handleToggleDictation} title={isListening ? "Listening, click to stop" : "Dictate a prompt"} type="button"><Mic size={15} /></button><button aria-label="Send message" className="btn-send-arrow" disabled={!canSendPrompt || (!inputPrompt.trim() && (isApproved || !attachedFile))} onClick={() => void handleSendPrompt()} type="button"><ArrowUp size={16} /></button></div>
+                    <div className="input-right-tools"><button aria-label={isListening ? "Stop voice input" : "Voice input"} aria-pressed={isListening} className={"tool-btn " + (isListening ? "is-recording-pulse" : "")} disabled={!canUsePrompt || dictationPhase === "starting" || isFinishingDictation} onClick={handleToggleDictation} title={isFinishingDictation ? "Transcribing dictation" : isListening ? "Recording, click to stop" : "Dictate a prompt"} type="button"><Mic size={15} /></button><button aria-label="Send message" className="btn-send-arrow" disabled={!canSendPrompt || (!inputPrompt.trim() && (isApproved || !attachedFile))} onClick={() => void handleSendPrompt()} type="button"><ArrowUp size={16} /></button></div>
                   </div>
                 </div>
               </div>

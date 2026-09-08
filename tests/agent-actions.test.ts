@@ -3,7 +3,7 @@ import { createTestDatabase } from "@/tests/helpers/supabase";
 import { clinicalContextSchema } from "@/lib/clinical/schema";
 import seed from "@/data/seed/demo-patients.json";
 import { noteSchema, noteToRow } from "@/lib/notes/schema";
-import { LlmContextLimitError, LLM_CONTEXT_LIMIT_MESSAGE } from "@/lib/llm/errors";
+import { LlmContextLimitError, LLM_CONTEXT_LIMIT_MESSAGE, LlmRateLimitError } from "@/lib/llm/errors";
 import type { AgentResponse } from "@/lib/agent/schema";
 import { appendChatEntryAction, sendAgentMessageAction, reviewClinicalPlanAction, saveClinicalContextAction } from "@/app/actions";
 const mocks=vi.hoisted(()=>({storage:vi.fn(),agent:vi.fn()}));
@@ -13,6 +13,32 @@ vi.mock("next/cache",()=>({revalidatePath:vi.fn()}));
 const response:AgentResponse={status:"agent",answer:"Proposed plan for review",category:"clinical",notice:null,sources:[],clinical:{differential:[],medication_options:[],missing_information:[],plan:{title:"Proposed plan",goals:[],next_steps:["Discuss assessment"],monitoring:[],follow_up:"Review with clinician",red_flags:[]}}};
 beforeEach(()=>{vi.clearAllMocks();mocks.agent.mockResolvedValue(response);});
 describe("server-generated agent conversations and plan provenance",()=>{
+  it.each([undefined,"2048"])("applies the server-owned Assistant output budget %s to the actual provider",async configured=>{
+    const db=createTestDatabase();mocks.storage.mockResolvedValue({ownerId:"owner-a",getClient:()=>db.client});
+    vi.stubEnv("GROQ_API_KEY","test-key");vi.stubEnv("RAWAAN_AI_MAX_OUTPUT_TOKENS",configured??"");
+    const fetchMock=vi.spyOn(globalThis,"fetch").mockResolvedValue(Response.json({choices:[{message:{content:"ok"},finish_reason:"stop"}]}));
+    mocks.agent.mockImplementationOnce(async(input,provider)=>{
+      expect(input.outputTokenBudget).toBe(configured?2048:768);
+      await provider.complete({system:"instruction",user:"question"});
+      return response;
+    });
+    try {
+      expect(await sendAgentMessageAction({patientId:null,threadId:null,question:"Main concern",mode:"assistant",webEnabled:false})).toMatchObject({ok:true});
+      const providerRequest=fetchMock.mock.calls.find(call=>String(call[0]).includes("api.groq.com"));
+      expect(JSON.parse(String(providerRequest?.[1]?.body)).max_tokens).toBe(configured?2048:768);
+    } finally {fetchMock.mockRestore();vi.unstubAllEnvs();}
+  });
+  it("returns the provider's safe quota explanation without saving a failed turn",async()=>{
+    const db=createTestDatabase();mocks.storage.mockResolvedValue({ownerId:"owner-a",getClient:()=>db.client});
+    mocks.agent.mockRejectedValueOnce(new LlmRateLimitError({kind:"output_tokens_per_minute",httpStatus:429,limit:1000,used:950,requested:900,retryAfterSeconds:45}));
+    const log=vi.spyOn(console,"error").mockImplementation(()=>{});
+    try {
+      const result=await sendAgentMessageAction({patientId:null,threadId:null,question:"Summarize",mode:"assistant",webEnabled:false});
+      expect(result).toMatchObject({ok:false,message:expect.stringMatching(/output-token.*45 seconds/)});
+      expect(log).toHaveBeenCalledWith("[Rawaan AI] request failed",expect.objectContaining({stage:"assistant",code:"provider_rate_limit",kind:"output_tokens_per_minute",retryAfterSeconds:45}));
+      expect(db.tables.general_chats).toEqual([]);
+    } finally {log.mockRestore();}
+  });
   it("returns actionable provider errors and logs only safe failure metadata",async()=>{
     const db=createTestDatabase();mocks.storage.mockResolvedValue({ownerId:"owner-a",getClient:()=>db.client});
     mocks.agent.mockRejectedValueOnce(new Error("LLM provider returned 429: private-provider-body"));

@@ -1,0 +1,55 @@
+.actions { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.overlay { position:fixed; inset:0; z-index:120; background:rgb(21 40 43 / 38%); display:grid; place-items:center; padding:20px; }
+.dialog { background:#fff; color:#203335; border:1px solid #dbe6e3; border-radius:24px; padding:28px; width:min(100%,620px); max-height:90dvh; overflow-y:auto; box-shadow:0 24px 80px #163e3429; }
+.dialog h2, .receiver h1 { margin:0; color:#113d35; font-size:26px; line-height:1.25; }
+.dialog p, .receiver p { line-height:1.65; }
+.heading { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
+.heading h2 { overflow-wrap:anywhere; min-width:0; }
+.close { display:grid; place-items:center; flex-shrink:0; padding:8px; border:1px solid #dce6e3; border-radius:50%; background:white; cursor:pointer; color:#4f6761; }
+.description { color:#657972; margin:12px 0 20px; }
+.scope { padding:18px 20px; border:1px solid #dce9e3; border-radius:16px; background:#f5faf7; }
+.scope h3 { margin:0 0 10px; font-size:16px; }
+.scope ul { padding-left:20px; margin:0; display:grid; gap:8px; font-size:14px; line-height:1.5; }
+.scope p { font-size:14px; margin:12px 0 0; color:#5f716b; }
+.permission { display:flex; align-items:flex-start; gap:10px; margin:20px 0; font-size:14px; line-height:1.6; cursor:pointer; }
+.permission input { margin-top:5px; accent-color:#0c6854; width:18px; height:18px; flex-shrink:0; }
+.field { display:grid; gap:8px; font-size:14px; font-weight:600; margin:18px 0; }
+.field input, .dropZone textarea { width:100%; min-width:0; box-sizing:border-box; border:1px solid #cdded6; border-radius:12px; padding:14px; font:inherit; background:#fff; color:#203335; }
+.field input { font-size:13px; font-weight:400; }
+.linkBox { margin-top:20px; padding:16px; border:1px solid #b8d8c9; border-radius:16px; background:#f0faf4; }
+.linkBox p { margin:0; font-size:14px; }
+.list { display:grid; gap:10px; padding:0; margin:14px 0 0; list-style:none; }
+.list li { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:14px 0; border-top:1px solid #e8efeb; }
+.list strong { display:block; font-size:14px; }
+.muted { color:#677c74; font-size:13px; line-height:1.5; }
+.section { margin-top:26px; }
+.section h3 { font-size:16px; margin:0; }
+.error { padding:12px 16px; border:1px solid #efd3cc; border-radius:12px; background:#fff6f2; color:#8b3d28; line-height:1.6; font-size:14px; }
+.notice { color:#12634d; font-size:14px; }
+.dropZone { display:grid; gap:12px; padding:24px; border:2px dashed #bdcfc6; border-radius:18px; margin:20px 0; background:#f7faf8; }
+.dropZone:focus-within { border-color:#148567; }
+.dropZone textarea { min-height:110px; resize:vertical; font-size:14px; font-weight:400; }
+.dropZone span { color:#677c74; font-size:13px; }
+.receiver { width:min(100%,740px); margin:32px auto; padding:32px; background:#fff; border:1px solid #dce7e0; border-radius:24px; box-sizing:border-box; }
+.eyebrow { color:#258269; font-size:12px; text-transform:uppercase; font-weight:700; letter-spacing:.08em; margin:0 0 12px; }
+.preview { background:#f5faf7; padding:24px; border:1px solid #dce9e3; border-radius:18px; margin:24px 0; }
+.preview h2 { margin:0 0 4px; font-size:24px; overflow-wrap:anywhere; }
+.preview p { margin:4px 0; }
+.counts { display:flex; gap:12px; flex-wrap:wrap; margin:18px 0; }
+.counts span { padding:8px 12px; border:1px solid #d3e4da; border-radius:24px; background:#fff; font-size:14px; }
+.history { padding:18px 22px; border:1px solid #d4e6db; border-radius:16px; background:#f4faf6; margin:20px 0; }
+.history h3 { margin:0 0 6px; color:#1a5a46; font-size:16px; }
+.history p { font-size:14px; line-height:1.6; margin:4px 0; }
+.smallButton { background:#fff; border:1px solid #c9d9d0; color:#275343; border-radius:10px; padding:9px 13px; font:inherit; font-size:13px; cursor:pointer; white-space:nowrap; }
+.close:focus-visible, .smallButton:focus-visible, .permission input:focus-visible, .field input:focus-visible, .dropZone textarea:focus-visible { outline:3px solid #42b98c; outline-offset:3px; }
+.dialog button:disabled { opacity:.55; cursor:default; }
+@media (max-width:600px) {
+  .overlay { padding:12px; }
+  .dialog { padding:22px 18px; border-radius:20px; }
+  .dialog h2 { font-size:22px; }
+  .receiver { margin:16px 0; padding:22px 18px; }
+  .receiver h1 { font-size:24px; }
+  .preview { padding:18px; }
+  .dropZone { padding:16px; }
+  .list li { align-items:flex-start; }
+}
