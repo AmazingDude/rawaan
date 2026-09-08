@@ -57,12 +57,12 @@ export function ReviewApprovalModal({
   }
 
   async function handleApprove() {
-    if (!draft) return;
+    if (!draft || isApproving) return;
     setIsApproving(true);
     setMessage(null);
 
+    try {
     const result = await approveDraftAction(draft);
-    setIsApproving(false);
 
     if (!result.ok) {
       setMessage(result.message);
@@ -77,6 +77,8 @@ export function ReviewApprovalModal({
     };
 
     onApproveSuccess(saved);
+    } catch { setMessage("Could not save this note. Please retry."); }
+    finally { setIsApproving(false); }
   }
 
   return (
@@ -87,7 +89,7 @@ export function ReviewApprovalModal({
             <span className="eyebrow">CLINICIAN REVIEW & APPROVAL GATE</span>
             <h2>{draft.patient_display_name} — Consultation Note</h2>
             <p className="review-meta-text">
-              Date: <strong>{draft.consultation_date}</strong> · ID: <code>{draft.patient_id}</code>
+              Date: <strong>{draft.consultation_date}</strong>
             </p>
           </div>
           <div className="review-header-right">

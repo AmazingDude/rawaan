@@ -1,5 +1,7 @@
 # Architecture Decisions
 
+> Current status (2026-10-06): The offline Urdu dictionary fallback and guessed Devanagari-to-Urdu conversion described in the 2026-09-02 entry have been removed. Urdu translation is provider-only; if provider output is unavailable or invalid, the original note is retained and translation is reported unavailable. Transcript text is preserved verbatim.
+
 ## 2026-08-22 — Start with a Next.js App Router + TypeScript monolith
 
 **Decision:** Build the initial Scribe and Brain application as a single **Next.js App Router + TypeScript** project. Keep API routes, domain validation, persistence, and the clinician-facing UI in the same repository and deployment unit.
@@ -49,7 +51,7 @@
 
 **Why:** Clinicians need continuity of the questions they asked about a client across sessions, but recall answers must stay grounded solely in approved notes. Local-first storage matches the hackathon deployment reality (Supabase optional) and avoids a schema migration for a demo-scale feature.
 
-## 2026-09-02 — Default Brain/note-generation model changed to qwen/qwen3.8-27b
+## 2026-09-02 — Default Brain/Scribe completion model changed to qwen/qwen3.8-27b (historical)
 
 **Decision:** The default Groq completion model for Brain answer generation and Scribe note generation is `qwen/qwen3.8-27b`, replacing the originally planned `openai/gpt-oss-120b` (with `llama-3.3-70b-versatile` as fallback) from the 2026-08-24 Brain feature plan.
 
@@ -60,6 +62,8 @@
 **What was NOT verified at swap time (gap documented here):** No adversarial suite re-run or 12-question live rehearsal was performed against `qwen/qwen3.8-27b` before shipping. The original plan's approved models were `gpt-oss-120b` primary and `llama-3.3-70b-versatile` fallback; `qwen3.8-27b` was not in either category. The swap was bundled into a multi-concern commit rather than isolated. Additionally, `answer-generation.ts` (the Brain's grounded-answer path) continued using bare `JSON.parse()` without the defensive parsing that `generate-note.ts` received — leaving the grounding-critical path unprotected.
 
 **Remediation applied 2026-09-07:** Defensive `extractJsonObject()` parsing added to `answer-generation.ts`, bringing it to parity with `generate-note.ts`. Adversarial suite: 7/7 mock-provider cases pass. Live 12-question rehearsal against `qwen/qwen3.8-27b` completed 2026-09-02: **12/12 passed**. All three supported answers cited correct note IDs and dates (Amina → `note-amina-001-2026-02-11`, Hassan → `note-hassan-002-2026-03-18`, Sara → `note-sara-003-2026-02-26`). All three no_supporting_record responses returned `no_relevant_evidence`. All four refusal responses returned correct reasons (`general_medical` × 2, `treatment_or_medication` × 2). Zero regressions under the current model with hardened parsing in place.
+
+**Current status (2026-10-06):** This model decision now applies only to Scribe note drafting and translation. At the clinician's direction, Brain answers return verbatim retrieved excerpts and source citations; Brain no longer uses model-authored answer generation or the browser BYOK path. Lexical retrieval relevance remains a separate limitation.
 
 **Process lesson:** Model swaps are provider decisions with the same governance requirements as any other architectural choice. Future swaps need: DECISIONS.md entry before merge, adversarial suite re-run, and live rehearsal verification — all before the change reaches main.
 
@@ -75,3 +79,22 @@
 
 **Test coverage:** Regression test added in `tests/scribe-service.test.ts` proving that calling `approve()` twice on the same draft returns the same note ID and does not create duplicates.
 
+
+## 7 October 2026 — Conversational and clinical assistant
+
+Owner direction replaces retrieval-only behavior in Assistant mode; Records only preserves exact approved-note recall. Use the existing Groq provider for bounded planning/answering, optional Tavily search, server-owned general chat history, clinician-entered current context, and separately reviewed clinical plans. See docs/RAWAAN-AI.md and plans/2026-10-07-clinical-assistant/.
+
+## 8 October 2026 — Automatic client history instead of an intake gate
+
+At the owner's direction, selecting a client supplies their entire approved
+session history and original transcripts to the existing Groq provider. The owner
+explicitly authorized this full-history transfer. Backend reads refresh on each
+question and remain scoped to the authenticated owner and selected client.
+
+Remove the mandatory age/context form, 24-hour confirmation prerequisite, generic
+missing-field checklist, ten-note truncation and fixed citation caps. Extra
+clinician-entered details remain optional; unknown facts stay unknown. Assistant
+turns focused on one session retain other sessions for continuity. Records only,
+source validation, clinician review, and medication-order/dosing restrictions
+remain. Oversized provider input produces a clear error instead of discarding
+older records. See plans/2026-10-08-automatic-ai-context/.

@@ -2,6 +2,7 @@
 
 import { X } from "lucide-react";
 import { useState } from "react";
+import { localConsultationDate } from "@/app/components/session-date";
 
 interface ManualSummaryModalProps {
   isOpen: boolean;
@@ -18,7 +19,7 @@ export function ManualSummaryModal({
   onContinue,
 }: ManualSummaryModalProps) {
   const [consultationDate, setConsultationDate] = useState(() =>
-    new Date().toISOString().slice(0, 10),
+    localConsultationDate(),
   );
   const [transcript, setTranscript] = useState("");
 
@@ -43,7 +44,7 @@ export function ManualSummaryModal({
         <header className="manual-summary-header">
           <div>
             <p className="manual-summary-eyebrow">Clinician entry</p>
-            <h2 id="manual-summary-heading">Record a Summary</h2>
+            <h2 id="manual-summary-heading">Write a summary</h2>
           </div>
           <button
             aria-label="Close"

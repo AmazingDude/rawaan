@@ -139,7 +139,7 @@ Shows note date + patient display name, e.g. "Aug 12, 2026 · Amina Khan". Click
 ### Patient Context Header
 **Role:** Persistent strip showing which patient's data is currently in view — critical for the "never mix patients" guarantee
 `background: #0a3922; color: #ffffff; padding: 12px 24px; font: 14px/500;`
-Always visible when a patient is selected. Shows patient ID + display name. This is a deliberate, slightly heavy-handed visual choice — the point is that a clinician (or a judge watching the demo) should never be able to forget which patient's context they're in.
+Always visible when a patient is selected. Shows the client's display name and never a patient identifier. This keeps the clinician oriented without exposing internal record numbers in the interface.
 
 ### Landing Page
 **Role:** The root-route introduction to Rawaan. It provides a single, honest entry point to the working Scribe at `/scribe`.
@@ -165,6 +165,8 @@ Keep this — it's doing real work (both product-honesty and hackathon-judging-h
 ## Personality — per-page temperature *(2026-08-29)*
 
 Each workspace page reads as a different "room" via a **header band** tinted with one wash (the page body stays neutral/white, per the flat, calm language). Only existing tokens are used; flat surfaces, no shadows/gradients.
+
+Session documents use a separate, focused workspace: a white document card with its own Back control and tab strip, plus an optional Rawaan assistant panel. On compact screens the assistant opens as a keyboard-accessible sheet. The sidebar clinic pill displays the signed-in user's saved clinic name as text without a logo; new profiles start with `<Clerk first name>'s Clinic`, and Settings can change it. Internal patient and note IDs stay in links and storage only, never in visible labels or exports.
 
 | Page | Header band wash | Notes |
 |---|---|---|
@@ -287,3 +289,6 @@ Single-column max-width 1120px container, centered, with 24px horizontal padding
 ## Source
 
 Adapted from the "Chat for impact" (Turn.io) design system on refero.design, chosen over alternatives (Ease Health / botanical serif, Function / terracotta apothecary, Revolte.ai / dev-tools SaaS) because it is purpose-built for healthcare trust, already aligns with the forest-green anchor present in Rawaan's existing UI, and its single-CTA-color discipline maps directly onto the app's draft → review → approve workflow.
+## Landing page override — 6 October 2026
+
+The owner requested the cream canvas, floating rounded navigation, oversized Thestral Neue headlines, dark green calls to action, white assistant panel, and alternating feature sections of Klarify's landing page. The root page now uses these treatments in `app/components/landing-page.module.css`; the workspace retains its existing visual system. Rawaan's background-free watermelon mascot appears throughout. Calls to action open the workspace directly without login. The assistant hands a question to the Brain, where a patient must be selected before submitting it. Content describes capture, clinician review, and source-backed recall only; no pricing, testimonials, compliance claims, or unsupported clinical features are implied.

@@ -41,6 +41,20 @@
   --radius-pills: 9999px;
 }
 
+.rawaan-nav-logo { width: 28px; height: 24px; object-fit: contain; flex-shrink: 0; }
+.auth-page { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; padding: 32px 16px; background: #eeece5; }
+.auth-brand { display: flex; align-items: center; text-decoration: none; color: #173330; font-size: 32px; font-weight: 700; }
+.workspace-account { display: flex; align-items: center; gap: 12px; padding: 12px; font-size: 13px; }
+.rawaan-message-logo { width: 34px; height: 28px; object-fit: contain; }
+.legacy-key-cleanup-status { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.rawaan-welcome-logo { width: 105px; height: 70px; object-fit: contain; }
+.chatgpt-welcome-icon:has(.rawaan-welcome-logo) { width: auto; height: auto; background: transparent; border: 0; box-shadow: none; }
+.chatgpt-assistant-avatar:has(.rawaan-message-logo) { background: transparent; border: 0; box-shadow: none; }
+
+.workspace-shell:has([data-session-workspace]) { display: block; height: 100dvh; }
+.workspace-shell:has([data-session-workspace]) > .workspace-sidebar { display: none; }
+.workspace-shell:has([data-session-workspace]) > .workspace-content-pane { width: 100%; max-width: none; min-width: 0; min-height: 0; height: 100dvh; overflow: hidden; padding: 0; scrollbar-gutter: auto; }
+
 * {
   box-sizing: border-box;
 }
@@ -1185,7 +1199,7 @@ textarea:focus {
   color: var(--color-canopy-green);
 }
 
-.byok-settings-panel {
+.settings-card {
   background: var(--color-paper-white);
   border: 1px solid var(--color-frost-gray);
   border-radius: var(--radius-cards);
@@ -1196,18 +1210,17 @@ textarea:focus {
   width: 100%;
 }
 
-.byok-settings-panel p,
-.byok-settings-panel a {
+.settings-card p,
+.settings-card a {
   font-size: var(--text-caption);
   line-height: 1.45;
 }
 
-.byok-settings-panel a {
+.settings-card a {
   color: var(--color-deep-teal);
 }
 
-.byok-settings-heading,
-.byok-settings-actions {
+.settings-card-heading {
   align-items: center;
   display: flex;
   flex-wrap: wrap;
@@ -1215,11 +1228,7 @@ textarea:focus {
   gap: 8px;
 }
 
-.byok-settings-actions button {
-  flex: 1 1 120px;
-}
-
-.byok-settings-heading h2 {
+.settings-card-heading h2 {
   font-size: var(--text-body);
   margin: 0;
 }
@@ -1233,8 +1242,7 @@ textarea:focus {
   margin-bottom: 24px;
 }
 
-.settings-page-header h1,
-.byok-settings-heading h1 {
+.settings-page-header h1 {
   color: var(--color-charcoal);
   font-family: var(--font-display);
   font-size: var(--text-heading);
@@ -1256,23 +1264,8 @@ textarea:focus {
   text-transform: uppercase;
 }
 
-.byok-settings-panel > p {
+.settings-card > p {
   max-width: 620px;
-}
-
-.byok-settings-heading button {
-  background: transparent;
-  border: 0;
-  cursor: pointer;
-  font-size: var(--text-heading-sm);
-}
-
-.byok-settings-panel .form-field {
-  margin-top: 12px;
-}
-
-.byok-settings-status {
-  color: var(--color-leaf-accent);
 }
 
 .sidebar-nav-icon {
@@ -2598,177 +2591,166 @@ textarea:focus {
 /* Client Selector Dropdown */
 .client-search-select-wrapper {
   position: relative;
+  width: 100%;
 }
 
 .client-select-input-box {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
   background: #ffffff;
   border: 1px solid #cbd5e1;
-  border-radius: 12px;
-  padding: 11px 14px;
+  border-radius: 14px;
+  padding: 14px 16px;
+  color: #1e293b;
+  text-align: left;
   cursor: pointer;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .client-select-input-box:hover,
-.client-select-input-box:focus {
-  border-color: #0d9488;
-  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
+.client-select-input-box.is-open {
+  border-color: #64748b;
+  box-shadow: 0 2px 5px rgba(15, 23, 42, 0.08);
 }
 
 .search-input-icon {
-  color: #94a3b8;
+  color: #64748b;
   flex-shrink: 0;
 }
 
 .selected-client-display {
   flex: 1;
+  min-width: 0;
   font-size: 14px;
   color: #1e293b;
   font-weight: 500;
+  overflow-wrap: anywhere;
 }
 
 .dropdown-caret {
   color: #64748b;
-  font-size: 14px;
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
 }
 
-.btn-unselect-client {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: none;
-  background: #f1f5f9;
-  color: #64748b;
-  font-size: 11px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.btn-unselect-client:hover {
-  background: #e2e8f0;
-  color: #0f172a;
+.client-select-input-box.is-open .dropdown-caret {
+  transform: rotate(180deg);
 }
 
 .client-dropdown-menu {
   position: absolute;
-  top: calc(100% + 6px);
+  top: calc(100% + 8px);
   left: 0;
   right: 0;
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
   z-index: 50;
   overflow: hidden;
-  max-height: 240px;
+  max-height: 320px;
   display: flex;
   flex-direction: column;
 }
 
 .dropdown-search-row {
-  padding: 8px;
+  padding: 10px;
   border-bottom: 1px solid #f1f5f9;
 }
 
 .dropdown-filter-input {
   width: 100%;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #cbd5e1;
   border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 13px;
-  outline: none;
-}
-
-.dropdown-filter-input:focus {
-  border-color: #0d9488;
+  padding: 10px 12px;
+  background: #ffffff;
+  font-size: 14px;
 }
 
 .client-options-list {
   list-style: none;
   margin: 0;
-  padding: 4px;
+  padding: 6px;
   overflow-y: auto;
+  min-height: 0;
 }
 
 .client-option-item {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
-  padding: 10px 12px;
+  gap: 16px;
+  width: 100%;
+  min-height: 52px;
+  margin: 0;
+  padding: 12px 14px;
+  border: 0;
   border-radius: 8px;
+  background: transparent;
+  color: #1e293b;
+  text-align: left;
   cursor: pointer;
   transition: background 0.12s ease;
 }
 
-.client-option-item:hover {
-  background: #f1f5f9;
+.client-option-item:hover,
+.client-option-item:focus-visible {
+  background: #f8fafc;
 }
 
 .client-option-item.is-selected {
-  background: #f0fdf4;
-  color: #15803d;
+  background: #edf8f3;
   font-weight: 600;
 }
 
-.client-option-item.is-clear-option {
-  color: #dc2626;
-  border-bottom: 1px dashed #e2e8f0;
-  margin-bottom: 4px;
-  font-weight: 500;
-}
-
-.client-option-item.is-clear-option:hover {
-  background: #fef2f2;
+.client-option-item.is-unassigned-option {
+  grid-template-columns: minmax(0, 1fr) auto;
+  border-top: 1px solid #e2e8f0;
+  border-radius: 0;
 }
 
 .option-name {
+  min-width: 0;
   font-size: 14px;
   color: #1e293b;
+  overflow-wrap: anywhere;
 }
 
 .option-meta {
   font-size: 12px;
-  color: #94a3b8;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.client-option-type {
+  padding: 4px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #f8fafc;
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .dropdown-empty-row {
-  padding: 14px;
-  text-align: center;
-}
-
-.dropdown-empty-row p {
-  margin: 0 0 8px 0;
+  margin: 0;
+  padding: 12px 16px;
+  border-top: 1px solid #f1f5f9;
   font-size: 13px;
   color: #64748b;
 }
 
-.btn-create-inline {
-  background: #0d9488;
-  color: #ffffff;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-}
+@media (max-width: 600px) {
+  .client-option-item {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+  }
 
-.inline-client-form {
-  margin-top: 10px;
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.inline-form-actions {
-  display: flex;
-  gap: 6px;
+  .client-option-type {
+    display: none;
+  }
 }
 
 .btn-sm {
@@ -2890,6 +2872,19 @@ textarea:focus {
   display: flex;
   flex-direction: column;
   gap: 3px;
+}
+
+.insight-source-note {
+  display: block;
+  margin-top: 6px;
+  color: #315c53;
+  font-size: 12px;
+  line-height: 1.5;
+  text-decoration: none;
+}
+
+a.insight-source-note:hover {
+  text-decoration: underline;
 }
 
 .insight-section-title {
@@ -3441,12 +3436,19 @@ textarea:focus {
 
 .client-search-pill-box {
   display: flex;
+  width: 100%;
+  min-height: 54px;
+  min-width: 0;
+  margin: 0;
+  color: #334155;
+  font: inherit;
+  text-align: left;
   align-items: center;
   gap: 10px;
   background: #ffffff;
   border: 1.5px solid #e2e8f0;
-  border-radius: 24px;
-  padding: 10px 18px;
+  border-radius: 14px;
+  padding: 14px 16px;
   cursor: pointer;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
@@ -3464,14 +3466,19 @@ textarea:focus {
 
 .search-field-text {
   flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-size: 14px;
   color: #334155;
 }
 
 .search-field-caret {
   color: #64748b;
-  font-size: 13px;
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
 }
+
+.client-search-pill-box.is-open .search-field-caret { transform: rotate(180deg); }
 
 .client-search-results-menu {
   position: absolute;
@@ -3483,13 +3490,17 @@ textarea:focus {
   border-radius: 12px;
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
   z-index: 50;
-  max-height: 260px;
-  overflow-y: auto;
-  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  max-height: min(320px, 50vh);
+  overflow: hidden;
+  padding: 0;
 }
 
 .dropdown-search-box {
-  padding: 4px 6px 8px;
+  flex-shrink: 0;
+  padding: 12px;
+  border-bottom: 1px solid #f1f5f9;
 }
 
 .dropdown-search-box .dropdown-input {
@@ -3503,19 +3514,9 @@ textarea:focus {
 .results-list {
   list-style: none;
   margin: 0;
-  padding: 0;
-}
-
-.result-item {
-  padding: 9px 12px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.12s ease;
-}
-
-.result-item:hover,
-.result-item.is-active {
-  background: #f0fdf4;
+  padding: 6px;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .result-name {
@@ -3525,6 +3526,7 @@ textarea:focus {
 }
 
 .result-meta {
+  display: block;
   font-size: 12px;
   color: #64748b;
   margin-top: 1px;
@@ -4949,7 +4951,6 @@ textarea:focus {
 .tool-btn,
 .btn-copy-inline,
 .btn-dismiss-banner,
-.btn-unselect-client,
 .btn-chat-close,
 .modal-icon-btn,
 .btn-close-modal {
@@ -5696,6 +5697,13 @@ textarea:focus {
   height: 100% !important;
   overflow: hidden !important;
   background: #ffffff;
+  position: relative;
+  min-width: 0;
+}
+
+.chatgpt-history-toggle,
+.chatgpt-mobile-scrim {
+  display: none;
 }
 
 /* Left Sidebar: ONLY Chat Logs & New Chat */
@@ -5850,6 +5858,135 @@ textarea:focus {
   background: #ffffff;
   position: relative;
   overflow: hidden !important;
+}
+
+.chatgpt-history-toggle {
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  color: #0f172a;
+  background: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.chatgpt-mobile-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  border: 0;
+  background: rgb(15 23 42 / 28%);
+}
+
+@media (max-width: 680px) {
+  .chatgpt-page-wrapper {
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    min-height: 440px;
+  }
+
+  .chatgpt-container {
+    min-height: 0;
+    overflow: hidden !important;
+  }
+
+  .chatgpt-sidebar {
+    position: absolute;
+    inset: 0 auto 0 0;
+    z-index: 20;
+    width: min(82vw, 260px) !important;
+    min-width: min(82vw, 260px) !important;
+    max-width: min(82vw, 260px) !important;
+    transform: translateX(-105%);
+    transition: transform 160ms ease;
+    box-shadow: 8px 0 22px rgb(15 23 42 / 14%);
+  }
+
+  .chatgpt-sidebar.is-open {
+    transform: translateX(0);
+  }
+
+  .chatgpt-mobile-scrim {
+    display: block;
+  }
+
+  .chatgpt-main {
+    width: 100%;
+    min-width: 0 !important;
+  }
+
+  .chatgpt-topbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    height: auto;
+    min-height: 60px;
+    padding: 9px 10px;
+  }
+
+  .chatgpt-topbar-patient {
+    min-width: 0;
+  }
+
+  .chatgpt-topbar-name,
+  .chatgpt-topbar-id {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .chatgpt-topbar-actions {
+    min-width: 0;
+    width: 100%;
+    justify-content: space-between;
+    gap: 6px;
+  }
+
+  .chatgpt-history-toggle {
+    display: inline-flex;
+    flex: 0 0 auto;
+  }
+
+  .chatgpt-topbar-patient-picker {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 4px 7px;
+  }
+
+  .chatgpt-topbar-select {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .chatgpt-topbar-pill {
+    display: none;
+  }
+
+  .chatgpt-messages-container {
+    min-width: 0;
+    padding: 16px 12px;
+  }
+
+  .chatgpt-message-row.is-assistant {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .chatgpt-input-container {
+    min-width: 0;
+    padding: 10px 8px 12px;
+  }
+
+  .chatgpt-input-capsule {
+    min-width: 0;
+    padding-left: 12px;
+  }
 }
 
 /* Top bar showing Patient on Left & Patient Selector on Right */
@@ -6008,9 +6145,6 @@ textarea:focus {
   flex-direction: column;
   align-items: center;
   gap: 16px;
-  background: #f7faf6;
-  border: 1px solid #dbe9dd;
-  border-radius: 20px;
 }
 
 .chatgpt-welcome-icon {
@@ -6182,7 +6316,7 @@ textarea:focus {
   max-width: 780px;
   margin: 0 auto;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   background: #ffffff;
   border: 1.5px solid #cbd5e1;
   border-radius: 28px;
@@ -6198,19 +6332,12 @@ textarea:focus {
 
 .chatgpt-text-input {
   flex: 1;
-  min-height: 36px;
-  max-height: 132px;
   border: none;
   outline: none;
   background: transparent;
   font-size: 15px;
   color: #0f172a;
   padding: 10px 0;
-  line-height: 1.45;
-  resize: none;
-  overflow-y: auto;
-  overflow-wrap: anywhere;
-  font-family: inherit;
 }
 
 .chatgpt-text-input::placeholder {
@@ -6224,18 +6351,12 @@ textarea:focus {
   background: #0f4c3a;
   color: #ffffff;
   border: none;
-  padding: 0;
-  appearance: none;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all 0.15s ease;
   flex-shrink: 0;
-}
-
-.chatgpt-send-btn svg {
-  display: block;
 }
 
 .chatgpt-send-btn:hover:not(:disabled) {
@@ -6250,14 +6371,6 @@ textarea:focus {
   transform: none;
 }
 
-.chatgpt-composer-hint {
-  max-width: 780px;
-  margin: 5px auto 0;
-  padding: 0 18px;
-  color: #94a3b8;
-  font-size: 11.5px;
-}
-
 .chatgpt-disclaimer {
   text-align: center;
   font-size: 11.5px;
@@ -6265,151 +6378,173 @@ textarea:focus {
   margin: 8px 0 0;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 680px) {
   .chatgpt-page-wrapper {
     height: 100dvh !important;
     max-height: 100dvh !important;
+    min-height: 440px;
   }
 
   .chatgpt-container {
-    flex-direction: column !important;
     min-height: 0;
+    overflow: hidden !important;
   }
 
   .chatgpt-sidebar {
-    width: 100% !important;
-    min-width: 0 !important;
-    max-width: none !important;
-    height: auto !important;
-    max-height: 158px;
-    border-right: none;
-    border-bottom: 1px solid #e2e8f0;
+    position: absolute;
+    inset: 0 auto 0 0;
+    z-index: 20;
+    width: min(82vw, 260px) !important;
+    min-width: min(82vw, 260px) !important;
+    max-width: min(82vw, 260px) !important;
+    transform: translateX(-105%);
+    transition: transform 160ms ease;
+    box-shadow: 8px 0 22px rgb(15 23 42 / 14%);
   }
 
-  .chatgpt-sidebar-header {
-    padding: 8px 12px;
-    flex-direction: row;
-    border-bottom: none;
+  .chatgpt-sidebar.is-open {
+    transform: translateX(0);
   }
 
-  .chatgpt-new-chat-btn {
-    width: auto;
-    padding: 8px 12px;
-  }
-
-  .chatgpt-threads-scroll {
-    flex: initial;
-    overflow-x: auto;
-    overflow-y: hidden;
-    flex-direction: row;
-    gap: 8px;
-    padding: 0 12px 10px;
-  }
-
-  .chatgpt-threads-section-title,
-  .chatgpt-sidebar-footer {
-    display: none;
-  }
-
-  .chatgpt-thread-item {
-    width: min(220px, 68vw);
-    flex: 0 0 min(220px, 68vw);
-    padding: 8px 10px;
-  }
-
-  .chatgpt-thread-empty {
-    min-width: 230px;
-    padding: 6px 0 10px;
-    text-align: left;
+  .chatgpt-mobile-scrim {
+    display: block;
   }
 
   .chatgpt-main {
-    min-height: 0;
-    height: auto !important;
+    width: 100%;
+    min-width: 0 !important;
   }
 
   .chatgpt-topbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
     height: auto;
     min-height: 60px;
-    padding: 10px 14px;
-    align-items: stretch;
-    flex-wrap: wrap;
-    gap: 10px;
+    padding: 9px 10px;
   }
 
-  .chatgpt-topbar-patient {
+  .chatgpt-topbar-patient,
+  .chatgpt-topbar-patient-picker,
+  .chatgpt-topbar-select,
+  .chatgpt-topbar-actions {
     min-width: 0;
+  }
+
+  .chatgpt-topbar-name,
+  .chatgpt-topbar-id {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .chatgpt-topbar-actions {
     width: 100%;
-    gap: 8px;
+    justify-content: space-between;
+    gap: 6px;
+  }
+
+  .chatgpt-history-toggle {
+    display: inline-flex;
+    flex: 0 0 auto;
   }
 
   .chatgpt-topbar-patient-picker {
-    flex: 1;
-    min-width: 0;
+    flex: 1 1 auto;
+    padding: 4px 7px;
   }
 
   .chatgpt-topbar-select {
-    width: 100%;
-    min-width: 0;
+    flex: 1 1 auto;
+    max-width: 100%;
   }
 
   .chatgpt-topbar-pill {
-    align-self: center;
-    font-size: 11px;
-    padding: 4px 8px;
+    display: none;
   }
 
   .chatgpt-messages-container {
-    padding: 16px 14px;
-    gap: 16px;
-  }
-
-  .chatgpt-messages-stream {
-    gap: 14px;
-  }
-
-  .chatgpt-welcome-state {
-    padding: 28px 16px;
-    gap: 12px;
-  }
-
-  .chatgpt-welcome-title {
-    font-size: 21px;
+    min-width: 0;
+    padding: 16px 12px;
   }
 
   .chatgpt-message-row.is-assistant {
     max-width: 100%;
-    gap: 8px;
-  }
-
-  .chatgpt-user-bubble {
-    max-width: 92%;
-  }
-
-  .chatgpt-card-supported {
-    padding: 14px 16px;
+    min-width: 0;
   }
 
   .chatgpt-input-container {
-    padding: 10px 12px calc(14px + env(safe-area-inset-bottom));
+    min-width: 0;
+    padding: 10px 8px 12px;
   }
 
   .chatgpt-input-capsule {
-    border-radius: 20px;
-    padding: 4px 6px 4px 14px;
-  }
-
-  .chatgpt-send-btn {
-    width: 44px;
-    height: 44px;
-  }
-
-  .chatgpt-composer-hint {
-    padding: 0 8px;
+    min-width: 0;
+    padding-left: 12px;
   }
 }
 
 
+
+/* Assistant request states and clinical review panels. */
+.request-status { display:flex; align-items:center; gap:8px; color:#64748b; font-size:14px; padding:8px 0; }
+.request-spinner { animation:request-spin 1s linear infinite; flex-shrink:0; }
+.request-skeleton { display:grid; gap:9px; width:min(320px,100%); padding:8px 0; }
+.request-skeleton span { height:10px; border-radius:6px; background:#e8eeed; animation:request-pulse 1.5s ease-in-out infinite; }
+.request-skeleton span:nth-child(2) { width:85%; }
+.request-skeleton span:nth-child(3) { width:65%; }
+@keyframes request-spin { to { transform:rotate(360deg); } }
+@keyframes request-pulse { 50% { opacity:.4; } }
+.agent-mode-bar { display:flex; flex-wrap:wrap; align-items:center; gap:18px; padding:10px 24px; border-bottom:1px solid #edf1f0; font-size:13px; }
+.agent-mode-bar label { display:flex; align-items:center; gap:8px; }
+.agent-mode-bar select { border:1px solid #dce5e2; border-radius:9px; padding:6px 10px; background:#fff; color:#173c35; }
+.agent-mode-bar button { cursor:pointer; }
+.agent-web-toggle input { accent-color:#07584b; }
+.agent-history-load { width:100%; margin:8px 0; }
+.agent-context-drawer { overflow:auto; max-height:55vh; padding:16px 24px; border-bottom:1px solid #e2e8f0; flex-shrink:0; }
+.agent-answer { min-width:0; color:#182e2b; line-height:1.7; overflow-wrap:anywhere; }
+.agent-answer .brain-chat-answer { white-space:pre-wrap; margin:8px 0 18px; }
+.agent-proposal-label { display:inline-block; background:#f1f7f4; color:#07584b; border-radius:8px; padding:4px 9px; font-size:12px; }
+.agent-tool-notice { font-size:13px; padding:10px 14px; background:#f8faf9; border-radius:9px; color:#586962; }
+.agent-section { margin:20px 0; }
+.agent-section h3,.agent-plan h3 { font-size:17px; margin:0 0 10px; }
+.agent-section p { margin:3px 0 12px; }
+.agent-section ul { padding-left:22px; }
+.agent-plan { margin:20px 0; padding:20px; background:#f6faf8; border:1px solid #dbe7e1; border-radius:14px; }
+.agent-plan pre { white-space:pre-wrap; overflow-wrap:anywhere; font-family:inherit; line-height:1.7; margin:12px 0; }
+.agent-sources { display:flex; flex-wrap:wrap; gap:8px; margin:20px 0; }
+.agent-sources h4 { width:100%; margin:0; font-size:13px; }
+.agent-sources a { padding:5px 10px; border:1px solid #dbe7e1; border-radius:8px; font-size:12px; color:#07584b; }
+.agent-plan-review textarea { display:block; width:100%; min-height:240px; margin:10px 0; padding:12px; border:1px solid #bdd4ca; border-radius:10px; background:#fff; color:#203831; font:inherit; resize:vertical; }
+.agent-plan-review button { margin:4px 8px 4px 0; }
+.clinical-context-panel { max-width:900px; }
+.clinical-panel-heading { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.clinical-panel-heading h3 { margin:0; }
+.clinical-context-panel form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+.clinical-context-panel label { display:grid; gap:6px; font-size:13px; color:#30473f; }
+.clinical-context-panel input,.clinical-context-panel textarea { width:100%; border:1px solid #cbdcd3; border-radius:9px; padding:10px; color:#203831; background:#fff; font:inherit; }
+.clinical-context-panel textarea { min-height:75px; resize:vertical; }
+.clinical-context-panel form > button,.clinical-context-panel form > .request-status,.clinical-context-panel form > p { grid-column:1/-1; justify-self:start; }
+.reviewed-plans { margin:22px 0; }
+.reviewed-plans h3 { font-size:18px; }
+.agent-plan-entry-links { display:flex; flex-wrap:wrap; gap:10px; margin:10px 0 20px; }
+@media (max-width:680px) {
+ .agent-mode-bar { padding:8px 10px; gap:12px; }
+ .agent-context-drawer { padding:12px; }
+ .clinical-context-panel form { grid-template-columns:minmax(0,1fr); }
+ .chatgpt-topbar-actions { flex-wrap:wrap; }
+ .agent-plan { padding:14px; }
+}
+@media (prefers-reduced-motion:reduce) { .request-spinner,.request-skeleton span { animation:none; } }
+
+.agent-web-toggle { flex:0 0 auto; white-space:nowrap; }
+.agent-mode-bar svg { flex-shrink:0; }
+.agent-web-toggle input[type="checkbox"],
+.clinical-context-panel input[type="checkbox"] { width:16px; height:16px; padding:0; flex:0 0 auto; }
+.clinical-context-panel label:has(input[type="checkbox"]) { display:flex; align-items:center; gap:8px; grid-column:1/-1; }
+.agent-history-load.secondary-button,
+.chatgpt-topbar-actions > .secondary-button,
+.agent-plan .secondary-button,
+.agent-context-drawer .secondary-button { border:1px solid #dbe7e1; border-radius:9px; padding:8px 12px; background:#fff; color:#244b40; font-size:13px; }
+.request-status:has(.request-skeleton) { flex-wrap:wrap; }
+.request-status > .request-skeleton { flex-basis:100%; }

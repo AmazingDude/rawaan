@@ -15,15 +15,11 @@ import { useEffect, useState } from "react";
 
 import {
   listBrainPatientsAction,
-  prepareByokBrainQueryAction,
   queryPatientRecordAction,
   type BrainPatient,
 } from "@/app/actions";
+import { STORAGE_ERROR_MESSAGE } from "@/lib/db/errors";
 import type { BrainResponse } from "@/lib/brain/types";
-import {
-  generateByokGroundedAnswer,
-  getStoredGroqByokKey,
-} from "@/lib/llm/byok-groq-client";
 
 const HARNESS_SAMPLE_QUESTIONS = [
   "What symptoms were reported in the documented visits?",
@@ -54,6 +50,8 @@ export function ConsultationHarnessSettings() {
           setSelectedPatientId(list[0].patientId);
         }
       }
+    }).catch(() => {
+      if (!cancelled) setResult({ status: "error", message: STORAGE_ERROR_MESSAGE });
     });
     return () => {
       cancelled = true;
@@ -71,40 +69,13 @@ export function ConsultationHarnessSettings() {
     const start = nowMs();
 
     try {
-      const apiKey = getStoredGroqByokKey();
-      let res: BrainResponse;
-
-      if (!apiKey) {
-        const actionResult = await queryPatientRecordAction(selectedPatientId, q);
-        if (actionResult.ok) {
-          res = actionResult.response;
-        } else {
-          setResult({ status: "error", message: actionResult.message });
-          setIsQuerying(false);
-          setQueryLatencyMs(Math.round(nowMs() - start));
-          return;
-        }
-      } else {
-        const preparation = await prepareByokBrainQueryAction(selectedPatientId, q);
-        if (!preparation.ok) {
-          setResult({ status: "error", message: preparation.message });
-          setIsQuerying(false);
-          setQueryLatencyMs(Math.round(nowMs() - start));
-          return;
-        }
-
-        if (preparation.kind === "response") {
-          res = preparation.response;
-        } else {
-          res = await generateByokGroundedAnswer({
-            apiKey,
-            evidence: preparation.evidence,
-            question: preparation.question,
-          });
-        }
+      const actionResult = await queryPatientRecordAction(selectedPatientId, q);
+      if (!actionResult.ok) {
+        setResult({ status: "error", message: actionResult.message });
+        return;
       }
 
-      setResult(res);
+      setResult(actionResult.response);
     } catch {
       setResult({
         status: "error",
@@ -121,10 +92,10 @@ export function ConsultationHarnessSettings() {
   return (
     <section
       aria-labelledby="consultation-harness-title"
-      className="byok-settings-panel"
+      className="settings-card"
       style={{ marginTop: "24px" }}
     >
-      <div className="byok-settings-heading">
+      <div className="settings-card-heading">
         <div>
           <p className="settings-eyebrow">Diagnostic & Clinical Tools</p>
           <h2 id="consultation-harness-title" style={{ margin: "0 0 4px", fontSize: "20px", fontWeight: 700 }}>
@@ -172,7 +143,7 @@ export function ConsultationHarnessSettings() {
         >
           {patients.map((patient) => (
             <option key={patient.patientId} value={patient.patientId}>
-              {patient.displayName} ({patient.patientId})
+              {patient.displayName}
             </option>
           ))}
         </select>
@@ -332,7 +303,7 @@ export function ConsultationHarnessSettings() {
               <ul style={{ margin: "6px 0 0", paddingLeft: "20px", fontSize: "12px", color: "#374151" }}>
                 {result.sources.map((src, i) => (
                   <li key={i}>
-                    Consultation on <strong>{src.consultationDate}</strong> (Note: {src.noteId})
+                    Consultation on <strong>{src.consultationDate}</strong>
                   </li>
                 ))}
               </ul>
@@ -357,7 +328,7 @@ export function ConsultationHarnessSettings() {
         <div style={{ display: "flex", alignItems: "center", gap: "6px", fontWeight: 600, color: "#0f4c3a", marginBottom: "4px" }}>
           <Sparkles size={15} /> Grounding & Consultation Safety
         </div>
-        Rawaan AI answers strictly from approved clinician records and will explicitly decline if a symptom, medication, or diagnosis was not documented for this patient. This protects clinical consultations against hallucinated treatment suggestions.
+        Rawaan returns verbatim excerpts from approved clinician records and explicitly declines when retrieval finds no relevant record. It does not generate diagnoses or treatment advice.
       </div>
     </section>
   );

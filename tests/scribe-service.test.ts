@@ -1,12 +1,8 @@
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { createScribeService } from "@/lib/actions/scribe";
-
-const temporaryDirectories: string[] = [];
+import { createNoteRepository } from "@/lib/notes/repository";
+import { createTestDatabase } from "./helpers/supabase";
 
 const draftInput = {
   patient_id: "patient-amina-001",
@@ -15,25 +11,14 @@ const draftInput = {
   transcript: "Chief complaint: Persistent headache\nPlan discussed: Keep a symptom diary",
 };
 
-afterEach(async () => {
-  await Promise.all(
-    temporaryDirectories.splice(0).map((directory) =>
-      rm(directory, { force: true, recursive: true }),
-    ),
-  );
-});
-
-async function createTestService() {
-  const directory = await mkdtemp(join(tmpdir(), "rawaan-scribe-"));
-  temporaryDirectories.push(directory);
-
+async function createTestService(db = createTestDatabase()) {
   return createScribeService({
     approvalTime: () => "2026-08-22T10:00:00.000Z",
     createId: (() => {
       let count = 0;
       return () => `note-amina-${++count}`;
     })(),
-    storagePath: join(directory, "notes.json"),
+    repository: createNoteRepository("user-test", () => db.client),
   });
 }
 
@@ -78,6 +63,56 @@ describe("scribe service", () => {
     const storedNotes = await service.listByPatient(draftInput.patient_id);
     expect(storedNotes).toHaveLength(1);
     expect(storedNotes[0].id).toBe(firstApproval.id);
+  });
+
+  it("atomically deduplicates simultaneous retries of the same reviewed draft", async () => {
+    const db = createTestDatabase();
+    let approval = 0;
+    const service = createScribeService({
+      approvalTime: () => `2026-08-22T10:00:0${approval++}.000Z`,
+      createId: (() => {
+        let count = 0;
+        return () => `draft-amina-${++count}`;
+      })(),
+      repository: createNoteRepository("user-test", () => db.client),
+    });
+    const generated = await service.createDraft(draftInput);
+
+    const [first, retry] = await Promise.all([
+      service.approve(generated.draft),
+      service.approve(generated.draft),
+    ]);
+
+    expect(first.id).toBe(retry.id);
+    expect(db.tables.notes).toHaveLength(1);
+  });
+
+  it("rejects changed content reusing a prior draft identity", async () => {
+    const service = await createTestService();
+    const generated = await service.createDraft(draftInput);
+    await service.approve(generated.draft);
+
+    await expect(service.approve({
+      ...generated.draft,
+      summary: "Different reviewed content",
+    })).rejects.toThrow(/storage/i);
+    expect(await service.listByPatient(draftInput.patient_id)).toHaveLength(1);
+  });
+
+  it("recognizes the same approved draft after JSONB metadata key reordering", async () => {
+    const db = createTestDatabase();
+    const service = await createTestService(db);
+    const generated = await service.createDraft(draftInput);
+    const draft = { ...generated.draft, session_info: {
+      session_type: "manual" as const, duration_seconds: 0,
+      recorded_at: "2026-10-05T10:00:00.000Z", transcript_source: "clinician-entered",
+    } };
+    const approved = await service.approve(draft);
+    const metadata = db.tables.notes[0].session_info as Record<string, unknown>;
+    db.tables.notes[0].session_info = Object.fromEntries(Object.entries(metadata).reverse());
+    const retry = await service.approve(draft);
+    expect(retry.id).toBe(approved.id);
+    expect(db.tables.notes).toHaveLength(1);
   });
 
   it("allows separate same-day consultations for the same patient", async () => {

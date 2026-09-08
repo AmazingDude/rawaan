@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import type { ReactNode } from "react";
+import { ClerkProvider } from "@clerk/nextjs";
+import { SessionCacheBoundary } from "@/app/components/session-cache-boundary";
 
 import "./globals.css";
 
@@ -22,7 +24,7 @@ const thestralNeue = localFont({
 
 export const metadata: Metadata = {
   description:
-    "A clinician-controlled patient context engine for fictional demo consultations.",
+    "Clinical documentation and patient history recall, with clinician-reviewed notes and source-backed answers.",
   title: "Rawaan | Patient Context Engine",
 };
 
@@ -37,7 +39,9 @@ export default function RootLayout({
 }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="en">
-      <body className={`${onest.variable} ${thestralNeue.variable}`}>{children}</body>
+      <body className={`${onest.variable} ${thestralNeue.variable}`}>
+        <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up" signInFallbackRedirectUrl="/record" signUpFallbackRedirectUrl="/record"><SessionCacheBoundary />{children}</ClerkProvider>
+      </body>
     </html>
   );
 }

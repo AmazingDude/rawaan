@@ -1,0 +1,5 @@
+You do not have to search through loose notes before a follow-up. Open Clients and search for the client's name. Select the client to open their individual record. Your records belong to your account.
+
+Choose Sessions to see their approved notes. Find the consultation date you need, then open the session. The note stays connected to its original transcript, so you can check what was actually recorded.
+
+Move between Notes, Transcript, and Session Information. You can also explore the other session tabs. Treatment Plan includes recorded next steps and separately reviewed plans. Return to Clients whenever you need another session. If nothing is listed yet, approve and save a note first.

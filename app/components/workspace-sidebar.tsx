@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Settings } from "lucide-react";
+import { RawaanLogo } from "@/app/components/rawaan-logo";
+import { UserButton } from "@clerk/nextjs";
 
 
 interface NavItem {
@@ -60,21 +62,7 @@ const navItems: NavItem[] = [
     href: "/rawaan-ai",
     label: "Rawaan AI",
     icon: (active) => (
-      <svg
-        aria-hidden="true"
-        className={`sidebar-nav-icon accent-ai ${active ? "is-active" : ""}`}
-        fill="none"
-        height="20"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-        viewBox="0 0 24 24"
-        width="20"
-      >
-        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-        <circle cx="12" cy="12" r="3" fill={active ? "currentColor" : "none"} />
-      </svg>
+      <RawaanLogo className={`rawaan-nav-logo ${active ? "is-active" : ""}`} decorative />
     ),
   },
   {
@@ -100,15 +88,14 @@ const navItems: NavItem[] = [
   },
 ];
 
-export function WorkspaceSidebar() {
+export function WorkspaceSidebar({ clinicName }: { clinicName: string }) {
   const pathname = usePathname();
 
   return (
     <aside className="workspace-sidebar" aria-label="Main navigation">
       <div className="sidebar-clinic-header">
         <div className="clinic-profile-button">
-          <span className="clinic-avatar">A</span>
-          <span className="clinic-name">Aashir&apos;s Clinic</span>
+          <span className="clinic-name">{clinicName}</span>
         </div>
       </div>
 
@@ -138,6 +125,7 @@ export function WorkspaceSidebar() {
         </ul>
       </nav>
       <div className="sidebar-settings">
+        <div className="workspace-account"><UserButton /><span>Your account</span></div>
         <Link className={`sidebar-settings-trigger ${pathname === "/settings" ? "is-active" : ""}`} href="/settings">
           <Settings aria-hidden="true" size={20} />
           Settings

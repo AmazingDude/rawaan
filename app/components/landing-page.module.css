@@ -1,0 +1,139 @@
+.page { --ink: #173330; --cream: #eeece5; --muted: #52625b; color: var(--ink); background: var(--cream); padding-top: 1px; }
+.page a { color: inherit; text-decoration: none; }
+.page h1, .page h2, .featureCopy h3, .note h3, .featureVisual h3 { font-family: var(--font-thestral-neue), Georgia, serif; font-weight: 700; letter-spacing: -.04em; }
+.page h1, .page h2, .page h3 { color: inherit; }
+.page a:focus-visible, .page button:focus-visible, .page summary:focus-visible { outline: 3px solid #b95e42; outline-offset: 5px; }
+.nav { max-width: 1280px; margin: 32px auto 0; min-height: 84px; padding: 14px 24px; display: flex; align-items: center; gap: 30px; border-radius: 18px; background: #f4f2eb; }
+.brand { display: inline-flex; align-items: center; gap: 5px; font-size: 31px; font-weight: 700; letter-spacing: -1.5px; }
+.brandMascot { width: 54px; height: 42px; object-fit: contain; }
+.navLinks { display: flex; align-items: center; gap: 28px; font-size: 15px; margin-right: auto; }
+.navLinks a:hover, .footerLinks a:hover { text-decoration: underline; text-underline-offset: 5px; }
+.workspaceLink { font-size: 15px; }
+.page .button { display: inline-flex; justify-content: center; align-items: center; gap: 12px; min-height: 46px; padding: 12px 25px; border-radius: 10px; background: var(--ink); color: #fff; font-weight: 600; font-size: 15px; transition: transform .18s, background .18s; }
+.page .button:hover { background: #284a42; transform: translateY(-2px); }
+.mobileMenu { display: none; }
+.hero { text-align: center; padding: 72px 24px 60px; }
+.hero h1 { font-size: clamp(54px, 6.5vw, 100px); line-height: 1.08; max-width: 1160px; margin: 0 auto 34px; }
+.hero p { max-width: 860px; margin: 0 auto 36px; font-size: 21px; line-height: 1.6; text-wrap: balance; }
+.hero strong { font-weight: 600; }
+.hero small { display: block; margin-top: 15px; font-size: 12px; color: var(--muted); }
+.showcase { max-width: 1120px; margin: 0 auto; border: 1px solid #d9ded5; border-radius: 22px; overflow: hidden; background: #fff; }
+.browserBar { display: flex; justify-content: space-between; gap: 20px; padding: 15px 22px; background: #f6f7f2; font-size: 11px; color: #68766b; border-bottom: 1px solid #e3e6dc; }
+.browserBar > span:first-child { color: #9bab93; letter-spacing: 3px; }
+.showcaseBody { display: grid; grid-template-columns: .9fr 1.1fr; }
+.capturePanel { background: #e2eadb; text-align: center; padding: 36px 30px 25px; display: flex; flex-direction: column; align-items: center; }
+.eyebrow { display: block; font-size: 11px; font-weight: 600; letter-spacing: .13em; line-height: 1.6; }
+.showcaseMascot { width: 155px; height: 103px; object-fit: contain; margin: 22px auto 10px; }
+.capturePanel h2 { font-size: 49px; line-height: 1.08; margin: 0 0 28px; }
+.waveform { display: flex; gap: 4px; align-items: center; justify-content: center; height: 64px; max-width: 100%; }
+.waveform i { width: 4px; border-radius: 5px; background: #42715b; }
+.capturePanel p { display: flex; gap: 8px; align-items: center; font-size: 13px; margin-top: 22px; }
+.note { background: #fff; padding: 28px 38px; border-radius: 15px; color: var(--ink); }
+.noteToolbar { display: flex; justify-content: space-between; gap: 8px; align-items: center; font-size: 11px; }
+.noteToolbar > span { display: flex; align-items: center; gap: 6px; }
+.noteToolbar small { font-size: 10px; padding: 5px 8px; border-radius: 20px; background: #edf1e6; white-space: nowrap; }
+.note h3 { font-size: 37px; line-height: 1.1; margin: 26px 0; }
+.noteField { margin-bottom: 17px; }
+.noteField span { display: block; font-size: 11px; font-weight: 600; margin-bottom: 9px; }
+.noteField i, .excerpt i { display: block; width: 95%; height: 5px; background: #e7ebe3; margin-top: 7px; border-radius: 5px; }
+.noteField i:nth-child(2) { width: 72%; }
+.noteApproval { display: flex; gap: 7px; align-items: center; font-size: 11px; padding-top: 10px; }
+.showcaseFooter { padding: 18px 24px; display: flex; justify-content: space-between; gap: 18px; align-items: center; font-size: 12px; border-top: 1px solid #e3e6dc; }
+.showcaseFooter a, .featureCopy a, .about a { display: inline-flex; gap: 12px; align-items: center; font-weight: 600; }
+.highlights { display: flex; flex-wrap: wrap; gap: 25px; justify-content: center; margin: 30px auto 100px; padding: 0 24px; font-size: 12px; color: var(--muted); }
+.highlights span { display: flex; gap: 7px; align-items: center; }
+.sectionHeading { text-align: center; margin-bottom: 45px; }
+.sectionHeading h2 { font-size: clamp(38px, 4.4vw, 62px); line-height: 1.12; margin: 0 0 16px; }
+.sectionHeading p { margin: 0; font-size: 18px; line-height: 1.6; }
+.assistant { max-width: 1344px; margin: 0 auto; padding: 0 32px 120px; }
+.assistantCard { background: #fff; border-radius: 46px; text-align: center; padding: 60px 70px 40px; }
+.assistantMascot { width: 174px; height: 116px; margin: 0 auto 10px; object-fit: contain; }
+.assistantCard h3 { font-size: 22px; font-weight: 500; margin: 12px 0 36px; }
+.questionForm { display: flex; align-items: center; gap: 12px; background: #f8f9f6; border-radius: 26px; min-height: 84px; padding: 15px 24px 15px 30px; box-shadow: 0 5px 10px #17333008; }
+.questionForm:focus-within { outline: 2px solid #738f80; outline-offset: 2px; }
+.questionForm input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit; font-size: 21px; }
+.questionForm input::placeholder { color: #67766e; }
+.questionForm button { display: grid; place-items: center; width: 45px; height: 45px; border: 0; border-radius: 50%; flex-shrink: 0; color: #fff; background: #34453c; cursor: pointer; }
+.questionForm button:hover { background: #173330; }
+.prompts { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; margin-top: 19px; }
+.prompts a { padding: 9px 13px; border: 1px solid #deded5; border-radius: 12px; font-size: 13px; line-height: 1.4; }
+.prompts a:hover { background: #eff3e9; border-color: #849981; }
+.tryMe { display: flex; justify-content: center; align-items: flex-end; gap: 10px; margin: 32px auto 20px; color: #0a626c; }
+.tryMe span { font-family: Georgia, serif; font-style: italic; font-size: 39px; transform: rotate(-5deg); margin-bottom: -8px; }
+.assistantHint { font-size: 12px; color: var(--muted); margin: 28px 0 0; }
+.features { max-width: 1190px; padding: 0 32px; margin: 0 auto; scroll-margin-top: 30px; }
+.features > .sectionHeading { margin-bottom: 65px; }
+.featureRow { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center; margin-bottom: 85px; }
+.featureVisual { min-width: 0; min-height: 470px; border-radius: 30px; padding: 38px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+.sage { background: #dce5d3; }
+.teal { background: #24443b; color: #faf8ed; }
+.peach { background: #efdbc8; }
+.micCircle { width: 116px; height: 116px; border-radius: 50%; background: #f5f6ed; display: grid; place-items: center; margin: 30px auto; box-shadow: 0 10px 30px #24372b0a; }
+.languagePills { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 28px; }
+.languagePills span { border-radius: 30px; padding: 8px 13px; background: #ffffff60; font-size: 12px; }
+.featureCopy h3 { font-size: 51px; line-height: 1.08; margin: 17px 0 22px; }
+.featureCopy p, .about p { font-size: 16px; line-height: 1.8; margin: 0 0 22px; color: var(--muted); }
+.featureCopy a, .about a { font-size: 14px; border-bottom: 1px solid #9aab9a; padding-bottom: 7px; }
+.featureVisual h3 { font-size: 33px; line-height: 1.15; margin: 18px 0 25px; }
+.recallQuestion { background: #fff; color: var(--ink); border-radius: 12px; padding: 14px 17px; width: 100%; text-align: left; font-size: 13px; }
+.excerpt { width: 100%; margin-top: 15px; text-align: left; background: #f2f2e7; color: var(--ink); border-radius: 12px; padding: 20px; }
+.excerpt > span { font-size: 12px; font-weight: 600; }
+.excerpt > div { margin: 15px 0; }
+.excerpt i { background: #d5dfce; }
+.excerpt i:nth-child(2) { width: 79%; }
+.excerpt i:nth-child(3) { width: 60%; }
+.excerpt small { display: flex; gap: 7px; align-items: center; font-size: 10px; color: #52625b; }
+.peach .note { width: 100%; transform: rotate(-3deg); padding: 25px 30px; box-shadow: 0 12px 28px #684b3110; text-align: left; }
+.peach .note h3 { margin: 20px 0; }
+.workflow { max-width: 1280px; padding: 20px 40px; margin: 95px auto 110px; scroll-margin-top: 30px; }
+.workflow ol { display: grid; grid-template-columns: repeat(3, 1fr); gap: 48px; list-style: none; padding: 0; margin: 50px 0 0; }
+.stepNumber { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 50%; background: #dce5d3; font-size: 14px; margin-bottom: 22px; }
+.workflow h3 { font-size: 20px; line-height: 1.4; margin: 0 0 12px; }
+.workflow li p { font-size: 14px; color: var(--muted); line-height: 1.8; margin: 0; }
+.about { max-width: 1220px; margin: 0 auto 120px; border-radius: 35px; background: #dfe7d8; padding: 65px 80px; display: grid; grid-template-columns: .7fr 1fr; gap: 70px; align-items: center; scroll-margin-top: 30px; }
+.aboutMascot { width: 100%; height: auto; transform: rotate(-7deg); }
+.about h2 { font-size: 52px; line-height: 1.1; margin: 20px 0 25px; }
+.about small { display: block; font-size: 11px; line-height: 1.7; margin-top: 25px; color: var(--muted); }
+.faq { max-width: 1220px; margin: 0 auto; padding: 0 32px; display: grid; grid-template-columns: .9fr 1.1fr; gap: 75px; scroll-margin-top: 30px; }
+.faq h2 { font-size: 54px; line-height: 1.1; margin: 20px 0; }
+.faq details { border-bottom: 1px solid #cfd6ca; }
+.faq summary { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 20px 0; font-size: 15px; font-weight: 500; cursor: pointer; list-style: none; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary span { font-size: 25px; font-weight: 400; transition: transform .2s; }
+.faq details[open] summary span { transform: rotate(45deg); }
+.faq details p { color: var(--muted); font-size: 14px; line-height: 1.8; margin: 0 28px 22px 0; }
+.finalCta { text-align: center; padding: 140px 24px 110px; }
+.finalCta h2 { font-size: 70px; line-height: 1.1; margin: 0 0 25px; }
+.finalCta p { font-size: 16px; line-height: 1.7; margin: 0 auto 30px; max-width: 600px; }
+.footer { max-width: 1280px; margin: 0 auto; padding: 35px 24px 32px; border-top: 1px solid #cfd6ca; display: flex; flex-wrap: wrap; gap: 30px; justify-content: space-between; }
+.footer p { font-size: 12px; color: var(--muted); margin: 9px 0 0; }
+.footerLinks { display: flex; gap: 30px; align-items: center; font-size: 13px; }
+.footer > small { flex-basis: 100%; font-size: 11px; color: var(--muted); line-height: 1.6; }
+.srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+@media (max-width: 1320px) { .nav { margin-left: 32px; margin-right: 32px; } .showcase { margin-left: 60px; margin-right: 60px; } .about { margin-left: 32px; margin-right: 32px; } }
+@media (max-width: 1100px) { .nav { gap: 20px; } .navLinks { gap: 18px; } .workspaceLink { display: none; } .featureRow { gap: 45px; } .featureCopy h3 { font-size: 44px; } .about { padding: 50px; gap: 40px; } .assistantCard { padding-left: 40px; padding-right: 40px; } }
+@media (max-width: 760px) {
+  .nav { margin: 18px 18px 0; padding: 10px 14px; gap: 13px; min-height: 65px; border-radius: 15px; flex-wrap: wrap; }
+  .brand { font-size: 26px; gap: 1px; } .brandMascot { width: 40px; height: 32px; }
+  .navLinks, .workspaceLink { display: none; } .nav > .button { margin-left: auto; font-size: 12px; padding: 9px 12px; min-height: 38px; gap: 6px; }
+  .mobileMenu { display: block; position: relative; font-size: 12px; } .mobileMenu summary { cursor: pointer; } .mobileMenu > div { position: absolute; right: 0; top: 30px; min-width: 165px; z-index: 2; background: #fff; box-shadow: 0 5px 20px #17333015; border-radius: 12px; padding: 10px; } .mobileMenu a { display: block; padding: 10px; }
+  .hero { padding: 49px 20px 38px; } .hero h1 { font-size: clamp(41px, 8vw, 62px); margin-bottom: 24px; } .hero p { font-size: 16px; line-height: 1.7; margin-bottom: 27px; } .desktopBreak { display: none; }
+  .showcase { margin: 0 18px; border-radius: 16px; } .browserBar { font-size: 8px; padding: 12px; gap: 8px; } .browserBar > span:last-child { display: none; }
+  .capturePanel { padding: 22px 12px; } .eyebrow { font-size: 9px; } .showcaseMascot { width: 105px; height: 70px; margin: 25px 0 13px; } .capturePanel h2 { font-size: 30px; margin-bottom: 15px; } .waveform { gap: 2px; } .waveform i { width: 2px; } .capturePanel p { font-size: 9px; gap: 4px; }
+  .note { padding: 20px 15px; } .noteToolbar { font-size: 8px; flex-wrap: wrap; } .noteToolbar small { font-size: 8px; } .note h3 { font-size: 26px; margin: 20px 0; } .noteField { margin-bottom: 15px; } .noteField span { font-size: 9px; } .noteApproval { font-size: 8px; line-height: 1.6; }
+  .showcaseFooter { padding: 14px; font-size: 10px; line-height: 1.6; } .showcaseFooter a { font-size: 0; gap: 0; flex-shrink: 0; }
+  .highlights { font-size: 10px; gap: 12px; margin: 22px auto 65px; }
+  .sectionHeading { margin-bottom: 30px; } .sectionHeading h2 { font-size: 38px; } .sectionHeading p { font-size: 15px; }
+  .assistant { padding: 0 18px 80px; } .assistantCard { border-radius: 28px; padding: 35px 22px 25px; } .assistantMascot { width: 145px; height: 97px; } .assistantCard h3 { font-size: 17px; margin: 10px 0 26px; }
+  .questionForm { min-height: 65px; padding: 12px 13px 12px 16px; border-radius: 20px; gap: 8px; } .questionForm input { font-size: 15px; } .questionForm button { width: 35px; height: 35px; } .questionForm button svg { width: 21px; }
+  .prompts { gap: 8px; margin-top: 15px; } .prompts a { font-size: 11px; padding: 7px 9px; border-radius: 10px; } .tryMe { margin-top: 24px; } .tryMe svg { width: 95px; height: 55px; } .tryMe span { font-size: 32px; } .assistantHint { font-size: 10px; line-height: 1.7; }
+  .features { padding: 0 24px; } .features > .sectionHeading { margin-bottom: 40px; } .featureRow { grid-template-columns: 1fr; gap: 28px; margin-bottom: 65px; } .reverse .featureVisual { grid-row: 1; } .featureVisual { min-height: 390px; padding: 32px; border-radius: 25px; } .featureVisual .waveform { gap: 4px; } .featureVisual .waveform i { width: 4px; } .featureCopy h3 { font-size: 40px; margin-top: 12px; } .featureCopy p { font-size: 15px; }
+  .peach .note { max-width: 380px; } .peach .note h3 { font-size: 33px; } .peach .noteToolbar { font-size: 10px; } .peach .noteField span { font-size: 10px; } .peach .noteApproval { font-size: 10px; }
+  .workflow { padding: 0 28px; margin: 70px auto 80px; } .workflow ol { grid-template-columns: 1fr; gap: 32px; margin-top: 35px; } .workflow li { position: relative; padding-left: 65px; } .stepNumber { position: absolute; left: 0; top: 0; } .workflow h3 { font-size: 18px; }
+  .about { margin: 0 18px 80px; padding: 38px 28px; grid-template-columns: 1fr; gap: 24px; border-radius: 28px; } .aboutMascot { width: 210px; margin: 0 auto; } .about h2 { font-size: 40px; margin-top: 15px; } .about p { font-size: 15px; }
+  .faq { grid-template-columns: 1fr; gap: 20px; padding: 0 28px; } .faq h2 { font-size: 42px; } .faq summary { font-size: 14px; } .faq details p { font-size: 13px; }
+  .finalCta { padding: 85px 24px 70px; } .finalCta h2 { font-size: 43px; } .finalCta p { font-size: 14px; }
+  .footer { margin: 0 18px; padding: 28px 10px; gap: 24px; } .footerLinks { flex-wrap: wrap; gap: 20px; font-size: 12px; }
+}
+@media (max-width: 380px) { .nav { gap: 9px; padding: 10px; } .brand { font-size: 23px; } .brandMascot { width: 32px; } .nav > .button { padding: 9px; gap: 4px; } .nav > .button svg { display: none; } .hero h1 { font-size: 39px; } .questionForm input { font-size: 13px; } .featureVisual { padding: 24px; } .sectionHeading h2 { font-size: 35px; } }
+@media (prefers-reduced-motion: reduce) { .page .button, .faq summary span { transition: none; } .page .button:hover { transform: none; } }

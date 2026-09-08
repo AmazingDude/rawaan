@@ -53,7 +53,7 @@ describe("Task 2 transcription validation boundary", () => {
       ok: false,
       code: "invalid_audio",
       message:
-        "This audio format is not supported. Please try the demo browser or type/paste the transcript manually.",
+        "This audio format is not supported. Upload an MP3, WAV, M4A or WebM file, or write a summary instead.",
     });
   });
 
@@ -64,7 +64,7 @@ describe("Task 2 transcription validation boundary", () => {
       ok: false,
       code: "invalid_audio",
       message:
-        "Recording is larger than the 25 MB demo limit. Please record a shorter consultation or type/paste the transcript manually.",
+        "Recording is larger than the 25 MB upload limit. Please record a shorter consultation or write a summary instead.",
     });
   });
 
@@ -115,6 +115,20 @@ describe("Task 3 transcription route", () => {
     });
   });
 
+  it("preserves the provider's original Devanagari transcript", async () => {
+    const transcript = "अजय ने दवा नहीं ली; उसने दर्द बताया ०१२३४५६७८९";
+    const handler = createTranscriptionPost({
+      async transcribe() {
+        return { transcript };
+      },
+    });
+
+    const response = await handler(makeTranscriptionRequest(makeAudioFile(1)));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ ok: true, transcript });
+  });
+
   it("returns a safe manual-fallback failure when the fake provider throws", async () => {
     const handler = createTranscriptionPost({
       async transcribe() {
@@ -124,6 +138,39 @@ describe("Task 3 transcription route", () => {
 
     const response = await handler(makeTranscriptionRequest(makeAudioFile(1)));
 
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toEqual({
+      ok: false,
+      code: "transcription_failed",
+      message:
+        "Audio-to-text is unavailable. Please try again or type/paste the transcript manually.",
+    });
+  });
+
+  it("aborts provider work at the route deadline and returns the manual fallback", async () => {
+    let providerSignal: AbortSignal | undefined;
+    const handler = createTranscriptionPost(
+      {
+        async transcribe({ signal }) {
+          providerSignal = signal;
+          return new Promise((_, reject) => {
+            if (signal?.aborted) {
+              reject(signal.reason);
+              return;
+            }
+            signal?.addEventListener("abort", () => reject(signal.reason), {
+              once: true,
+            });
+          });
+        },
+      },
+      undefined,
+      5,
+    );
+
+    const response = await handler(makeTranscriptionRequest(makeAudioFile(1)));
+
+    expect(providerSignal?.aborted).toBe(true);
     expect(response.status).toBe(502);
     await expect(response.json()).resolves.toEqual({
       ok: false,
@@ -152,7 +199,7 @@ describe("Task 3 transcription route", () => {
       ok: false,
       code: "invalid_audio",
       message:
-        "This audio format is not supported. Please try the demo browser or type/paste the transcript manually.",
+        "This audio format is not supported. Upload an MP3, WAV, M4A or WebM file, or write a summary instead.",
     });
   });
 });

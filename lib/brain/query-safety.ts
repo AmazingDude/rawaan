@@ -20,6 +20,11 @@ const GENERAL_MEDICAL_PATTERNS = [
   /\bhow (is|are|do(es)?|can)\b.*\btreat(ed|ment)?\b/i,
 ];
 
+function asksAboutDocumentedSideEffects(question: string): boolean {
+  return /\bside[- ]effects?\b/i.test(question) &&
+    /\b(documented|recorded|reported|mentioned|noted|experienced|history|patient|she|he|they|her|his|their|previous|last)\b/i.test(question);
+}
+
 export function classifyQuerySafety(rawQuestion: string): QuerySafetyResult {
   const normalizedQuestion = rawQuestion.trim();
 
@@ -27,7 +32,10 @@ export function classifyQuerySafety(rawQuestion: string): QuerySafetyResult {
     return { kind: "refused", reason: "treatment_or_medication", message: REFUSAL_MESSAGE };
   }
 
-  if (GENERAL_MEDICAL_PATTERNS.some((pattern) => pattern.test(normalizedQuestion))) {
+  if (
+    GENERAL_MEDICAL_PATTERNS.some((pattern) => pattern.test(normalizedQuestion)) &&
+    !asksAboutDocumentedSideEffects(normalizedQuestion)
+  ) {
     return { kind: "refused", reason: "general_medical", message: REFUSAL_MESSAGE };
   }
 

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   ArrowUp,
@@ -9,7 +9,6 @@ import {
   EyeOff,
   FileText,
   Languages,
-  Link2,
   Mail,
   Mic,
   Paperclip,
@@ -20,24 +19,49 @@ import {
   Zap,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
+import Link from "next/link";
+import { RequestStatus } from "@/app/components/request-status";
 
 import {
   approveDraftAction,
   modifyNoteAction,
+  sendAgentMessageAction,
+  translateTranscriptToUrduAction,
   translateNoteToUrduAction,
 } from "@/app/actions";
 import { ClientTimeline } from "@/app/components/client-timeline";
 import { ReflectionQuestions } from "@/app/components/reflection-questions";
 import { SessionInfoView } from "@/app/components/session-info-view";
 import { SessionMindmap } from "@/app/components/session-mindmap";
-import type { ApprovedNote, NoteDraft } from "@/lib/notes/schema";
-import { sanitizeTranscript } from "@/lib/transcription/devanagari-to-urdu";
+import { SessionNoteEditor } from "@/app/components/session-note-editor";
+import { SessionNoteDocument } from "@/app/components/session-note-document";
+import { SessionTabs, type SessionTab } from "@/app/components/session-tabs";
+import { TreatmentPlanView } from "@/app/components/treatment-plan-view";
+import { useAccessibleDialog } from "@/app/components/use-accessible-dialog";
+import { RawaanLogo } from "@/app/components/rawaan-logo";
+import styles from "@/app/components/session-workspace.module.css";
+import {
+  noteEditorTextFrom,
+  type NoteEditorText,
+} from "@/app/components/session-note-editor-state";
+import { formatClinicalNoteText } from "@/lib/notes/presentation";
+import { noteDraftSchema, type ApprovedNote, type NoteDraft } from "@/lib/notes/schema";
+import type { StoredChatResponse } from "@/lib/db/chats";
+import { AgentAnswer } from "@/app/components/agent-answer";
+import { hasDevanagari } from "@/lib/transcription/devanagari-to-urdu";
+import { formatSessionDate } from "@/app/components/session-date";
+
+const ReviewedPlansPanel = dynamic(() => import("@/app/components/reviewed-plans-panel").then(module => module.ReviewedPlansPanel), { loading: () => <RequestStatus label="Loading reviewed plans…" skeleton/> });
 
 interface SessionWorkspaceViewProps {
   draft: NoteDraft | ApprovedNote;
+  draftEditorText?: NoteEditorText;
   isManualEntry?: boolean;
+  backLabel?: string;
   onApprove?: (note: ApprovedNote) => void;
   onBack: () => void;
+  onDraftChange?: (draft: NoteDraft | ApprovedNote, editorText: NoteEditorText) => void;
 }
 
 interface ChatMessage {
@@ -45,6 +69,10 @@ interface ChatMessage {
   role: "assistant" | "user";
   text: string;
   timestamp: string;
+  response?: StoredChatResponse;
+  threadId?: string;
+  entryTimestamp?: string;
+  persisted?: boolean;
 }
 
 interface SpeechRecognitionInstance {
@@ -60,35 +88,39 @@ interface SpeechRecognitionInstance {
 
 export function SessionWorkspaceView({
   draft: initialDraft,
+  draftEditorText: initialEditorText,
   isManualEntry = false,
+  backLabel = "Back",
   onApprove,
   onBack,
+  onDraftChange,
 }: SessionWorkspaceViewProps) {
-  const [activeTab, setActiveTab] = useState<
-    | "notes"
-    | "client"
-    | "treatment"
-    | "transcript"
-    | "session-info"
-    | "mindmap"
-    | "reflection"
-  >("notes");
+  const [activeTab, setActiveTab] = useState<SessionTab>("notes");
 
   const [currentNote, setCurrentNote] = useState<NoteDraft | ApprovedNote>(initialDraft);
   const [englishNote, setEnglishNote] = useState<NoteDraft | ApprovedNote>(initialDraft);
   const [urduNote, setUrduNote] = useState<(NoteDraft | ApprovedNote) | null>(null);
+  const [editorText, setEditorText] = useState<NoteEditorText>(
+    () => initialEditorText ?? noteEditorTextFrom(initialDraft),
+  );
+  const noteRevisionRef = useRef(0);
   const [activeLanguage, setActiveLanguage] = useState<"en" | "ur">("en");
   const [isTranslating, setIsTranslating] = useState(false);
 
   const [isCopied, setIsCopied] = useState(false);
-  const [isCopiedLink, setIsCopiedLink] = useState(false);
   const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
+  const [isAiOverviewOpen, setIsAiOverviewOpen] = useState(true);
+  const [isEditingNote, setIsEditingNote] = useState(false);
+  const [isCompactViewport, setIsCompactViewport] = useState(false);
+  const [copyError, setCopyError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const shareMenuRef = useRef<HTMLDivElement>(null);
+  const assistantPanelRef = useRef<HTMLElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatMessageSequence = useRef(0);
+  const agentThreadRef = useRef<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [attachedFile, setAttachedFile] = useState<{
@@ -98,22 +130,69 @@ export function SessionWorkspaceView({
   } | null>(null);
   const [isListening, setIsListening] = useState(false);
 
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => [
-    {
-      id: "msg-welcome",
-      role: "assistant",
-      text: isManualEntry
-        ? "This manual note remains local until you review and approve the structured fields."
-        : `I've loaded ${initialDraft.patient_display_name}'s clinical note into context. You can ask me to rewrite the note in a different format, remove identifiable names, summarize key clinical points, attach lab/clinical documents, translate to Urdu, or make custom edits.`,
-
-      timestamp: "Just now",
-    },
-  ]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [inputPrompt, setInputPrompt] = useState("");
   const [isAiLoading, setIsAiLoading] = useState(false);
-  const [includeTreatmentPlanToggle, setIncludeTreatmentPlanToggle] = useState(true);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
+  const [urduTranscript, setUrduTranscript] = useState<{ source: string; text: string } | null>(null);
+  const [transcriptError, setTranscriptError] = useState<{ source: string; message: string } | null>(null);
+  const [transcriptRetry, setTranscriptRetry] = useState(0);
 
   const isApproved = currentNote.approval_status === "approved";
+  const isDraftValid = !isApproved && noteDraftSchema.safeParse(currentNote).success;
+  const canRefineDraft = !isManualEntry && !isApproved && activeLanguage === "en" && !isAiLoading && !isSaving && !isTranslating;
+  const hasAssistant = isApproved || !isManualEntry;
+  const canSendPrompt = !isAiLoading && !isSaving && (isApproved || canRefineDraft);
+  const needsUrduTranscript = hasDevanagari(currentNote.raw_transcript);
+  const displayedTranscript = needsUrduTranscript
+    ? urduTranscript?.source === currentNote.raw_transcript ? urduTranscript.text : null
+    : currentNote.raw_transcript;
+  const currentTranscriptError = transcriptError?.source === currentNote.raw_transcript ? transcriptError.message : null;
+  const sessionTopics = [
+    ...(currentNote.chief_complaint.trim() ? [{ key: "chief-complaint", label: "Chief complaint", value: currentNote.chief_complaint }] : []),
+    ...currentNote.history.map((value, index) => ({ key: `history-${index}`, label: "History", value })),
+    ...currentNote.symptoms.map((value, index) => ({ key: `symptoms-${index}`, label: "Symptoms", value })),
+  ].filter((topic) => topic.value.trim());
+
+  useAccessibleDialog(
+    assistantPanelRef,
+    () => setIsAiOverviewOpen(false),
+    isCompactViewport && isAiOverviewOpen && hasAssistant,
+  );
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 1023px)");
+    const updateViewport = () => {
+      setIsCompactViewport(media.matches);
+      if (media.matches) setIsAiOverviewOpen(false);
+    };
+    updateViewport();
+    media.addEventListener("change", updateViewport);
+    return () => media.removeEventListener("change", updateViewport);
+  }, []);
+
+  useEffect(() => {
+    const source = currentNote.raw_transcript;
+    if (activeTab !== "transcript" || !hasDevanagari(source) || urduTranscript?.source === source || transcriptError?.source === source) return;
+    let cancelled = false;
+    void translateTranscriptToUrduAction(source).then(result => {
+      if (cancelled) return;
+      if (result.ok) setUrduTranscript({ source, text: result.transcript });
+      else setTranscriptError({ source, message: result.message });
+    }).catch(() => {
+      if (!cancelled) setTranscriptError({ source, message: "Urdu transcript could not be loaded. Please retry." });
+    });
+    return () => { cancelled = true; };
+  }, [activeTab, currentNote.raw_transcript, urduTranscript, transcriptError, transcriptRetry]);
+
+  function handleDraftChange(next: NoteDraft, nextEditorText: NoteEditorText) {
+    noteRevisionRef.current += 1;
+    setCurrentNote(next);
+    setEnglishNote(next);
+    setUrduNote(null);
+    setEditorText(nextEditorText);
+    onDraftChange?.(next, nextEditorText);
+  }
 
   // Auto-scroll chat to latest message
   useEffect(() => {
@@ -143,6 +222,22 @@ export function SessionWorkspaceView({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const extension = file.name.toLowerCase().split(".").pop();
+    const supportedExtensions = new Set(["txt", "text", "md", "csv", "log", "json"]);
+    const supportedMimeTypes = new Set([
+      "",
+      "text/plain",
+      "text/markdown",
+      "text/csv",
+      "application/json",
+    ]);
+    if (!supportedExtensions.has(extension ?? "") || !supportedMimeTypes.has(file.type)) {
+      setAttachedFile(null);
+      setAttachmentError("This file format is not supported. Attach a plain-text .txt, .md, .csv, .log, or .json file.");
+      e.target.value = "";
+      return;
+    }
+
     const sizeFormatted =
       file.size < 1024
         ? `${file.size} B`
@@ -152,12 +247,28 @@ export function SessionWorkspaceView({
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      const text = (event.target?.result as string) || "";
+      const result = event.target?.result;
+      const text = typeof result === "string" ? result : "";
+      if (!text || /\u0000/.test(text)) {
+        setAttachedFile(null);
+        setAttachmentError("The selected file could not be read as plain text.");
+        return;
+      }
+      if (text.length > 10000) {
+        setAttachedFile(null);
+        setAttachmentError("This file exceeds 10,000 characters. Shorten it to the relevant text before attaching.");
+        return;
+      }
       setAttachedFile({
         name: file.name,
-        content: text.slice(0, 10000),
+        content: text,
         size: sizeFormatted,
       });
+      setAttachmentError(null);
+    };
+    reader.onerror = () => {
+      setAttachedFile(null);
+      setAttachmentError("The selected file could not be read as plain text.");
     };
     reader.readAsText(file);
     e.target.value = "";
@@ -198,23 +309,8 @@ export function SessionWorkspaceView({
     }
   }
 
-  const noteSummary = isManualEntry
-    ? currentNote.summary ?? ""
-    : currentNote.summary ||
-      (currentNote.chief_complaint
-        ? `This consultation focused on ${currentNote.chief_complaint}. Clinical history was evaluated alongside reported symptoms (${currentNote.symptoms.slice(0, 2).join(", ") || "observed"}). The provider discussed assessment and instituted the corresponding management plan.`
-        : "Clinical consultation note documented from conversation recording.");
-
-  function toStructuredList(value: string) {
-    return value
-      .split("\n")
-      .map((entry) => entry.trim())
-      .filter(Boolean);
-  }
-
-
   async function handleToggleLanguage() {
-    if (isTranslating) return;
+    if (isTranslating || isSaving || isAiLoading) return;
 
     if (activeLanguage === "ur") {
       // Toggle back to English
@@ -223,7 +319,7 @@ export function SessionWorkspaceView({
       return;
     }
 
-    // If we already have the Urdu translation cached, switch instantly
+    // A cached translation is valid only for the unchanged English draft.
     if (urduNote) {
       setActiveLanguage("ur");
       setCurrentNote(urduNote);
@@ -231,16 +327,18 @@ export function SessionWorkspaceView({
     }
 
     // Otherwise, translate via server action
+    const revision = noteRevisionRef.current;
     setIsTranslating(true);
     try {
-      const res = await translateNoteToUrduAction(currentNote as NoteDraft);
+      const res = await translateNoteToUrduAction(englishNote as NoteDraft);
+      if (revision !== noteRevisionRef.current) return;
       if (res.ok) {
         setUrduNote(res.urduNote);
         setCurrentNote(res.urduNote);
         setActiveLanguage("ur");
 
         const aiMsg: ChatMessage = {
-          id: `msg-${Date.now()}`,
+          id: `msg-${++chatMessageSequence.current}`,
           role: "assistant",
           text: "نوٹ کو اردو زبان میں کامیابی سے تبدیل کر دیا گیا ہے۔ (The clinical note has been translated into Urdu.)",
           timestamp: "Just now",
@@ -248,16 +346,16 @@ export function SessionWorkspaceView({
         setChatMessages((prev) => [...prev, aiMsg]);
       } else {
         const errorMsg: ChatMessage = {
-          id: `msg-${Date.now()}`,
+          id: `msg-${++chatMessageSequence.current}`,
           role: "assistant",
-          text: `Could not translate note to Urdu: ${res.message}`,
+          text: `Urdu translation unavailable: ${res.message}`,
           timestamp: "Just now",
         };
         setChatMessages((prev) => [...prev, errorMsg]);
       }
     } catch {
       const errorMsg: ChatMessage = {
-        id: `msg-${Date.now()}`,
+        id: `msg-${++chatMessageSequence.current}`,
         role: "assistant",
         text: "There was an error communicating with the translation service.",
         timestamp: "Just now",
@@ -270,7 +368,7 @@ export function SessionWorkspaceView({
 
   async function handleSendPrompt(promptToSend?: string) {
     const userText = (promptToSend || inputPrompt).trim();
-    if (isManualEntry || (!userText && !attachedFile) || isAiLoading) return;
+    if (!canSendPrompt || (!userText && (isApproved || !attachedFile))) return;
 
     let effectivePrompt = userText || "Please incorporate the attached document into the clinical note.";
     if (attachedFile) {
@@ -281,7 +379,7 @@ export function SessionWorkspaceView({
 
 
     const userMsg: ChatMessage = {
-      id: `msg-${Date.now()}`,
+      id: `msg-${++chatMessageSequence.current}`,
       role: "user",
       text: displayPrompt,
       timestamp: "Just now",
@@ -290,24 +388,38 @@ export function SessionWorkspaceView({
     setChatMessages((prev) => [...prev, userMsg]);
     setInputPrompt("");
     setAttachedFile(null);
+    setAttachmentError(null);
     setIsAiLoading(true);
 
     try {
+      if (currentNote.approval_status === "approved") {
+        const result = await sendAgentMessageAction({patientId:currentNote.patient_id,sessionNoteId:currentNote.id,threadId:agentThreadRef.current,question:userText,mode:"assistant",webEnabled:true});
+        if (result.ok) agentThreadRef.current = result.threadId;
+        const response = result.ok ? result.response : undefined;
+        const reply: ChatMessage = {
+          id: `msg-${++chatMessageSequence.current}`, role: "assistant", timestamp: "Just now", response,
+          text: response ? "answer" in response ? response.answer : response.message : result.ok ? "No response available." : result.message,
+          threadId: result.ok ? result.threadId : undefined, entryTimestamp: result.ok ? result.timestamp : undefined, persisted: result.ok ? result.persisted : undefined,
+        };
+        setChatMessages(previous => [...previous, reply]);
+        return;
+      }
       const res = await modifyNoteAction({
         note: currentNote as NoteDraft,
         prompt: effectivePrompt,
       });
 
       if (res.ok) {
+        noteRevisionRef.current += 1;
         setCurrentNote(res.updatedNote);
-        if (activeLanguage === "en") {
-          setEnglishNote(res.updatedNote);
-        } else {
-          setUrduNote(res.updatedNote);
-        }
+        setEnglishNote(res.updatedNote);
+        setUrduNote(null);
+        const nextEditorText = noteEditorTextFrom(res.updatedNote);
+        setEditorText(nextEditorText);
+        onDraftChange?.(res.updatedNote, nextEditorText);
 
         const aiMsg: ChatMessage = {
-          id: `msg-${Date.now() + 1}`,
+          id: `msg-${++chatMessageSequence.current}`,
           role: "assistant",
           text: res.assistantReply,
           timestamp: "Just now",
@@ -315,7 +427,7 @@ export function SessionWorkspaceView({
         setChatMessages((prev) => [...prev, aiMsg]);
       } else {
         const errorMsg: ChatMessage = {
-          id: `msg-${Date.now() + 1}`,
+          id: `msg-${++chatMessageSequence.current}`,
           role: "assistant",
           text: `Sorry, I could not apply those modifications: ${res.message}`,
           timestamp: "Just now",
@@ -324,7 +436,7 @@ export function SessionWorkspaceView({
       }
     } catch {
       const errorMsg: ChatMessage = {
-        id: `msg-${Date.now() + 1}`,
+        id: `msg-${++chatMessageSequence.current}`,
         role: "assistant",
         text: "There was a network error communicating with the AI assistant.",
         timestamp: "Just now",
@@ -337,67 +449,65 @@ export function SessionWorkspaceView({
 
 
   function handleCopyNote() {
-    const fullText = `PATIENT: ${currentNote.patient_display_name}\nDATE: ${currentNote.consultation_date}\nLANGUAGE: ${activeLanguage === "ur" ? "Urdu (اردو)" : "English"}\n\nSUMMARY:\n${noteSummary}\n\nCHIEF COMPLAINT:\n${currentNote.chief_complaint}\n\nHISTORY:\n${currentNote.history.map((h) => `• ${h}`).join("\n")}\n\nSYMPTOMS:\n${currentNote.symptoms.map((s) => `• ${s}`).join("\n")}\n\nASSESSMENT DISCUSSED:\n${currentNote.assessment_discussed.map((a) => `• ${a}`).join("\n")}\n\nPLAN DISCUSSED:\n${currentNote.plan_discussed.map((p) => `• ${p}`).join("\n")}\n\nMEDICATIONS MENTIONED:\n${currentNote.medications_mentioned.map((m) => `• ${m}`).join("\n")}\n\nFOLLOW-UP:\n${currentNote.follow_up}`;
+    const fullText = formatClinicalNoteText(
+      currentNote,
+      activeLanguage === "ur" ? "Urdu (اردو)" : "English",
+    );
 
     void navigator.clipboard.writeText(fullText).then(() => {
       setIsCopied(true);
+      setCopyError(null);
       setTimeout(() => setIsCopied(false), 2000);
-    });
+    }).catch(() => setCopyError("Could not copy the note. Check clipboard permissions."));
   }
 
-  function handleCopyShareLink() {
-    const url = typeof window !== "undefined" ? window.location.href : "";
-    if (url) {
-      void navigator.clipboard.writeText(url).then(() => {
-        setIsCopiedLink(true);
-        setTimeout(() => setIsCopiedLink(false), 2500);
-      });
-    }
+  function handleCopyTranscript() {
+    if (displayedTranscript === null) return;
+    void navigator.clipboard.writeText(displayedTranscript).then(() => {
+      setCopyError(null);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    }).catch(() => setCopyError("Could not copy the transcript. Check clipboard permissions."));
+  }
+
+  function handleDownloadTranscript() {
+    if (displayedTranscript === null) return;
+    const blob = new Blob([displayedTranscript], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `Session_Transcript_${currentNote.consultation_date}.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function editDiscussedPlan() {
+    if (isApproved) return;
+    setActiveLanguage("en");
+    setCurrentNote(englishNote);
+    setActiveTab("notes");
+    setIsEditingNote(true);
+    window.setTimeout(() => {
+      const planField = document.getElementById("manual-note-plan_discussed");
+      const followUpField = document.getElementById("manual-note-follow_up");
+      (planField ?? followUpField)?.focus();
+    }, 0);
+  }
+
+  function startNewConversation() {
+    if (isAiLoading) return;
+    agentThreadRef.current = null;
+    setChatMessages([]);
+    setInputPrompt("");
+    setAttachedFile(null);
+    setAttachmentError(null);
   }
 
   function handleDownloadNoteFile() {
-    const fullText = `=====================================================
-RAWAAN CLINICAL ENCOUNTER RECORD
-=====================================================
-Patient:       ${currentNote.patient_display_name}
-Patient ID:    ${currentNote.patient_id}
-Date:          ${currentNote.consultation_date}
-Language:      ${activeLanguage === "ur" ? "Urdu (اردو)" : "English"}
-Status:        ${currentNote.approval_status.toUpperCase()}
-=====================================================
-
-SUMMARY:
-${noteSummary}
-
-CHIEF COMPLAINT:
-${currentNote.chief_complaint || "None recorded"}
-
-HISTORY:
-${currentNote.history.length > 0 ? currentNote.history.map((h) => `• ${h}`).join("\n") : "• Routine evaluation"}
-
-SYMPTOMS:
-${currentNote.symptoms.length > 0 ? currentNote.symptoms.map((s) => `• ${s}`).join("\n") : "• None reported"}
-
-ASSESSMENT DISCUSSED:
-${currentNote.assessment_discussed.length > 0 ? currentNote.assessment_discussed.map((a) => `• ${a}`).join("\n") : "• None documented"}
-
-PLAN DISCUSSED:
-${currentNote.plan_discussed.length > 0 ? currentNote.plan_discussed.map((p) => `• ${p}`).join("\n") : "• None documented"}
-
-MEDICATIONS MENTIONED:
-${currentNote.medications_mentioned.length > 0 ? currentNote.medications_mentioned.map((m) => `• ${m}`).join("\n") : "• No medications"}
-
-FOLLOW-UP:
-${currentNote.follow_up || "Follow up as clinically indicated"}
-
-UNCERTAINTIES / NOTES FOR REVIEW:
-${currentNote.uncertainties.length > 0 ? currentNote.uncertainties.map((u) => `• ${u}`).join("\n") : "• None"}
-
-=====================================================
-TRANSCRIPT PROVENANCE:
-${currentNote.raw_transcript}
-=====================================================
-`;
+    const fullText = formatClinicalNoteText(
+      currentNote,
+      activeLanguage === "ur" ? "Urdu (اردو)" : "English",
+    );
 
     const blob = new Blob([fullText], { type: "text/plain;charset=utf-8" });
     const link = document.createElement("a");
@@ -415,7 +525,7 @@ ${currentNote.raw_transcript}
       `Clinical Note Summary: ${currentNote.patient_display_name} (${currentNote.consultation_date})`,
     );
     const body = encodeURIComponent(
-      `Patient: ${currentNote.patient_display_name}\nDate: ${currentNote.consultation_date}\n\nSummary:\n${noteSummary}\n\nChief Complaint:\n${currentNote.chief_complaint}\n\nPlan:\n${currentNote.plan_discussed.join("\n")}\n\nFollow-up:\n${currentNote.follow_up}`,
+      formatClinicalNoteText(currentNote, activeLanguage === "ur" ? "Urdu (اردو)" : "English"),
     );
     window.location.href = `mailto:?subject=${subject}&body=${body}`;
     setIsShareMenuOpen(false);
@@ -423,20 +533,21 @@ ${currentNote.raw_transcript}
 
   async function handleApproveAndSave() {
     // Re-approving an already-approved note would save a duplicate.
-    if (currentNote.approval_status === "approved") return;
+    if (currentNote.approval_status === "approved" || isSaving || isAiLoading || isTranslating) return;
 
     setIsSaving(true);
     setSaveError(null);
 
     // Persist through the server action so the approved note lands in the
-    // store (Supabase + local JSON) exactly as it is currently reviewed.
+    // Supabase store exactly as it is currently reviewed.
+    try {
     const result = await approveDraftAction({
       ...currentNote,
       approval_status: "draft",
       summary: currentNote.summary ?? "",
     });
 
-    setIsSaving(false);
+
 
     if (!result.ok) {
       setSaveError(result.message);
@@ -451,20 +562,30 @@ ${currentNote.raw_transcript}
       summary: currentNote.summary ?? "",
     };
 
+    noteRevisionRef.current += 1;
+    setCurrentNote(saved);
+    setEnglishNote(saved);
+    setUrduNote(null);
+    setEditorText(noteEditorTextFrom(saved));
+    setIsEditingNote(false);
+    onDraftChange?.(saved, noteEditorTextFrom(saved));
+
     if (onApprove) {
       onApprove(saved);
     }
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 3000);
+    } catch { setSaveError("Could not save this note. Please retry."); }
+    finally { setIsSaving(false); }
   }
 
   return (
-    <div className="session-workspace-container">
-      {/* Top Header & Navigation Tabs */}
-      <header className="session-workspace-topbar">
+    <div className={styles.root} data-session-workspace>
+      <main className={`${styles.split} session-workspace-split ${!hasAssistant ? styles.full : !isAiOverviewOpen ? styles.withoutAssistant : ""}`}>
+        <section className={`${styles.document} workspace-document-panel`}>
+      <header className={`${styles.topbar} session-workspace-topbar`}>
         <button
-          aria-label="Back to dashboard"
-          className="btn-workspace-back"
+          aria-label={backLabel}
+          className={`${styles.back} btn-workspace-back`}
+          disabled={isSaving || isAiLoading || isTranslating}
           onClick={onBack}
           type="button"
         >
@@ -481,93 +602,45 @@ ${currentNote.raw_transcript}
           >
             <polyline points="15 18 9 12 15 6" />
           </svg>
-          <span>Back</span>
+          <span>{backLabel}</span>
         </button>
 
-        <nav className="workspace-tabs-nav" aria-label="Session document tabs">
-          <button
-            className={`workspace-tab-btn ${activeTab === "notes" ? "is-active" : ""}`}
-            onClick={() => setActiveTab("notes")}
-            type="button"
-          >
-            Notes
-          </button>
-          <button
-            className={`workspace-tab-btn ${activeTab === "client" ? "is-active" : ""}`}
-            onClick={() => setActiveTab("client")}
-            type="button"
-          >
-            Client
-          </button>
-          <button
-            className={`workspace-tab-btn ${activeTab === "treatment" ? "is-active" : ""}`}
-            onClick={() => setActiveTab("treatment")}
-            type="button"
-          >
-            Treatment Plan
-          </button>
-          <button
-            className={`workspace-tab-btn ${activeTab === "transcript" ? "is-active" : ""}`}
-            onClick={() => setActiveTab("transcript")}
-            type="button"
-          >
-            Transcript
-          </button>
-          <button
-            className={`workspace-tab-btn ${activeTab === "session-info" ? "is-active" : ""}`}
-            onClick={() => setActiveTab("session-info")}
-            type="button"
-          >
-            Session Information
-          </button>
-          <button
-            className={`workspace-tab-btn ${activeTab === "mindmap" ? "is-active" : ""}`}
-            onClick={() => setActiveTab("mindmap")}
-            type="button"
-          >
-            Mindmap
-          </button>
-          <button
-            className={`workspace-tab-btn ${activeTab === "reflection" ? "is-active" : ""}`}
-            onClick={() => setActiveTab("reflection")}
-            type="button"
-          >
-            Reflection Questions
-          </button>
-        </nav>
+        <SessionTabs activeTab={activeTab} onChange={setActiveTab} />
       </header>
 
       {/* Main Split Layout: Left Clinical Note Document + Right AI Overview Panel */}
-      <main className="session-workspace-split">
-        {/* ===================================================================
-           LEFT COLUMN: CLINICAL DOCUMENT WORKSPACE
-           =================================================================== */}
-        <section className="workspace-document-panel">
+        <div
+          aria-labelledby={`session-tab-${activeTab}`}
+          className={styles.panel}
+          id="session-tab-panel"
+          role="tabpanel"
+          tabIndex={0}
+        >
           {/* Sub-toolbar */}
           <div className="document-sub-toolbar">
             <div className="toolbar-left-group">
               <div className="doc-status-badge">
                 <span className="doc-status-dot" />
-                <span className="doc-status-title">Clinical Note</span>
+                <span className="doc-status-title">{isApproved ? "Approved" : "Draft"}</span>
               </div>
+              {!isApproved && activeLanguage === "en" ? (
+                <button className="session-edit-toggle" onClick={() => setIsEditingNote((editing) => !editing)} type="button">
+                  {isEditingNote ? "Read note" : "Edit note"}
+                </button>
+              ) : null}
               <span className={`doc-language-pill ${activeLanguage === "ur" ? "is-urdu" : "is-en"}`}>
                 {activeLanguage === "ur" ? "اردو (Urdu Active)" : "English"}
               </span>
+              {isApproved || isManualEntry ? <span className="session-assistant-unavailable">{isApproved ? "Approved notes are read-only." : "AI editing is unavailable for manual notes."}</span> : null}
             </div>
 
             <div className="toolbar-right-group">
               {/* AI Polish */}
-              {isManualEntry ? null : (
+              {!canRefineDraft ? null : (
                 <button
                   aria-label="Refine with AI"
                   className="icon-action-btn"
-                  onClick={() =>
-                    handleSendPrompt(
-                      activeLanguage === "ur"
-                        ? "اردو جملوں اور طبی اصطلاحات کو مزید نکھاریں"
-                        : "Polish and refine clinical phrasing",
-                    )
-                  }
+                  onClick={() => handleSendPrompt("Polish and refine clinical phrasing")}
                   title="Polish & refine clinical phrasing"
                   type="button"
                 >
@@ -601,18 +674,29 @@ ${currentNote.raw_transcript}
               <button
                 aria-label={activeLanguage === "ur" ? "Switch to English" : "Translate note to Urdu"}
                 className={`btn-language-action ${activeLanguage === "ur" ? "is-active-urdu" : ""}`}
-                disabled={isTranslating}
+                disabled={isTranslating || isSaving || isAiLoading}
                 onClick={handleToggleLanguage}
                 title={activeLanguage === "ur" ? "Switch back to English" : "Translate note to Urdu (اردو)"}
                 type="button"
               >
                 <Languages size={15} />
                 <span className="lang-action-label">
-                  {isTranslating ? "Translating…" : activeLanguage === "ur" ? "اردو (Active)" : "اردو (Urdu)"}
+                  {isTranslating ? "Translating…" : "اردو"}
                 </span>
               </button>
 
-              {/* Beautiful Interactive Share Menu */}
+              {!hasAssistant ? null : (
+                <button
+                  aria-label={isAiOverviewOpen ? "Hide Rawaan assistant" : "Show Rawaan assistant"}
+                  className="icon-action-btn"
+                  onClick={() => setIsAiOverviewOpen((open) => !open)}
+                  type="button"
+                >
+                  <RawaanLogo className={styles.assistantToggleLogo} decorative />
+                </button>
+              )}
+
+              {/* Export actions */}
               <div className="share-menu-container" ref={shareMenuRef}>
                 <button
                   aria-expanded={isShareMenuOpen}
@@ -634,23 +718,6 @@ ${currentNote.raw_transcript}
                     </div>
 
                     <div className="share-popover-list">
-                      <button
-                        className="share-popover-item"
-                        onClick={handleCopyShareLink}
-                        role="menuitem"
-                        type="button"
-                      >
-                        <div className="share-item-icon">
-                          {isCopiedLink ? <Check size={15} /> : <Link2 size={15} />}
-                        </div>
-                        <div className="share-item-content">
-                          <div className="share-item-title">
-                            {isCopiedLink ? "Link Copied!" : "Copy Shareable Link"}
-                          </div>
-                          <div className="share-item-desc">Direct encounter reference for clinical team</div>
-                        </div>
-                      </button>
-
                       <button
                         className="share-popover-item"
                         onClick={handleDownloadNoteFile}
@@ -704,282 +771,34 @@ ${currentNote.raw_transcript}
               </div>
             </div>
           </div>
+          {copyError ? <p className="session-copy-feedback" role="status">{copyError}</p> : null}
 
           {/* Tab 1: NOTES CONTENT */}
           {activeTab === "notes" ? (
-            isManualEntry ? (
-              <div className="clinical-document-body manual-note-editor">
-                <div className="doc-section">
-                  <h2 className="section-title">Manual note</h2>
-                  <p className="manual-note-editor-intro">
-                    Add only the details you want recorded. This draft stays local until approval.
-                  </p>
-                </div>
-
-                <div className="manual-note-fields-grid">
-                  <label className="manual-note-field is-full" htmlFor="manual-note-summary">
-                    <span>Summary</span>
-                    <textarea
-                      id="manual-note-summary"
-                      onChange={(event) =>
-                        setCurrentNote((note) => ({ ...note, summary: event.target.value }))
-                      }
-                      placeholder="Add a concise session summary."
-                      rows={4}
-                      value={currentNote.summary ?? ""}
-                    />
-                  </label>
-
-                  <label className="manual-note-field is-full" htmlFor="manual-note-chief-complaint">
-                    <span>Chief complaint</span>
-                    <input
-                      id="manual-note-chief-complaint"
-                      onChange={(event) =>
-                        setCurrentNote((note) => ({
-                          ...note,
-                          chief_complaint: event.target.value,
-                        }))
-                      }
-                      placeholder="Describe the primary reason for the session."
-                      type="text"
-                      value={currentNote.chief_complaint}
-                    />
-                  </label>
-
-                  <label className="manual-note-field" htmlFor="manual-note-history">
-                    <span>History</span>
-                    <textarea
-                      id="manual-note-history"
-                      onChange={(event) =>
-                        setCurrentNote((note) => ({
-                          ...note,
-                          history: toStructuredList(event.target.value),
-                        }))
-                      }
-                      placeholder="One item per line"
-                      rows={5}
-                      value={currentNote.history.join("\n")}
-                    />
-                  </label>
-
-                  <label className="manual-note-field" htmlFor="manual-note-symptoms">
-                    <span>Symptoms</span>
-                    <textarea
-                      id="manual-note-symptoms"
-                      onChange={(event) =>
-                        setCurrentNote((note) => ({
-                          ...note,
-                          symptoms: toStructuredList(event.target.value),
-                        }))
-                      }
-                      placeholder="One item per line"
-                      rows={5}
-                      value={currentNote.symptoms.join("\n")}
-                    />
-                  </label>
-
-                  <label className="manual-note-field" htmlFor="manual-note-assessment">
-                    <span>Assessment discussed</span>
-                    <textarea
-                      id="manual-note-assessment"
-                      onChange={(event) =>
-                        setCurrentNote((note) => ({
-                          ...note,
-                          assessment_discussed: toStructuredList(event.target.value),
-                        }))
-                      }
-                      placeholder="One item per line"
-                      rows={5}
-                      value={currentNote.assessment_discussed.join("\n")}
-                    />
-                  </label>
-
-                  <label className="manual-note-field" htmlFor="manual-note-plan">
-                    <span>Plan discussed</span>
-                    <textarea
-                      id="manual-note-plan"
-                      onChange={(event) =>
-                        setCurrentNote((note) => ({
-                          ...note,
-                          plan_discussed: toStructuredList(event.target.value),
-                        }))
-                      }
-                      placeholder="One item per line"
-                      rows={5}
-                      value={currentNote.plan_discussed.join("\n")}
-                    />
-                  </label>
-
-                  <label className="manual-note-field" htmlFor="manual-note-medications">
-                    <span>Medications mentioned</span>
-                    <textarea
-                      id="manual-note-medications"
-                      onChange={(event) =>
-                        setCurrentNote((note) => ({
-                          ...note,
-                          medications_mentioned: toStructuredList(event.target.value),
-                        }))
-                      }
-                      placeholder="One item per line"
-                      rows={4}
-                      value={currentNote.medications_mentioned.join("\n")}
-                    />
-                  </label>
-
-                  <label className="manual-note-field" htmlFor="manual-note-follow-up">
-                    <span>Follow-up</span>
-                    <textarea
-                      id="manual-note-follow-up"
-                      onChange={(event) =>
-                        setCurrentNote((note) => ({ ...note, follow_up: event.target.value }))
-                      }
-                      placeholder="Add follow-up details."
-                      rows={4}
-                      value={currentNote.follow_up}
-                    />
-                  </label>
-
-                  <label className="manual-note-field" htmlFor="manual-note-uncertainties">
-                    <span>Items needing review</span>
-                    <textarea
-                      id="manual-note-uncertainties"
-                      onChange={(event) =>
-                        setCurrentNote((note) => ({
-                          ...note,
-                          uncertainties: toStructuredList(event.target.value),
-                        }))
-                      }
-                      placeholder="One item per line"
-                      rows={4}
-                      value={currentNote.uncertainties.join("\n")}
-                    />
-                  </label>
-                </div>
-
+            !isApproved && isEditingNote && activeLanguage === "en" ? (
+              <>
+                <SessionNoteEditor disabled={isSaving || isAiLoading} draft={currentNote as NoteDraft} editorText={editorText} onChange={handleDraftChange} />
                 <div className="doc-approval-footer-bar">
-                  {saveSuccess || currentNote.approval_status === "approved" ? (
-                    <span className="save-success-tag">
-                      <Check size={14} /> Approved & Saved to Patient Record
-                    </span>
-                  ) : null}
-                  {saveError ? <span className="save-error-tag">{saveError}</span> : null}
-                  <button
-                    className="primary-button btn-approve-doc"
-                    disabled={isSaving || isApproved}
-                    onClick={handleApproveAndSave}
-                    type="button"
-                  >
-                    {isApproved ? "Approved" : isSaving ? "Saving…" : "Approve & Save Note"}
+                  {saveError ? <span className="save-error-tag" role="alert">{saveError}</span> : null}
+                  <button className="primary-button btn-approve-doc" disabled={isSaving || isAiLoading || isTranslating || !isDraftValid || activeLanguage !== "en"} onClick={handleApproveAndSave} type="button">
+                    {isSaving ? "Saving…" : "Approve & Save Note"}
                   </button>
                 </div>
-              </div>
+              </>
             ) : (
-              <div
-                className={`clinical-document-body ${activeLanguage === "ur" ? "is-urdu-doc" : ""}`}
-                dir={activeLanguage === "ur" ? "rtl" : "ltr"}
-              >
-
-              {/* Summary Section */}
-              <div className="doc-section">
-                <div className="section-title-row">
-                  <h2 className="section-title">
-                    {activeLanguage === "ur" ? "خلاصہ" : "Summary"}
-                  </h2>
-                  <button
-                    aria-label="Copy summary"
-                    className="btn-copy-inline"
-                    onClick={() => {
-                      void navigator.clipboard.writeText(noteSummary);
-                      setIsCopied(true);
-                      setTimeout(() => setIsCopied(false), 2000);
-                    }}
-                    type="button"
-                  >
-                    <Clipboard size={14} />
-                  </button>
-                </div>
-                <p className="summary-paragraph-text">{noteSummary}</p>
-              </div>
-
-              {/* Session Topics Section */}
-              <div className="doc-section">
-                <h2 className="section-title">
-                  {activeLanguage === "ur" ? "سیشن کے موضوعات" : "Session Topics"}
-                </h2>
-
-                <div className="topic-block">
-                  <h3 className="topic-subtitle">
-                    {activeLanguage === "ur"
-                      ? "طبی تاریخ اور علامات کا اندراج"
-                      : "Medical History Documentation"}
-                  </h3>
-                  <ul className="topic-bullet-list">
-                    {currentNote.history.length > 0 ? (
-                      currentNote.history.map((h, i) => (
-                        <li key={`hist-${i}`}>{h}</li>
-                      ))
-                    ) : (
-                      <li>
-                        {activeLanguage === "ur"
-                          ? "مریض معمول کے طبی معائنے کے لیے حاضر ہوا۔"
-                          : "Patient attended consultation for routine clinical evaluation."}
-                      </li>
-                    )}
-                    {currentNote.symptoms.map((s, i) => (
-                      <li key={`symp-${i}`}>{s}</li>
-                    ))}
-                    {currentNote.assessment_discussed.map((a, i) => (
-                      <li key={`assess-${i}`}>{a}</li>
-                    ))}
-                    {currentNote.plan_discussed.map((p, i) => (
-                      <li key={`plan-${i}`}>{p}</li>
-                    ))}
-                    {currentNote.medications_mentioned.map((m, i) => (
-                      <li key={`med-${i}`}>
-                        {activeLanguage === "ur"
-                          ? `تجویز کردہ دوا: ${m}`
-                          : `Prescribed/Discussed medication: ${m}`}
-                      </li>
-                    ))}
-                    {currentNote.follow_up ? (
-                      <li>
-                        {activeLanguage === "ur"
-                          ? `فالو اپ رہنمائی: ${currentNote.follow_up}`
-                          : `Follow-up recommendations: ${currentNote.follow_up}`}
-                      </li>
-                    ) : null}
-                    {currentNote.uncertainties.map((u, i) => (
-                      <li key={`unc-${i}`}>
-                        {activeLanguage === "ur"
-                          ? `جائزہ کے لیے نوٹ: ${u}`
-                          : `Note for review: ${u}`}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-
-              {/* Approval Bar */}
-              <div className="doc-approval-footer-bar">
-                {saveSuccess || currentNote.approval_status === "approved" ? (
-                  <span className="save-success-tag">
-                    <Check size={14} /> Approved & Saved to Patient Record
-                  </span>
+              <>
+                <SessionNoteDocument language={activeLanguage} note={currentNote} />
+                {!isApproved ? (
+                  <div className="doc-approval-footer-bar">
+                    {saveError ? <span className="save-error-tag" role="alert">{saveError}</span> : null}
+                    <button className="primary-button btn-approve-doc" disabled={isSaving || isAiLoading || isTranslating || !isDraftValid || activeLanguage !== "en"} onClick={handleApproveAndSave} type="button">
+                      {isSaving ? "Saving…" : "Approve & Save Note"}
+                    </button>
+                    {activeLanguage === "ur" ? <span className="session-assistant-unavailable" role="status">Switch to English to approve the reviewed note.</span> : null}
+                  </div>
                 ) : null}
-                {saveError ? (
-                  <span className="save-error-tag">{saveError}</span>
-                ) : null}
-                <button
-                  className="primary-button btn-approve-doc"
-                  disabled={isSaving || isApproved}
-                  onClick={handleApproveAndSave}
-                  type="button"
-                >
-                  {isApproved ? "Approved" : isSaving ? "Saving…" : "Approve & Save Note"}
-                </button>
-              </div>
-            </div>
-          )
+              </>
+            )
         ) : activeTab === "client" ? (
             /* Tab 2: CLIENT INFO */
             <div className="client-tab-view">
@@ -989,7 +808,6 @@ ${currentNote.raw_transcript}
                 </div>
                 <div className="client-profile-info">
                   <h2>{currentNote.patient_display_name}</h2>
-                  <p className="client-meta-line">Client ID: {currentNote.patient_id}</p>
                   {currentNote.email ? (
                     <p className="client-meta-line">
                       <Mail size={14} /> {currentNote.email}
@@ -1005,101 +823,62 @@ ${currentNote.raw_transcript}
 
               <ClientTimeline
                 key={currentNote.patient_id}
-                patientDisplayName={currentNote.patient_display_name}
+                currentNote={currentNote}
                 patientId={currentNote.patient_id}
               />
             </div>
           ) : activeTab === "treatment" ? (
-            /* Tab 3: TREATMENT PLAN */
-            <div
-              className={`treatment-plan-tab-view ${activeLanguage === "ur" ? "is-urdu-doc" : ""}`}
-              dir={activeLanguage === "ur" ? "rtl" : "ltr"}
-            >
+            <div className={`treatment-plan-tab-view ${activeLanguage === "ur" ? "is-urdu-doc" : ""}`} dir={activeLanguage === "ur" ? "rtl" : "ltr"}>
               <div className="doc-section">
-                <h2 className="section-title">
-                  {activeLanguage === "ur" ? "تشخیص اور علاج کا منصوبہ" : "Assessment & Treatment Plan"}
-                </h2>
-                <div className="plan-card">
-                  <h3>{activeLanguage === "ur" ? "طبی تشخیص" : "Clinical Assessment"}</h3>
-                  <ul>
-                    {currentNote.assessment_discussed.map((a, i) => (
-                      <li key={i}>{a}</li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div className="plan-card">
-                  <h3>{activeLanguage === "ur" ? "علاج کی ہدایات" : "Action Items & Directives"}</h3>
-                  <ul>
-                    {currentNote.plan_discussed.map((p, i) => (
-                      <li key={i}>{p}</li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div className="plan-card">
-                  <h3>{activeLanguage === "ur" ? "ادویات" : "Medications & Interventions"}</h3>
-                  <ul>
-                    {currentNote.medications_mentioned.length > 0 ? (
-                      currentNote.medications_mentioned.map((m, i) => <li key={i}>{m}</li>)
-                    ) : (
-                      <li>
-                        {activeLanguage === "ur"
-                          ? "اس سیشن میں کوئی نئی ادویات شامل نہیں کی گئیں۔"
-                          : "No new pharmacological prescriptions recorded in this session."}
-                      </li>
-                    )}
-                  </ul>
-                </div>
-
-                <div className="plan-card">
-                  <h3>{activeLanguage === "ur" ? "فالو اپ ٹائم فریم" : "Follow-Up Timeframe"}</h3>
-                  <p>
-                    {currentNote.follow_up ||
-                      (activeLanguage === "ur"
-                        ? "طبی ضرورت کے مطابق دوبارہ رابطہ کریں۔"
-                        : "Follow up as clinically indicated.")}
-                  </p>
-                </div>
+                <h2 className="section-title">Treatment Plan</h2>
+                <p className="treatment-plan-subtitle">Recorded in this session</p>
+                <div className="agent-plan-entry-links"><Link className="secondary-button" href={`/rawaan-ai?patient=${encodeURIComponent(currentNote.patient_id)}&question=${encodeURIComponent("Draft a treatment plan using this client's saved session history.")}`}>Draft a plan with Rawaan</Link></div>
+                <ReviewedPlansPanel key={currentNote.patient_id} patientId={currentNote.patient_id}/>
+                <h3>Plan discussed in this session</h3>
+                <TreatmentPlanView note={currentNote} onEdit={isApproved ? undefined : editDiscussedPlan} />
               </div>
             </div>
           ) : activeTab === "transcript" ? (
-            /* Tab 4: TRANSCRIPT */
             <div className="transcript-tab-view">
               <div className="doc-section">
-                <h2 className="section-title">
-                  {currentNote.session_info?.session_type === "in-person"
-                    ? "Spoken Audio Transcript"
-                    : currentNote.session_info?.session_type === "upload"
-                      ? "Uploaded Audio Transcript"
-                      : currentNote.session_info?.session_type === "summary"
-                        ? "Clinician-Entered Session Summary"
-                        : currentNote.session_info?.session_type === "manual"
-                          ? "Manual Note Provenance"
-                          : "Session Transcript"}
-                </h2>
-                <p className="transcript-hint">
-                  {currentNote.session_info?.transcript_source ?? "Whisper Large v3 Spoken Audio Provenance"}
-                </p>
-                {(() => {
-                  const sanitized = sanitizeTranscript(currentNote.raw_transcript);
-                  const isUrdu = /[\u0600-\u06FF]/.test(sanitized);
-                  return (
-                    <pre
-                      className={`transcript-verbatim-box ${isUrdu ? "is-urdu-transcript" : ""}`}
-                    >
-                      {sanitized}
-                    </pre>
-                  );
-                })()}
+                <div className="transcript-heading-row">
+                  <div>
+                    <h2 className="section-title">{currentNote.session_info?.session_type === "manual" ? "Manual note source" : "Session transcript"}</h2>
+                    <p className="transcript-hint">{currentNote.session_info?.transcript_source || "Transcript source not recorded"}</p>
+                  </div>
+                  <div className="transcript-actions">
+                    <button aria-label="Copy transcript" disabled={displayedTranscript === null} className="secondary-button" onClick={handleCopyTranscript} type="button"><Clipboard aria-hidden="true" size={14} /> Copy</button>
+                    <button className="secondary-button" disabled={displayedTranscript === null} onClick={handleDownloadTranscript} type="button"><Download aria-hidden="true" size={14} /> Download text</button>
+                  </div>
+                </div>
+                {copyError ? <p role="status">{copyError}</p> : null}
+                {needsUrduTranscript ? <p className="transcript-hint">Urdu rendering · original transcription preserved</p> : null}
+                {displayedTranscript !== null ? (
+                  <pre className={"transcript-verbatim-box " + (/[\u0600-\u06FF]/.test(displayedTranscript) ? "is-urdu-transcript" : "")} dir={/[\u0600-\u06FF]/.test(displayedTranscript) ? "rtl" : "ltr"}>{displayedTranscript}</pre>
+                ) : currentTranscriptError ? (
+                  <div role="alert"><p>{currentTranscriptError}</p><button className="secondary-button" onClick={() => { setTranscriptError(null); setTranscriptRetry(value => value + 1); }} type="button">Retry Urdu transcript</button></div>
+                ) : <p role="status">Loading Urdu transcript…</p>}
+                {needsUrduTranscript ? <details><summary>Original transcription</summary><pre className="transcript-verbatim-box" dir="auto">{currentNote.raw_transcript}</pre></details> : null}
               </div>
             </div>
-
           ) : activeTab === "session-info" ? (
-            /* Tab 5: SESSION INFORMATION */
             <div className="session-info-tab-view">
-              <div className="doc-section">
+              <div className="doc-section session-information-document">
                 <h2 className="section-title">Session Information</h2>
+                <div className="session-recorded-grid">
+                  <section className="session-recorded-card">
+                    <h3>Topics discussed</h3>
+                    {sessionTopics.length ? <ul>{sessionTopics.map((topic) => <li key={topic.key}><strong>{topic.label}:</strong> {topic.value}</li>)}</ul> : <p>No topics recorded.</p>}
+                  </section>
+                  <section className="session-recorded-card">
+                    <h3>Items needing review</h3>
+                    {currentNote.uncertainties.some((item) => item.trim()) ? <ul>{currentNote.uncertainties.filter((item) => item.trim()).map((item, index) => <li key={index}>{item}</li>)}</ul> : <p>No items marked for review.</p>}
+                  </section>
+                  <section className="session-recorded-card is-wide">
+                    <h3>Recorded summary</h3>
+                    <p>{currentNote.summary?.trim() || "Not documented"}</p>
+                  </section>
+                </div>
                 <SessionInfoView note={currentNote} />
               </div>
             </div>
@@ -1120,211 +899,84 @@ ${currentNote.raw_transcript}
               </div>
             </div>
           ) : null}
+        </div>
         </section>
 
-        {isManualEntry ? (
-          <aside className="workspace-manual-entry-panel">
-            <div className="manual-entry-panel-content">
-              <h2>Manual entry</h2>
-              <p>
-                AI editing is unavailable for manually created notes. Review the structured
-                fields before approval.
-              </p>
-            </div>
-          </aside>
-        ) : (
-          <aside className="workspace-ai-overview-panel">
+        {hasAssistant && isAiOverviewOpen ? (
+            <>
+            {isCompactViewport ? <button aria-label="Close assistant overlay" className={styles.assistantScrim} onClick={() => setIsAiOverviewOpen(false)} type="button" /> : null}
+            <aside aria-labelledby="rawaan-assistant-title" aria-modal={isCompactViewport ? true : undefined} className={styles.assistant + " workspace-ai-overview-panel"} ref={assistantPanelRef} role={isCompactViewport ? "dialog" : undefined} tabIndex={isCompactViewport ? -1 : undefined}>
+              <header className={styles.assistantHeader + " ai-overview-header"}>
+                <RawaanLogo className={styles.assistantBrand + " rawaan-message-logo"} decorative />
+                <h2 id="rawaan-assistant-title">Rawaan assistant</h2>
+                <button aria-label="New conversation" className="assistant-new-conversation" onClick={startNewConversation} type="button">New chat</button>
+                <button aria-label="Close Rawaan assistant" className="btn-chat-close" onClick={() => setIsAiOverviewOpen(false)} type="button"><X aria-hidden="true" size={16} /></button>
+              </header>
 
-          {/* Top Chat Bar */}
-          <header className="ai-overview-header">
-            <span className="ai-overview-chat-label">New Chat</span>
-            <button
-              aria-label="Close AI Overview"
-              className="btn-chat-close"
-              onClick={() => {}}
-              type="button"
-            >
-              <X size={16} />
-            </button>
-          </header>
-
-          {/* Quick Suggestions */}
-          <div className="ai-quick-suggestions">
-            <button
-              className="suggestion-pill"
-              onClick={() => handleSendPrompt("Change to paragraph format")}
-              type="button"
-            >
-              <span className="pill-icon">
-                <FileText size={14} />
-              </span>
-              <span>Change to paragraph format</span>
-            </button>
-
-            <button
-              className="suggestion-pill"
-              onClick={() => handleSendPrompt("Remove all names")}
-              type="button"
-            >
-              <span className="pill-icon">
-                <EyeOff size={14} />
-              </span>
-              <span>Remove all names</span>
-            </button>
-
-            <button
-              className="suggestion-pill"
-              onClick={() => handleSendPrompt("Summarize key clinical points")}
-              type="button"
-            >
-              <span className="pill-icon">
-                <Zap size={14} />
-              </span>
-              <span>Summarize key clinical points</span>
-            </button>
-
-            <button
-              className="suggestion-pill"
-              onClick={() => {
-                if (activeLanguage === "en") {
-                  void handleToggleLanguage();
-                } else {
-                  void handleSendPrompt("اردو زبان کے جملوں کی تصحیح اور خوبصورتی میں اضافہ کریں");
-                }
-              }}
-              type="button"
-            >
-              <span className="pill-icon">
-                <Languages size={14} />
-              </span>
-              <span>{activeLanguage === "en" ? "Translate note to Urdu" : "اردو میں مزید نکھاریں"}</span>
-            </button>
-          </div>
-
-          {/* Chat Messages Stream */}
-          <div className="ai-messages-scroll-area">
-            {chatMessages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`chat-bubble ${msg.role === "user" ? "is-user-bubble" : "is-ai-bubble"}`}
-              >
-                <div className="bubble-header">
-                  <span className="bubble-author">
-                    {msg.role === "user" ? "You (Clinician)" : "Rawaan AI Assistant"}
-                  </span>
-                </div>
-                <div className="bubble-text">{msg.text}</div>
+              <div className={styles.assistantScroll + " ai-messages-scroll-area"}>
+                {chatMessages.map((msg) => (
+                  <div key={msg.id} className={"chat-bubble " + (msg.role === "user" ? "is-user-bubble" : "is-ai-bubble")}>
+                    <div className="bubble-header"><span className="bubble-author">{msg.role === "user" ? "You" : "Rawaan assistant"}</span></div>
+                    {msg.response?.status === "agent" ? <AgentAnswer response={msg.response} patientId={currentNote.patient_id} reviewContext={msg.persisted && msg.threadId && msg.entryTimestamp ? {patientId:currentNote.patient_id,threadId:msg.threadId,entryTimestamp:msg.entryTimestamp} : undefined}/> : <div className="bubble-text">{msg.text}</div>}
+                    {msg.persisted === false ? <p role="alert">This response could not be saved.</p> : null}
+                    {msg.response?.status === "supported" ? <div className="session-chat-sources">{msg.response.sources.map(source => <a href={`/clients/${currentNote.patient_id}/sessions/${source.noteId}`} key={source.noteId}>Source: {formatSessionDate(source.consultationDate)}</a>)}</div> : null}
+                  </div>
+                ))}
+                {isAiLoading ? <div className="chat-bubble is-ai-bubble is-loading"><span className="dot-flashing" /><span className="loading-label">{isApproved ? "Thinking and checking sources…" : "Refining the draft…"}</span></div> : null}
+                <div ref={messagesEndRef} />
               </div>
-            ))}
 
-            {isAiLoading ? (
-              <div className="chat-bubble is-ai-bubble is-loading">
-                <span className="dot-flashing" />
-                <span className="loading-label">Refining note with AI…</span>
-              </div>
-            ) : null}
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Bottom Chat Input Form */}
-          <div className="ai-chat-input-wrapper">
-            <h4 className="chat-prompt-title">How would you like to modify your note?</h4>
-
-            {/* Note Loaded Context Badge */}
-            <div className="loaded-context-badge">
-              <span className="badge-file-icon">
-                <FileText size={14} />
-              </span>
-              <span className="badge-text">
-                {currentNote.patient_display_name} - Clinical Note {activeLanguage === "ur" ? "(اردو)" : ""}
-              </span>
-            </div>
-
-            {/* Input Box Card */}
-            <div className="chat-input-box-card">
-              <input
-                accept=".txt,.md,.json,.csv,.log,.doc,.docx,.pdf"
-                onChange={handleFileSelect}
-                ref={fileInputRef}
-                style={{ display: "none" }}
-                type="file"
-              />
-
-              {attachedFile && (
-                <div className="chat-attachment-chip">
-                  <Paperclip className="attachment-chip-icon" size={12} />
-                  <span className="attachment-chip-name">{attachedFile.name} ({attachedFile.size})</span>
-                  <button
-                    aria-label="Remove attached document"
-                    className="btn-remove-attachment"
-                    onClick={() => setAttachedFile(null)}
-                    type="button"
-                  >
-                    <X size={12} />
-                  </button>
-                </div>
-              )}
-
-              <textarea
-                className="chat-textarea"
-                onChange={(e) => setInputPrompt(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    void handleSendPrompt();
-                  }
-                }}
-                placeholder={attachedFile ? `Instruct AI how to incorporate ${attachedFile.name}...` : "Make modifications to your note here"}
-                rows={2}
-                value={inputPrompt}
-              />
-
-              <div className="chat-input-bottom-actions">
-                <div className="input-left-tools">
-                  <button
-                    aria-label="Attach clinical document"
-                    className={`tool-btn ${attachedFile ? "is-attached" : ""}`}
-                    onClick={() => fileInputRef.current?.click()}
-                    title="Attach clinical document (.txt, .json, .csv, .md)"
-                    type="button"
-                  >
-                    <Paperclip size={15} />
-                  </button>
-                  <button
-                    className={`pill-toggle-btn ${includeTreatmentPlanToggle ? "is-selected" : ""}`}
-                    onClick={() => setIncludeTreatmentPlanToggle((p) => !p)}
-                    type="button"
-                  >
-                    <Clipboard size={14} /> Treatment Plan
-                  </button>
-                </div>
-
-                <div className="input-right-tools">
-                  <button
-                    aria-label="Voice input"
-                    className={`tool-btn ${isListening ? "is-recording-pulse" : ""}`}
-                    onClick={handleToggleDictation}
-                    title={isListening ? "Listening... click to stop" : "Dictate modification prompt"}
-                    type="button"
-                  >
-                    <Mic size={15} />
-                  </button>
-                  <button
-                    aria-label="Send message"
-                    className="btn-send-arrow"
-                    disabled={(!inputPrompt.trim() && !attachedFile) || isAiLoading}
-                    onClick={() => void handleSendPrompt()}
-                    type="button"
-                  >
-                    <ArrowUp size={16} />
-                  </button>
+              <div className={styles.assistantInput + " ai-chat-input-wrapper"}>
+                {chatMessages.length === 0 ? <h3 className={styles.composerHeading}>{isApproved ? "What would you like to know about this session?" : activeLanguage === "en" ? "How would you like to modify your note?" : "Switch to English to modify your note"}</h3> : null}
+                <div className="loaded-context-badge"><span className="badge-file-icon"><FileText size={14} /></span><span className="badge-text">{currentNote.patient_display_name} · Clinical note · {currentNote.consultation_date}</span></div>
+                <div className="chat-input-box-card">
+                  <input accept=".txt,.text,.md,.json,.csv,.log" disabled={!canRefineDraft} onChange={handleFileSelect} ref={fileInputRef} style={{ display: "none" }} type="file" />
+                  {!isApproved && attachedFile ? <div className="chat-attachment-chip"><Paperclip className="attachment-chip-icon" size={12} /><span className="attachment-chip-name">{attachedFile.name} ({attachedFile.size})</span><button aria-label="Remove attached document" className="btn-remove-attachment" onClick={() => setAttachedFile(null)} type="button"><X size={12} /></button></div> : null}
+                  {attachmentError ? <p className="attachment-error" role="alert">{attachmentError}</p> : null}
+                  <textarea aria-label={isApproved ? "Ask Rawaan about this session" : "Ask Rawaan to refine this draft"} className="chat-textarea" disabled={!canSendPrompt} onChange={(event) => setInputPrompt(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void handleSendPrompt(); } }} placeholder={isApproved ? "Ask about the saved session" : activeLanguage !== "en" ? "Switch to English before editing" : attachedFile ? "Instruct Rawaan how to use " + attachedFile.name : "Make a change to this draft"} rows={2} value={inputPrompt} />
+                  <div className="chat-input-bottom-actions">
+                    <div className="input-left-tools">{!isApproved ? <button aria-label="Attach text document" className={"tool-btn " + (attachedFile ? "is-attached" : "")} disabled={!canRefineDraft} onClick={() => fileInputRef.current?.click()} title="Attach a text document" type="button"><Paperclip size={15} /></button> : null}
+                      <details
+                        className={styles.suggestionsMenu}
+                        onBlur={(event) => {
+                          if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false;
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === "Escape" && event.currentTarget.open) {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            event.currentTarget.open = false;
+                            event.currentTarget.querySelector("summary")?.focus();
+                          }
+                        }}
+                      >
+                        <summary>{isApproved ? "Suggested questions" : "Suggested edits"} <ChevronDown aria-hidden="true" size={12} /></summary>
+                        <div
+                          className={styles.suggestionOptions}
+                          onClick={(event) => {
+                            if (event.target instanceof Element && event.target.closest("button")) {
+                              event.currentTarget.closest("details")?.removeAttribute("open");
+                            }
+                          }}
+                        >
+                          {isApproved ? <>
+                            {["What symptoms were documented?", "What history was recorded?", "What follow-up was discussed?"].map(question => <button className="suggestion-pill" disabled={!canSendPrompt} key={question} onClick={() => void handleSendPrompt(question)} type="button">{question}</button>)}
+                          </> : <>
+                          <button className="suggestion-pill" disabled={!canRefineDraft} onClick={() => handleSendPrompt("Change to paragraph format")} type="button"><span className="pill-icon"><FileText size={14} /></span><span>Change to paragraph format</span></button>
+                          <button className="suggestion-pill" disabled={!canRefineDraft} onClick={() => handleSendPrompt("Remove all names")} type="button"><span className="pill-icon"><EyeOff size={14} /></span><span>Remove all names</span></button>
+                          <button className="suggestion-pill" disabled={!canRefineDraft} onClick={() => handleSendPrompt("Summarize key clinical points")} type="button"><span className="pill-icon"><Zap size={14} /></span><span>Summarize key clinical points</span></button>
+                          <button className="suggestion-pill" disabled={isTranslating || isSaving || isAiLoading} onClick={() => void handleToggleLanguage()} type="button"><span className="pill-icon"><Languages size={14} /></span><span>Translate note to Urdu</span></button>
+                          </>}
+                        </div>
+                      </details>
+                    </div>
+                    <div className="input-right-tools"><button aria-label="Voice input" className={"tool-btn " + (isListening ? "is-recording-pulse" : "")} disabled={!canSendPrompt} onClick={handleToggleDictation} title={isListening ? "Listening, click to stop" : "Dictate a prompt"} type="button"><Mic size={15} /></button><button aria-label="Send message" className="btn-send-arrow" disabled={!canSendPrompt || (!inputPrompt.trim() && (isApproved || !attachedFile))} onClick={() => void handleSendPrompt()} type="button"><ArrowUp size={16} /></button></div>
+                  </div>
                 </div>
               </div>
-            </div>
-
-          </div>
-          </aside>
-        )}
+            </aside>
+            </>
+        ) : null}
       </main>
     </div>
   );

@@ -1,59 +1,69 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname } from "node:path";
+import {
+  readAllRows, storageOperation, StorageError,
+  type SupabaseClientFactory,
+} from "@/lib/db/supabase";
+import { noteSchema, noteToRow, parseStoredNote, type ApprovedNote } from "@/lib/notes/schema";
 
-import { noteSchema, type ApprovedNote } from "@/lib/notes/schema";
+const columns = "id, patient_id, patient_display_name, first_name, last_name, email, mobile_number, consultation_date, chief_complaint, summary, history, symptoms, assessment_discussed, plan_discussed, medications_mentioned, follow_up, uncertainties, raw_transcript, session_info, approval_status, approved_at";
 
-const storedNotesSchema = noteSchema.array();
-
-async function readNotes(storagePath: string): Promise<ApprovedNote[]> {
-  try {
-    const storedNotes = await readFile(storagePath, "utf8");
-    return storedNotesSchema.parse(JSON.parse(storedNotes));
-  } catch (error) {
-    if (isMissingFileError(error)) {
-      return [];
-    }
-
-    throw error;
+export function createNoteRepository(ownerId: string, getClient: SupabaseClientFactory) {
+  if (!ownerId.trim()) throw new StorageError();
+  async function list(patientId?: string): Promise<ApprovedNote[]> {
+    return storageOperation(async () => {
+      const client = getClient();
+      const rows = await readAllRows(() => {
+        let query = client.from("notes").select(columns).eq("owner_user_id", ownerId).eq("approval_status", "approved");
+        if (patientId !== undefined) query = query.eq("patient_id", patientId);
+        return query.order("id");
+      });
+      return rows.map(parseStoredNote);
+    });
   }
-}
-
-function isMissingFileError(error: unknown): error is NodeJS.ErrnoException {
-  return (
-    error instanceof Error &&
-    "code" in error &&
-    (error as NodeJS.ErrnoException).code === "ENOENT"
-  );
-}
-
-export function createNoteRepository(storagePath: string) {
   return {
-    async listAll(): Promise<ApprovedNote[]> {
-      return readNotes(storagePath);
-    },
-
-    async listByPatient(patientId: string): Promise<ApprovedNote[]> {
-      const notes = await readNotes(storagePath);
-      return notes.filter((note) => note.patient_id === patientId);
-    },
-
+    listAll: () => list(),
+    listByPatient: (patientId: string) => list(patientId),
     async save(candidate: unknown): Promise<ApprovedNote> {
-      if (
-        typeof candidate === "object" &&
-        candidate !== null &&
-        "approval_status" in candidate &&
-        candidate.approval_status !== "approved"
-      ) {
+      if (typeof candidate === "object" && candidate !== null && "approval_status" in candidate && candidate.approval_status !== "approved") {
         throw new Error("Only approved notes can be persisted");
       }
+      const note = noteSchema.parse(candidate);
+      return storageOperation(async () => {
+        const client = getClient();
+        // Existing registered contact details are authoritative; do not blank them.
+        const patientResult = await client.from("patients").upsert({
+          owner_user_id: ownerId,
+          id: note.patient_id, display_name: note.patient_display_name,
+          first_name: note.first_name ?? "", last_name: note.last_name ?? "",
+          email: note.email ?? "", mobile_number: note.mobile_number ?? "",
+        }, { onConflict: "id", ignoreDuplicates: true });
+        if (patientResult.error) throw new StorageError();
+        const ownedPatient = await client.from("patients").select("id").eq("id", note.patient_id).eq("owner_user_id", ownerId).maybeSingle();
+        if (ownedPatient.error || !ownedPatient.data) throw new StorageError();
+        const { data, error } = await client.from("notes")
+          .upsert({ ...noteToRow(note), owner_user_id: ownerId }, { onConflict: "id", ignoreDuplicates: true })
+          .select(columns)
+          .maybeSingle();
+        if (error) throw new StorageError();
+        if (data) return parseStoredNote(data);
 
-      const approvedNote = noteSchema.parse(candidate);
-      const notes = await readNotes(storagePath);
-
-      await mkdir(dirname(storagePath), { recursive: true });
-      await writeFile(storagePath, JSON.stringify([...notes, approvedNote], null, 2));
-
-      return approvedNote;
+        // An ignored primary-key conflict is an idempotent retry only when it
+        // carries the same reviewed content. Never overwrite another draft.
+        const existingResult = await client.from("notes")
+          .select(columns)
+          .eq("owner_user_id", ownerId)
+          .eq("id", note.id)
+          .maybeSingle();
+        if (existingResult.error || !existingResult.data) throw new StorageError();
+        const existing = parseStoredNote(existingResult.data);
+        const existingContent = { ...existing };
+        const candidateContent = { ...note };
+        Reflect.deleteProperty(existingContent, "approved_at");
+        Reflect.deleteProperty(candidateContent, "approved_at");
+        if (JSON.stringify(existingContent) !== JSON.stringify(candidateContent)) {
+          throw new StorageError();
+        }
+        return existing;
+      });
     },
   };
 }

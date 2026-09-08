@@ -1,0 +1,238 @@
+{
+  "title": "Ask Rawaan AI",
+  "total": 96,
+  "chapters": [
+    {
+      "id": "general",
+      "title": "Ask a general question",
+      "start": 0,
+      "duration": 22,
+      "audioDuration": 18.719
+    },
+    {
+      "id": "records",
+      "title": "Search approved notes",
+      "start": 22,
+      "duration": 24,
+      "audioDuration": 19.119
+    },
+    {
+      "id": "assistant",
+      "title": "Explore with the assistant",
+      "start": 46,
+      "duration": 24,
+      "audioDuration": 21.999
+    },
+    {
+      "id": "plan",
+      "title": "Review a proposed plan",
+      "start": 70,
+      "duration": 26,
+      "audioDuration": 21.999
+    }
+  ],
+  "scenes": [
+    {
+      "id": "ai",
+      "start": 0,
+      "duration": 11,
+      "title": "Ask a general question",
+      "number": 1,
+      "focus": {
+        "x": 593,
+        "y": 644.640625,
+        "width": 688,
+        "height": 42.5
+      }
+    },
+    {
+      "id": "general-answer",
+      "start": 11,
+      "duration": 11,
+      "title": "Ask a general question",
+      "number": 1,
+      "focus": null
+    },
+    {
+      "id": "records-answer",
+      "start": 22,
+      "duration": 12,
+      "title": "Search approved notes",
+      "number": 2,
+      "focus": {
+        "x": 616.171875,
+        "y": 6,
+        "width": 120,
+        "height": 31
+      }
+    },
+    {
+      "id": "records-source",
+      "start": 34,
+      "duration": 12,
+      "title": "Search approved notes",
+      "number": 2,
+      "focus": null
+    },
+    {
+      "id": "ai",
+      "start": 46,
+      "duration": 12,
+      "title": "Explore with the assistant",
+      "number": 3,
+      "focus": {
+        "x": 593,
+        "y": 644.640625,
+        "width": 688,
+        "height": 42.5
+      }
+    },
+    {
+      "id": "clinical-context",
+      "start": 58,
+      "duration": 12,
+      "title": "Explore with the assistant",
+      "number": 3,
+      "focus": null
+    },
+    {
+      "id": "proposed-plan",
+      "start": 70,
+      "duration": 8.667,
+      "title": "Review a proposed plan",
+      "number": 4,
+      "focus": {
+        "x": 647,
+        "y": 418.46875,
+        "width": 159.890625,
+        "height": 40.09375
+      }
+    },
+    {
+      "id": "review-plan",
+      "start": 78.667,
+      "duration": 8.667,
+      "title": "Review a proposed plan",
+      "number": 4,
+      "focus": {
+        "x": 647,
+        "y": 408.84375,
+        "width": 237.828125,
+        "height": 45.1875
+      }
+    },
+    {
+      "id": "saved-plan",
+      "start": 87.333,
+      "duration": 8.667,
+      "title": "Review a proposed plan",
+      "number": 4,
+      "focus": null
+    }
+  ],
+  "cues": [
+    {
+      "start": 0.35,
+      "end": 4.11,
+      "text": "Open Rawaan AI whenever you need help with a question."
+    },
+    {
+      "start": 4.11,
+      "end": 9.31,
+      "text": "In Assistant mode, you can start a general conversation without selecting a client."
+    },
+    {
+      "start": 9.31,
+      "end": 11.789,
+      "text": "Type your question and send it."
+    },
+    {
+      "start": 11.789,
+      "end": 15.389,
+      "text": "Earlier conversations are available in Chat history."
+    },
+    {
+      "start": 15.389,
+      "end": 19.069,
+      "text": "Select a client only when you want their records included."
+    },
+    {
+      "start": 22.35,
+      "end": 28.27,
+      "text": "For questions about what actually happened in a session, select the client and switch to Records only."
+    },
+    {
+      "start": 28.27,
+      "end": 30.35,
+      "text": "Ask what was documented."
+    },
+    {
+      "start": 30.35,
+      "end": 35.389,
+      "text": "Rawaan shows matching passages from approved notes, with dated source links."
+    },
+    {
+      "start": 35.389,
+      "end": 38.349,
+      "text": "Open the source to check the context."
+    },
+    {
+      "start": 38.349,
+      "end": 41.469,
+      "text": "If there is no relevant record, it says so."
+    },
+    {
+      "start": 46.35,
+      "end": 51.07,
+      "text": "Switch back to Assistant for explanations and clinical considerations."
+    },
+    {
+      "start": 51.07,
+      "end": 54.19,
+      "text": "Suggestions are different from recorded facts."
+    },
+    {
+      "start": 54.19,
+      "end": 58.669,
+      "text": "Confirm current clinical context when Rawaan asks for it."
+    },
+    {
+      "start": 58.669,
+      "end": 62.029,
+      "text": "Web search can bring in references when available."
+    },
+    {
+      "start": 62.029,
+      "end": 68.349,
+      "text": "Check the references and use your own clinical judgment; generated content does not change a saved session note."
+    },
+    {
+      "start": 70.35,
+      "end": 74.67,
+      "text": "A proposed treatment plan is a draft for clinician review."
+    },
+    {
+      "start": 74.67,
+      "end": 80.27,
+      "text": "Choose Review and save plan, read the references, and edit the content."
+    },
+    {
+      "start": 80.27,
+      "end": 84.429,
+      "text": "Use Confirm review and save only after that review."
+    },
+    {
+      "start": 84.429,
+      "end": 89.229,
+      "text": "The saved plan appears in Treatment Plan separately from the original session note."
+    },
+    {
+      "start": 89.229,
+      "end": 92.349,
+      "text": "You remain in control of what enters the record."
+    }
+  ],
+  "voice": "hannah",
+  "model": "canopylabs/orpheus-v1-english",
+  "narrated": true
+}

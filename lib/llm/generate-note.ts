@@ -7,6 +7,7 @@ import {
 } from "@/lib/llm/prompts/note-generation";
 import {
   noteDraftSchema,
+  consultationDateSchema,
   sessionInfoSchema,
   type ApprovedNote,
   type NoteDraft,
@@ -19,7 +20,7 @@ export const generateNoteInputSchema = z.object({
   last_name: z.string().optional(),
   email: z.string().optional(),
   mobile_number: z.string().optional(),
-  consultation_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD"),
+  consultation_date: consultationDateSchema,
   transcript: z.string().trim().min(1),
   session_info: sessionInfoSchema.optional(),
 });
@@ -32,6 +33,7 @@ export type GeneratedDraft = {
 };
 
 type LabeledField =
+  | "summary"
   | "chief_complaint"
   | "history"
   | "symptoms"
@@ -42,6 +44,7 @@ type LabeledField =
   | "uncertainties";
 
 const labels: Record<LabeledField, string> = {
+  summary: "summary",
   chief_complaint: "chief complaint",
   history: "history",
   symptoms: "symptoms",
@@ -127,11 +130,7 @@ function createLocalDemoDraft(input: GenerateNoteInput): NoteDraft {
     mobile_number: input.mobile_number,
     consultation_date: input.consultation_date,
     chief_complaint: values.chief_complaint ?? "",
-    summary: hasStructuredLabels
-      ? `Consultation encounter with ${input.patient_display_name} regarding ${values.chief_complaint || "clinical evaluation"}.`
-      : isUnstructuredForeignTranscript
-        ? `Clinical encounter with ${input.patient_display_name}. Automatic note structuring was unavailable; review the transcript for the verbatim record.`
-        : `Clinical encounter with ${input.patient_display_name}. Key discussions and clinical observations documented from consultation recording.`,
+    summary: values.summary?.trim() ?? "",
     history: hasStructuredLabels
       ? listFromValue(values.history)
       : isUnstructuredForeignTranscript
@@ -147,6 +146,30 @@ function createLocalDemoDraft(input: GenerateNoteInput): NoteDraft {
     raw_transcript: transcript,
     session_info: input.session_info,
   });
+}
+
+function recordedFactsSummary(note: NoteDraft | ApprovedNote): string {
+  const sections = [
+    note.summary ? `Existing summary: ${note.summary}` : "",
+    note.chief_complaint ? `Chief complaint: ${note.chief_complaint}` : "",
+    ...note.history.map((item) => `History: ${item}`),
+    ...note.symptoms.map((item) => `Symptoms: ${item}`),
+    ...note.assessment_discussed.map((item) => `Assessment discussed: ${item}`),
+    ...note.plan_discussed.map((item) => `Plan discussed: ${item}`),
+    ...note.medications_mentioned.map((item) => `Medications mentioned: ${item}`),
+    note.follow_up ? `Follow-up: ${note.follow_up}` : "",
+    ...note.uncertainties.map((item) => `Uncertainty: ${item}`),
+  ];
+
+  return sections.filter(Boolean).join(" ");
+}
+
+function unchangedEditReply(prompt: string): string {
+  if (/\b(remove|delete|redact|anonymi[sz]e)\b/i.test(prompt)) {
+    return "I cannot safely remove every identifier from the note and transcript. No changes were made.";
+  }
+
+  return "AI editing is unavailable for this instruction. The note was left unchanged.";
 }
 
 /**
@@ -185,7 +208,7 @@ export async function generateNoteDraft(
         summary:
           typeof parsedJson.summary === "string" && parsedJson.summary.trim()
             ? parsedJson.summary.trim()
-            : `Clinical consultation with ${input.patient_display_name} on ${input.consultation_date}.`,
+            : "",
         history: Array.isArray(parsedJson.history)
           ? parsedJson.history.map(String)
           : [],
@@ -215,8 +238,8 @@ export async function generateNoteDraft(
         draft,
         source: "groq",
       };
-    } catch (error) {
-      console.error("[generateNoteDraft] Error generating structured note via LLM:", error);
+    } catch {
+      console.error("[generateNoteDraft] Structured generation failed; using transcript-only fallback.");
       // Fallback to local demo parser if LLM completion or parsing fails
     }
   }
@@ -237,6 +260,12 @@ export async function modifyNoteWithAi<T extends NoteDraft | ApprovedNote>(
   prompt: string,
   provider?: LlmCompletionProvider,
 ): Promise<{ assistantReply: string; updatedNote: T }> {
+  // The editable note includes contact fields and the original transcript.
+  // Partial name substitutions cannot support a complete anonymization claim.
+  if (/\b(remove|delete|redact|anonymi[sz]e)\b/i.test(prompt)) {
+    return { assistantReply: unchangedEditReply(prompt), updatedNote: currentNote };
+  }
+
   if (provider) {
     try {
       const userPrompt = `Current Clinical Note:\n${JSON.stringify(currentNote, null, 2)}\n\nClinician Instruction:\n${prompt}`;
@@ -286,11 +315,14 @@ export async function modifyNoteWithAi<T extends NoteDraft | ApprovedNote>(
           : currentNote.uncertainties,
       };
 
+      const hasChanges = JSON.stringify(newDraft) !== JSON.stringify(currentNote);
+
       return {
-        assistantReply:
-          typeof parsed.assistant_reply === "string" && parsed.assistant_reply.trim()
+        assistantReply: hasChanges
+          ? typeof parsed.assistant_reply === "string" && parsed.assistant_reply.trim()
             ? parsed.assistant_reply.trim()
-            : `I have updated your note based on: "${prompt}".`,
+            : "The note was updated using the provider response."
+          : "No note changes were returned. The note was left unchanged.",
         updatedNote: newDraft,
       };
     } catch {
@@ -301,38 +333,28 @@ export async function modifyNoteWithAi<T extends NoteDraft | ApprovedNote>(
   // Local fallback modifications
   const lowerPrompt = prompt.toLowerCase();
   const updatedNote: T = { ...currentNote };
-  let reply = `I have updated the note according to your instruction.`;
+  let reply = unchangedEditReply(prompt);
 
   if (lowerPrompt.includes("paragraph format") || lowerPrompt.includes("paragraph")) {
-    const combined = [
-      currentNote.chief_complaint ? `Chief Complaint: ${currentNote.chief_complaint}.` : "",
-      currentNote.history.length > 0 ? `History: ${currentNote.history.join(", ")}.` : "",
-      currentNote.symptoms.length > 0 ? `Reported Symptoms: ${currentNote.symptoms.join(", ")}.` : "",
-      currentNote.assessment_discussed.length > 0 ? `Assessment: ${currentNote.assessment_discussed.join("; ")}.` : "",
-      currentNote.plan_discussed.length > 0 ? `Plan: ${currentNote.plan_discussed.join("; ")}.` : "",
-    ].filter(Boolean).join(" ");
-    updatedNote.summary = combined || currentNote.summary;
-    reply = "I've converted the key findings into a comprehensive paragraph format.";
-  } else if (lowerPrompt.includes("remove all names") || lowerPrompt.includes("remove names") || lowerPrompt.includes("anonymize")) {
-    updatedNote.patient_display_name = "Client";
-    updatedNote.first_name = "Client";
-    updatedNote.last_name = "";
-    if (updatedNote.summary) {
-      updatedNote.summary = updatedNote.summary.replace(new RegExp(currentNote.patient_display_name, "gi"), "the client");
+    const combined = recordedFactsSummary(currentNote);
+    if (combined) {
+      updatedNote.summary = combined;
+      reply = combined === currentNote.summary
+        ? "The summary already contains the available recorded details; the note was left unchanged."
+        : "AI editing was unavailable, so I formatted only recorded note fields and preserved all source details.";
+    } else {
+      reply = "AI editing was unavailable and there are no recorded clinical details to format; the note was left unchanged.";
     }
-    reply = "All patient and clinician identifiable names have been removed and anonymized.";
   } else if (lowerPrompt.includes("summarize") || lowerPrompt.includes("key clinical points") || lowerPrompt.includes("key points")) {
-    const keySymptoms = currentNote.symptoms.slice(0, 3);
-    const keyPlan = currentNote.plan_discussed.slice(0, 2);
-    updatedNote.summary = `Key Clinical Summary: ${currentNote.chief_complaint || "Patient encounter"}. Symptoms: ${keySymptoms.join(", ") || "observed"}. Management plan: ${keyPlan.join("; ") || "standard care"}.`;
-    if (updatedNote.history.length > 2) {
-      updatedNote.history = updatedNote.history.slice(0, 2);
+    const summary = recordedFactsSummary(currentNote);
+    if (summary) {
+      updatedNote.summary = summary;
+      reply = summary === currentNote.summary
+        ? "The summary already contains the available recorded details; the note was left unchanged."
+        : "AI editing was unavailable, so I summarized only recorded note fields and preserved all details and uncertainties.";
+    } else {
+      reply = "AI editing was unavailable and there are no recorded clinical details to summarize; the note was left unchanged.";
     }
-    if (updatedNote.symptoms.length > 3) {
-      updatedNote.symptoms = updatedNote.symptoms.slice(0, 3);
-    }
-    updatedNote.uncertainties = [];
-    reply = "I have condensed the summary and history into crisp, high-yield clinical points and removed redundant symptom descriptors to focus on the key presentation details.";
   }
 
 

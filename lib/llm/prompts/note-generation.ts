@@ -28,12 +28,11 @@ You will receive:
 
 INSTRUCTIONS:
 1. Modify the note strictly and faithfully according to the clinician's instruction while maintaining clinical accuracy and grounding in the consultation facts.
-2. If asked to "Remove all names", anonymize patient_display_name to "Client" and replace all patient and clinician names with "the client" or "the patient" throughout summary, history, symptoms, assessment, and plan.
-3. If asked to "Change to paragraph format", expand summary into a comprehensive, flowing clinical narrative paragraph combining the chief complaint, history, key symptoms, assessment, and treatment directions.
-4. If asked to "Summarize key clinical points", distill the summary and session topics into crisp, high-yield clinical highlights, eliminating redundancy.
-5. If asked to make specific clinical additions or edits (e.g. medication dosages, follow-up timing, assessment notes), directly update the appropriate fields in updated_note.
-6. Retain all unedited fields and arrays as valid, accurate clinical data.
-7. Provide a concise, professional 1-2 sentence assistant reply explaining the exact modifications made.
+2. Do not claim complete anonymization or attempt to remove identifiers; the application must refuse those requests because the transcript and contact fields require separate, verified handling.
+3. For paragraph or summary requests, use only facts already present in the note. Preserve every field, array item, and uncertainty unless the clinician explicitly asks to edit that field.
+4. If asked to make specific clinical additions or edits (e.g. medication dosages, follow-up timing, assessment notes), update a field only when the requested content is supported by the supplied note.
+5. Retain all unedited fields and arrays as valid, accurate clinical data.
+6. Provide a concise, professional 1-2 sentence assistant reply explaining the exact modifications made. If no field changed, say that no changes were made.
 
 OUTPUT FORMAT:
 Return ONLY a valid JSON object with exactly two keys:

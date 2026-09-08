@@ -9,12 +9,18 @@ import { createNoteRepository } from "@/lib/notes/repository";
 import { noteDraftSchema, type ApprovedNote, type NoteDraft } from "@/lib/notes/schema";
 
 type ScribeServiceOptions = {
-  storagePath: string;
   createId?: () => string;
   approvalTime?: () => string;
   provider?: LlmCompletionProvider;
-  repository?: NoteRepository;
+  repository: NoteRepository;
 };
+
+export class MissingDraftIdentityError extends Error {
+  constructor() {
+    super("This draft is missing its save identity. Reopen the session and create a fresh draft before approving.");
+    this.name = "MissingDraftIdentityError";
+  }
+}
 
 export type NoteRepository = ReturnType<typeof createNoteRepository>;
 
@@ -42,25 +48,29 @@ function matchesApprovedDraft(note: ApprovedNote, draft: NoteDraft): boolean {
 }
 
 export function createScribeService({
-  storagePath,
   createId = randomUUID,
   approvalTime = () => new Date().toISOString(),
   provider,
   repository,
 }: ScribeServiceOptions) {
-  const noteRepository = repository ?? createNoteRepository(storagePath);
+  const noteRepository = repository;
 
   return {
-    createDraft(candidate: unknown): Promise<GeneratedDraft> {
-      return generateNoteDraft(candidate, provider);
+    async createDraft(candidate: unknown): Promise<GeneratedDraft> {
+      const result = await generateNoteDraft(candidate, provider);
+      return {
+        ...result,
+        draft: { ...result.draft, draft_id: createId() },
+      };
     },
 
     async approve(candidate: unknown): Promise<ApprovedNote> {
       const draft = noteDraftSchema.parse(candidate);
+      if (!draft.draft_id) throw new MissingDraftIdentityError();
 
       // Prevent duplicate approvals only when the full reviewed draft matches.
       // Same-day consultations with different content must both be retained.
-      const existingNotes = await noteRepository.listAll();
+      const existingNotes = await noteRepository.listByPatient(draft.patient_id);
       const alreadyApproved = existingNotes.find(
         (note) => note.approval_status === "approved" && matchesApprovedDraft(note, draft),
       );
@@ -73,7 +83,9 @@ export function createScribeService({
         ...draft,
         approval_status: "approved",
         approved_at: approvalTime(),
-        id: createId(),
+        // Reuse the immutable draft token as the row primary key. Supabase's
+        // primary-key constraint makes simultaneous retries one atomic write.
+        id: draft.draft_id,
       });
     },
 

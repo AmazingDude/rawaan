@@ -9,12 +9,49 @@
 
 ## 1. Problem Statement
 
+### Product direction amendment — 6 October 2026
+
+The owner superseded the original hackathon-only, single-clinic scope: Rawaan now requires Clerk authentication and separate records for each user. The backend registers a verified Clerk ID in Supabase and scopes every patient, note, and chat operation to that identity. Database ownership constraints prohibit cross-user patient references; browser roles cannot access the tables. The owner chose backend-only Clerk verification rather than Clerk/Supabase third-party auth. Existing shared records remain inaccessible until an explicit administrative ownership migration. Public product copy no longer describes the app as a demo; fictional seed fixtures remain labelled and opt-in. Documentation-only behavior, clinician review, approved-note retrieval, and verbatim sources remain requirements. The original demo plan below is historical context, not a claim of production certification or consent/privacy readiness.
+
 Doctors and therapists in Pakistan — especially in high-volume public hospitals and clinics — see a large number of patients per day, and many patients return repeatedly over weeks, months, or years (chronic conditions, therapy, follow-ups). Two compounding problems result:
 
 1. **Documentation doesn't happen.** With minimal time per patient and mostly paper-based or no record-keeping, doctors rarely have time to write detailed notes during or after a consultation. What gets recorded is often a one-line scrawl, if anything.
 2. **Even when notes exist, they're not usable later.** A patient returning after 3 months, or seeing a different doctor/specialist, effectively starts from zero — there's no quick way for a clinician to recall "what did we try last time," "what's this patient's history with this symptom," or "has this come up before."
 
 For therapists specifically, this is worse: continuity of context across sessions (what was discussed last time, recurring themes, mood/symptom trends) is core to the quality of care itself, not just administrative record-keeping.
+
+
+### Product direction amendment — 7 October 2026
+
+The owner explicitly expanded Rawaan AI beyond the original retrieval-only hackathon scope. Assistant mode now supports general conversation, possible differential diagnoses, medication considerations, and proposed treatment plans for clinician review, optionally using internet search. The original no-diagnosis/no-treatment non-goal and documentation-only UI instructions below apply to the historical hackathon scope. They are superseded for Assistant mode. Records only remains deterministic, verbatim approved-note recall with an explicit no-record response; generated suggestions and earlier assistant messages never become confirmed source-note evidence.
+
+The existing authenticated clinic workspace is the intended audience. Each user's records and general conversations stay separate. Medical search uses anonymous fixed topic terms and authoritative sources. Clinical context must be explicitly reconfirmed within 24 hours to enable medication considerations; unknown fields remain unknown. Individualized dosing and treatment orders are excluded. Plans require a distinct clinician review/edit/save step and are stored separately from original session plans. The change is not a claim of clinical validation or production certification.
+
+### Product direction amendment — 8 October 2026
+
+The owner superseded the manual clinical-intake prerequisite and ten-recent-note
+limit in Assistant mode. Selecting a client automatically includes every owned
+approved session's full note and attached transcript when answering, refreshed
+from Supabase for each turn. The owner explicitly authorized sending that full
+history to the existing Groq provider. A focused saved session does not exclude
+the client's other sessions from Assistant context. Optional clinician-entered
+details supplement that history; completing demographics or reconfirming a form
+within 24 hours is no longer required to chat or draft a discussion plan.
+
+The assistant answers from the available records first, never invents unknown
+facts, and asks only for missing facts essential to the specific question.
+Historical observations remain dated and are not assumed to be current.
+Medication considerations require cited current references and remain discussion
+options for clinician review; individualized dosing and treatment orders remain
+excluded. Records only retains verbatim approved-note recall. Provider context
+limits must not be hidden by silently dropping older sessions.
+
+The owner reiterated that Assistant is for doctors and therapists. It should
+provide substantive clinical options and reasoning, address the treating
+clinician directly, and avoid blanket refusals or generic "consult a doctor"
+replies. Ordinary behavioral interventions and goals are permitted. A rejected
+clinical draft may receive one bounded rewrite against the same full history
+and references; source validation and the separate clinician plan review remain.
 
 ## 2. Goal
 
@@ -46,8 +83,8 @@ The pitch in one line: *we don't just save doctors time writing notes — we mak
 
 1. *As a doctor,* after a consultation, I want the system to have already produced a structured note from our conversation, so I don't have to write it myself.
 2. *As a doctor,* I want to review and approve/edit the generated note before it's saved, so I stay in control of the medical record.
-3. *As a doctor,* when a returning patient sits down, I want to ask "what's this patient's relevant history?" and get a concise, accurate summary pulled from their actual past notes.
-4. *As a therapist,* I want to ask "what themes have come up in this patient's last few sessions?" and get an honest summary grounded only in what was actually discussed.
+3. *As a doctor,* when a returning patient sits down, I want to ask "what's this patient's relevant history?" and see cited excerpts from their actual past notes.
+4. *As a therapist,* when I ask what themes have come up in earlier sessions, I want to see the matching passages from the actual notes without paraphrase or inference.
 5. *As a clinician,* I never want the system to invent or infer information that wasn't actually said or recorded.
 
 ## 6. Functional Requirements
@@ -67,8 +104,9 @@ The pitch in one line: *we don't just save doctors time writing notes — we mak
 - Store each approved note in a retrievable per-patient store
 - Accept a natural-language query about a specific patient (e.g. "has she mentioned chest pain before?")
 - Retrieve relevant past note(s) for that patient
-- Generate a concise answer **strictly grounded in retrieved notes** — if nothing relevant exists, say so explicitly rather than guessing
-- Display which past note(s) the answer was drawn from (source transparency — important for clinician trust)
+- Return only verbatim excerpts selected from relevant retrieved notes; do not generate or paraphrase answer prose
+- Cite the same source notes that supplied the displayed excerpts
+- If no relevant excerpt exists, say so explicitly rather than guessing
 
 ### 6.3 Demo Data
 - Since real accumulated history doesn't exist in a 6-day window, seed each demo patient with 2–4 synthetic "past visit" notes (written by the team) to populate the Brain before the live demo
@@ -89,11 +127,11 @@ The pitch in one line: *we don't just save doctors time writing notes — we mak
         ↓
 [Per-patient note store (simple DB / vector store)]
         ↓
-[Clinician query: natural language] → [Retrieval] → [LLM: grounded summary] → [Answer + source notes shown]
+[Clinician query: natural language] → [Retrieval] → [Verbatim excerpt selection] → [Excerpts + source notes shown]
 ```
 
 - **ASR:** Whisper (open-source, handles Urdu/English/code-switched speech reasonably well)
-- **Note generation & retrieval-answering LLM:** GPT-4-class or Claude, prompted with a fixed clinical note template and strict "answer only from provided notes" instructions
+- **Note-generation LLM:** a configured language model produces the structured draft; the Brain does not use an LLM to author answers and displays retrieved note excerpts verbatim
 - **Storage:** For the hackathon, a simple structured store (e.g. one JSON/DB record per note, tagged by patient ID) is sufficient — a full vector database is not required at this scale (a handful of notes per demo patient), though one can be used if the team is comfortable with it
 - **Frontend:** Persistent sidebar workspace layout with four dedicated pages: (1) Record / Scribe consultation capture & dashboard (`/record`), (2) Clients directory (`/clients`), (3) Rawaan AI Brain recall & Q&A (`/rawaan-ai`), and (4) Learn Rawaan clinical guide (`/learn-rawaan`).
 
@@ -108,7 +146,7 @@ The pitch in one line: *we don't just save doctors time writing notes — we mak
 | Risk | Mitigation |
 |---|---|
 | ASR accuracy on medical terms / code-switched Urdu-English speech | Test early against real sample consultations (even scripted ones) before demo day |
-| LLM hallucinating patient history that wasn't actually said | Strict retrieval-grounded prompting; explicitly say "no record of that" when nothing relevant is found |
+| Lexical retrieval selects a weakly related passage or misses a relevant note | Return retrieved excerpts verbatim with citations, test recorded and absent facts, and explicitly say "no record of that" when retrieval finds no relevant excerpt; source citations do not guarantee retrieval relevance |
 | Demo history feels artificial since it's seeded, not real | Be transparent with judges about this being simulated continuity for demo purposes — honesty here is a strength, not a weakness |
 | Scope creep into building a full EHR system | Explicitly hold the line at the Non-Goals in Section 3 |
 | Clinical note template doesn't feel authentic/usable to an actual doctor | If possible, get a doctor (even informally, a family contact) to sanity-check the note template before build week |
@@ -116,8 +154,8 @@ The pitch in one line: *we don't just save doctors time writing notes — we mak
 ## 10. Success Criteria for the Hackathon Demo
 
 - Live consultation → structured note generated and reviewable within the demo, no crashes
-- A patient-history query correctly retrieves and summarizes information from seeded past notes
-- The system correctly declines to answer when asked about something not in any note (proves it's not hallucinating)
+- A patient-history query returns relevant excerpts from seeded past notes with citations to their source notes
+- The system returns a no-record response for rehearsed facts absent from the notes; this verifies the tested case but does not prove retrieval will never surface a weakly related excerpt
 - Judges can clearly see the "before" (nothing captured) and "after" (structured, queryable record) in under 5 minutes
 
 ## 11. 6-Day Build Plan (22–27 Aug)

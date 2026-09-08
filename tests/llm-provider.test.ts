@@ -4,13 +4,23 @@ import {
   createGroqProvider,
   createLlmProviderFromEnv,
 } from "@/lib/llm/provider";
+import { LlmContextLimitError } from "@/lib/llm/errors";
 
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
 
-describe("Groq Brain completion provider", () => {
+describe("Groq completion provider", () => {
+  it.each([413,400])("reports oversized context without exposing provider payloads (HTTP %s)",async status=>{
+    const fetchMock=vi.fn().mockResolvedValue(new Response(JSON.stringify({error:{message:"Maximum context length exceeded; private organization details"}}),{status}));
+    vi.stubGlobal("fetch",fetchMock);
+    const provider=createGroqProvider("test-key","test-model");
+    const error=await provider.complete({system:"instruction",user:"history"}).catch(error=>error);
+    expect(error).toBeInstanceOf(LlmContextLimitError);
+    expect(error.message).not.toContain("private organization");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
   it("throws a clear error when the Groq key is not configured", () => {
     expect(() => createLlmProviderFromEnv({})).toThrowError(
       "LLM provider is not configured: GROQ_API_KEY missing",

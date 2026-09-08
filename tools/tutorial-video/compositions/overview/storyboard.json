@@ -1,0 +1,136 @@
+{
+  "title": "See how Rawaan works",
+  "total": 25,
+  "chapters": [
+    {
+      "id": "overview",
+      "title": "See how Rawaan works",
+      "start": 0,
+      "duration": 25,
+      "audioDuration": 19.199
+    }
+  ],
+  "scenes": [
+    {
+      "id": "record",
+      "start": 0,
+      "duration": 3.571,
+      "title": "See how Rawaan works",
+      "number": 1,
+      "focus": {
+        "x": 290,
+        "y": 303.671875,
+        "width": 531,
+        "height": 142.875
+      }
+    },
+    {
+      "id": "recording",
+      "start": 3.571,
+      "duration": 3.571,
+      "title": "See how Rawaan works",
+      "number": 1,
+      "focus": {
+        "x": 573.671875,
+        "y": 526.421875,
+        "width": 164.09375,
+        "height": 45.1875
+      }
+    },
+    {
+      "id": "assigned",
+      "start": 7.143,
+      "duration": 3.571,
+      "title": "See how Rawaan works",
+      "number": 1,
+      "focus": {
+        "x": 720.5,
+        "y": 514.59375,
+        "width": 283,
+        "height": 43.3125
+      }
+    },
+    {
+      "id": "draft",
+      "start": 10.714,
+      "duration": 3.571,
+      "title": "See how Rawaan works",
+      "number": 1,
+      "focus": {
+        "x": 131.5,
+        "y": 137.71875,
+        "width": 72.21875,
+        "height": 30.546875
+      }
+    },
+    {
+      "id": "approved",
+      "start": 14.286,
+      "duration": 3.571,
+      "title": "See how Rawaan works",
+      "number": 1,
+      "focus": null
+    },
+    {
+      "id": "clients",
+      "start": 17.857,
+      "duration": 3.571,
+      "title": "See how Rawaan works",
+      "number": 1,
+      "focus": {
+        "x": 343,
+        "y": 364.453125,
+        "width": 89.640625,
+        "height": 18
+      }
+    },
+    {
+      "id": "ai",
+      "start": 21.429,
+      "duration": 3.571,
+      "title": "See how Rawaan works",
+      "number": 1,
+      "focus": {
+        "x": 593,
+        "y": 644.640625,
+        "width": 688,
+        "height": 42.5
+      }
+    }
+  ],
+  "cues": [
+    {
+      "start": 0.35,
+      "end": 3.31,
+      "text": "Welcome to Rawaan."
+    },
+    {
+      "start": 3.31,
+      "end": 5.95,
+      "text": "Start in Record."
+    },
+    {
+      "start": 5.95,
+      "end": 9.309,
+      "text": "You do not need to create a client before recording."
+    },
+    {
+      "start": 9.309,
+      "end": 12.829,
+      "text": "Check the draft against the original conversation."
+    },
+    {
+      "start": 12.829,
+      "end": 16.349,
+      "text": "When you are satisfied, choose Approve and Save Note."
+    },
+    {
+      "start": 16.349,
+      "end": 19.549,
+      "text": "The approved note becomes part of that client's record."
+    }
+  ],
+  "voice": "hannah",
+  "model": "canopylabs/orpheus-v1-english",
+  "narrated": true
+}

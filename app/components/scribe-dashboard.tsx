@@ -1,6 +1,10 @@
 "use client";
 
+import { STORAGE_ERROR_MESSAGE } from "@/lib/db/errors";
+
 import { ArrowUpRight, ChevronDown, Inbox, MoreVertical, X } from "lucide-react";
+import { RecordGuideEntry, RecordGuideLink } from "@/app/components/record-guide-entry";
+import { RequestStatus } from "@/app/components/request-status";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -12,10 +16,24 @@ import { AssignSessionModal } from "@/app/components/assign-session-modal";
 import { ManualSummaryModal } from "@/app/components/manual-summary-modal";
 import { RecordSessionModal } from "@/app/components/record-session-modal";
 import { SessionWorkspaceView } from "@/app/components/session-workspace-view";
+import {
+  formatSessionDate,
+  formatSessionTime,
+  localConsultationDate,
+} from "@/app/components/session-date";
+import {
+  restoreWorkspaceSnapshot,
+  restorePendingSession,
+  serializeWorkspaceSnapshot,
+  WORKSPACE_DRAFT_STORAGE_KEY,
+  type PendingSession,
+} from "@/app/components/workspace-draft-storage";
+import {
+  noteEditorTextFrom,
+  type NoteEditorText,
+} from "@/app/components/session-note-editor-state";
 import type { ApprovedNote, NoteDraft } from "@/lib/notes/schema";
 import type { TranscriptionResult } from "@/lib/transcription/types";
-
-const WORKSPACE_DRAFT_STORAGE_KEY = "rawaan-active-workspace-draft";
 
 interface RecentSession {
   date: string;
@@ -27,32 +45,9 @@ interface RecentSession {
 }
 
 interface ScribeDashboardProps {
+  ownerId: string;
   initialNotes?: ApprovedNote[];
   initialPatientId?: string;
-}
-
-type PendingSession = {
-  consultationDate: string;
-  recordingDevice?: string;
-  recordingDurationSeconds?: number;
-  sessionType: "in-person" | "summary" | "upload" | "manual";
-  transcript: string;
-  transcriptSource: string;
-};
-
-function formatSessionTime(isoString?: string): string {
-  if (!isoString) return "9:18 PM";
-  try {
-    const date = new Date(isoString);
-    if (isNaN(date.getTime())) return "Recent";
-    const hours = date.getUTCHours();
-    const minutes = date.getUTCMinutes().toString().padStart(2, "0");
-    const ampm = hours >= 12 ? "PM" : "AM";
-    const formattedHours = hours % 12 || 12;
-    return `${formattedHours}:${minutes} ${ampm}`;
-  } catch {
-    return "Recent";
-  }
 }
 
 async function requestTranscription(audio: File): Promise<TranscriptionResult> {
@@ -80,11 +75,15 @@ async function requestTranscription(audio: File): Promise<TranscriptionResult> {
 }
 
 export function ScribeDashboard({
+  ownerId,
   initialNotes = [],
   initialPatientId,
 }: ScribeDashboardProps) {
+  const workspaceStorageKey = `${WORKSPACE_DRAFT_STORAGE_KEY}:${ownerId}`;
   const [searchQuery, setSearchQuery] = useState("");
   const [clients, setClients] = useState<ClientRecord[]>([]);
+  const [clientsLoaded, setClientsLoaded] = useState(false);
+  const [clientsLoading, setClientsLoading] = useState(false);
   const [recentSessions, setRecentSessions] = useState<RecentSession[]>(() => {
     if (initialNotes.length > 0) {
       return initialNotes.map((note) => ({
@@ -96,16 +95,9 @@ export function ScribeDashboard({
         time: formatSessionTime(note.approved_at),
       }));
     }
-    return [
-      {
-        date: "Thursday August 27, 2026",
-        id: "example-session-1",
-        patientName: "Example Session",
-        summary: "Session between Carl Rogers and Gloria",
-        time: "9:18 PM",
-      },
-    ];
+    return [];
   });
+  const [isGenerating, setIsGenerating] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
 
   // Workflow State Modals & Workspace Views
@@ -116,56 +108,107 @@ export function ScribeDashboard({
   const [activeWorkspaceDraft, setActiveWorkspaceDraft] = useState<
     NoteDraft | ApprovedNote | null
   >(null);
+  const [draftEditorText, setDraftEditorText] = useState<NoteEditorText | null>(null);
+  const [workspaceStorageReady, setWorkspaceStorageReady] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Load clients list
+  // Roster data is needed only once a capture/assignment screen opens.
   useEffect(() => {
-    void listClientsAction().then((res) => {
-      setClients(res);
-    });
-  }, []);
+    if (clientsLoaded || (!isInPersonRecordModalOpen && !isAssignModalOpen)) return;
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      setClientsLoading(true);
+      void listClientsAction().then(result => {
+        if (!cancelled) { setClientsLoading(false); setClients(result); setClientsLoaded(true); }
+      }).catch(() => { if (!cancelled) setNotification(STORAGE_ERROR_MESSAGE); })
+        .finally(() => { if (!cancelled) setClientsLoading(false); });
+    }, 0);
+    return () => { cancelled = true; window.clearTimeout(timer); };
+  }, [clientsLoaded,isInPersonRecordModalOpen,isAssignModalOpen]);
 
   // Page components lose React state on client-side navigation (e.g. visiting
   // the Brain and coming back), which used to destroy an unapproved draft.
   // Keep it in sessionStorage so the workspace survives in-tab navigation.
   useEffect(() => {
     try {
-      const raw = sessionStorage.getItem(WORKSPACE_DRAFT_STORAGE_KEY);
-      if (!raw) return;
-      const draft = JSON.parse(raw) as NoteDraft | ApprovedNote;
+      const raw = sessionStorage.getItem(workspaceStorageKey);
+      const snapshot = raw ? restoreWorkspaceSnapshot(raw) : null;
+      const pending = raw && !snapshot ? restorePendingSession(raw) : null;
       // Defer the update so hydration stays clean and the state is not set
       // synchronously inside the effect body (react-hooks/set-state-in-effect).
-      const id = window.setTimeout(() => setActiveWorkspaceDraft(draft), 0);
+      const id = window.setTimeout(() => {
+        if (snapshot) {
+          setActiveWorkspaceDraft(snapshot.draft);
+          setDraftEditorText(snapshot.editorText);
+          sessionStorage.setItem(
+            workspaceStorageKey,
+            serializeWorkspaceSnapshot(snapshot.draft, snapshot.editorText),
+          );
+        } else if (pending) {
+          setPendingSession(pending);
+          setIsAssignModalOpen(true);
+        } else if (raw) {
+          sessionStorage.removeItem(workspaceStorageKey);
+          setNotification("The saved draft could not be restored. Start a new note or contact support if you need help recovering it.");
+        }
+        setWorkspaceStorageReady(true);
+      }, 0);
       return () => window.clearTimeout(id);
     } catch {
-      sessionStorage.removeItem(WORKSPACE_DRAFT_STORAGE_KEY);
+      sessionStorage.removeItem(workspaceStorageKey);
+      const id = window.setTimeout(() => setWorkspaceStorageReady(true), 0);
+      return () => window.clearTimeout(id);
     }
-  }, []);
+  }, [workspaceStorageKey]);
 
   useEffect(() => {
     try {
+      if (!workspaceStorageReady) return;
       if (activeWorkspaceDraft) {
         sessionStorage.setItem(
-          WORKSPACE_DRAFT_STORAGE_KEY,
-          JSON.stringify(activeWorkspaceDraft),
+          workspaceStorageKey,
+          serializeWorkspaceSnapshot(activeWorkspaceDraft, draftEditorText ?? undefined),
         );
+      } else if (pendingSession) {
+        sessionStorage.setItem(workspaceStorageKey, JSON.stringify({pendingSession}));
       } else {
-        sessionStorage.removeItem(WORKSPACE_DRAFT_STORAGE_KEY);
+        sessionStorage.removeItem(workspaceStorageKey);
       }
     } catch {
       // Storage unavailable/full — the draft just won't survive navigation.
     }
-  }, [activeWorkspaceDraft]);
+  }, [activeWorkspaceDraft, draftEditorText, pendingSession, workspaceStorageReady, workspaceStorageKey]);
+
+  function handleWorkspaceDraftChange(
+    draft: NoteDraft | ApprovedNote,
+    editorText: NoteEditorText,
+  ) {
+    setActiveWorkspaceDraft(draft);
+    setDraftEditorText(editorText);
+    try {
+      sessionStorage.setItem(
+        workspaceStorageKey,
+        serializeWorkspaceSnapshot(draft, editorText),
+      );
+    } catch {
+      setNotification("Draft editing is available, but this browser could not save a recovery copy for navigation.");
+    }
+  }
 
   async function generateDraftForSession(client: ClientRecord, session: PendingSession) {
     if (session.sessionType === "manual") {
       setActiveWorkspaceDraft(createManualDraft(client, session));
+      setDraftEditorText(null);
+      setPendingSession(null);
       setNotification(null);
       return;
     }
 
-    setNotification("Generating structured clinical note with AI Overview…");
+    if (isGenerating) return;
+    setIsGenerating(true);
+    setNotification("Generating structured clinical note…");
+    try {
 
     const result = await generateDraftAction({
       consultation_date: session.consultationDate,
@@ -181,10 +224,15 @@ export function ScribeDashboard({
 
     if (result.ok) {
       setActiveWorkspaceDraft(result.draft);
+      setDraftEditorText(null);
+      setPendingSession(null);
       setNotification(null);
     } else {
       setNotification(result.message);
+      setIsAssignModalOpen(true);
     }
+    } catch { setNotification("Could not generate the note. Your transcript is retained; retry the session assignment."); setIsAssignModalOpen(true); }
+    finally { setIsGenerating(false); }
   }
 
   // Step 1: Recording stops -> Auto-generate note if client selected, or open Assign Modal
@@ -230,6 +278,7 @@ export function ScribeDashboard({
   function createManualDraft(client: ClientRecord, session: PendingSession): NoteDraft {
     return {
       approval_status: "draft",
+      draft_id: crypto.randomUUID(),
       assessment_discussed: [],
       chief_complaint: "",
       consultation_date: session.consultationDate,
@@ -271,53 +320,18 @@ export function ScribeDashboard({
 
   // Step 2: Client chosen in Assign Session Modal -> Generate Draft & Open Workspace View (Picture 3)
   async function handleAssignClient(client: ClientRecord) {
-    if (!pendingSession) return;
+    if (!pendingSession || isGenerating) return;
+    setClients(previous=>[client, ...previous.filter(item=>item.patientId!==client.patientId)]);
     setIsAssignModalOpen(false);
     await generateDraftForSession(client, pendingSession);
   }
 
   function handleSelectSession(session: RecentSession) {
+    if (isGenerating || pendingSession) return;
     if (session.note) {
       setActiveWorkspaceDraft(session.note);
-    } else if (session.id === "example-session-1") {
-      const demoDraft: ApprovedNote = {
-        approval_status: "approved",
-        approved_at: "2026-08-27T18:20:00.000Z",
-        assessment_discussed: [
-          "Therapist applied unconditional positive regard and reflective exploration",
-        ],
-        chief_complaint:
-          "Therapy session exploring personal congruence and independence",
-        consultation_date: "2026-08-27",
-        email: "gloria@example.com",
-        first_name: "Gloria",
-        follow_up: "Next session in one week",
-        history: [
-          "Feeling tension between maternal obligations and personal identity",
-        ],
-        id: "example-session-1",
-        last_name: "Rogers",
-        medications_mentioned: [],
-        mobile_number: "+1 555 0192834",
-        patient_display_name: "Gloria",
-        patient_id: "patient-gloria-001",
-        plan_discussed: [
-          "Weekly reflective journaling on authentic personal choices",
-          "Continue exploratory therapy",
-        ],
-        raw_transcript:
-          "Chief complaint: Therapy session on congruence and independence\nHistory: Tension between motherhood and personal identity\nSymptoms: Emotional conflict; mild anxiety\nAssessment discussed: Reflective exploration of internal standards\nPlan discussed: Weekly journaling; continue therapy\nMedications mentioned: None mentioned\nFollow up: Next session in one week\nUncertainties: Childhood roots not yet explored",
-        summary:
-          "This transcript documents an exploratory psychotherapy session addressing emotional conflict between familial expectations and personal autonomy. Client reflected on internal versus external validation. Agreed to weekly journaling and ongoing counseling.",
-        symptoms: [
-          "Emotional conflict",
-          "Mild anxiety regarding personal decisions",
-        ],
-        uncertainties: [
-          "Early childhood antecedents to independence anxiety not yet explored",
-        ],
-      };
-      setActiveWorkspaceDraft(demoDraft);
+      setDraftEditorText(null);
+
     }
   }
 
@@ -335,12 +349,22 @@ export function ScribeDashboard({
     // Store the approved note (not the draft) so a restored workspace shows
     // the saved state and cannot be approved a second time.
     setActiveWorkspaceDraft(savedNote);
+    const approvedEditorText = noteEditorTextFrom(savedNote);
+    setDraftEditorText(approvedEditorText);
+    try {
+      sessionStorage.setItem(
+        workspaceStorageKey,
+        serializeWorkspaceSnapshot(savedNote, approvedEditorText),
+      );
+    } catch {
+      setNotification("Approved note saved. This browser could not keep a recovery copy for navigation.");
+    }
     setNotification("Approved note saved to patient record.");
   }
 
   function handleCreateEmptyNote() {
     setPendingSession({
-      consultationDate: new Date().toISOString().slice(0, 10),
+      consultationDate: localConsultationDate(),
       sessionType: "manual",
       transcript: "No transcript was provided. This note was created manually.",
       transcriptSource: "Clinician-created manual note",
@@ -369,7 +393,7 @@ export function ScribeDashboard({
     }
 
     setPendingSession({
-      consultationDate: new Date().toISOString().slice(0, 10),
+      consultationDate: localConsultationDate(),
       sessionType: "upload",
       transcript,
       transcriptSource: file.type.startsWith("audio/")
@@ -384,9 +408,14 @@ export function ScribeDashboard({
     return (
       <SessionWorkspaceView
         draft={activeWorkspaceDraft}
+        draftEditorText={draftEditorText ?? undefined}
         isManualEntry={activeWorkspaceDraft.session_info?.session_type === "manual"}
         onApprove={handleApproveSuccess}
-        onBack={() => setActiveWorkspaceDraft(null)}
+        onBack={() => {
+          setActiveWorkspaceDraft(null);
+          setDraftEditorText(null);
+        }}
+        onDraftChange={handleWorkspaceDraftChange}
       />
     );
   }
@@ -399,7 +428,8 @@ export function ScribeDashboard({
   );
 
   return (
-    <div className="dashboard-layout">
+    <div className="dashboard-layout" aria-busy={isGenerating}>
+      {isGenerating ? <RequestStatus label="Generating structured clinical note…" skeleton/> : null}
       {notification ? (
         <div className="dashboard-notification-banner" role="status">
           <span>{notification}</span>
@@ -413,6 +443,13 @@ export function ScribeDashboard({
           </button>
         </div>
       ) : null}
+      {pendingSession && !isAssignModalOpen && !isGenerating ? (
+        <div className="dashboard-notification-banner" role="status">
+          <span>Your captured session is ready to assign.</span>
+          <button className="secondary-button" onClick={()=>setIsAssignModalOpen(true)} type="button">Resume captured session</button>
+          <button className="secondary-button" onClick={()=>setPendingSession(null)} type="button">Discard captured session</button>
+        </div>
+      ) : null}
 
       {/* Record page header band */}
       <header className="wireframe-header page-record-band">
@@ -422,12 +459,16 @@ export function ScribeDashboard({
             Capture consultations and turn them into structured, clinician-approved notes.
           </p>
         </div>
+        <RecordGuideLink />
       </header>
+
+      {recentSessions.length === 0 ? <RecordGuideEntry /> : null}
 
       {/* Recording Option Action Cards */}
       <section className="action-cards-grid" aria-label="Recording options">
         <button
           className="action-card"
+          disabled={isGenerating || Boolean(pendingSession)}
           onClick={() => setIsInPersonRecordModalOpen(true)}
           type="button"
         >
@@ -463,6 +504,7 @@ export function ScribeDashboard({
 
         <button
           className="action-card"
+          disabled={isGenerating || Boolean(pendingSession)}
           onClick={() => setIsManualSummaryModalOpen(true)}
           type="button"
         >
@@ -492,9 +534,9 @@ export function ScribeDashboard({
             </span>
           </div>
           <div className="action-card-body">
-            <h3 className="action-card-title">Record a summary</h3>
+            <h3 className="action-card-title">Write a summary</h3>
             <p className="action-card-desc">
-              Best for dictating key session notes after a session.
+              Type the key details after a session.
             </p>
           </div>
         </button>
@@ -537,6 +579,7 @@ export function ScribeDashboard({
           />
           <button
             className="btn-create-empty"
+            disabled={isGenerating || Boolean(pendingSession)}
             onClick={handleCreateEmptyNote}
             type="button"
           >
@@ -544,6 +587,7 @@ export function ScribeDashboard({
           </button>
           <button
             className="btn-upload"
+            disabled={isGenerating || Boolean(pendingSession)}
             onClick={() => fileInputRef.current?.click()}
             type="button"
           >
@@ -572,7 +616,7 @@ export function ScribeDashboard({
 
       {/* Timeline Section Header */}
       <div className="timeline-header">
-        <h2>Thursday August 27, 2026</h2>
+        <h2>Recent Sessions</h2>
       </div>
 
       {/* Recent Sessions List */}
@@ -581,14 +625,16 @@ export function ScribeDashboard({
           <div
             className="session-item-row is-clickable"
             key={session.id}
-            onClick={() => handleSelectSession(session)}
+            onClick={() => { if (!isGenerating && !pendingSession) handleSelectSession(session); }}
             onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
+              if (!isGenerating && !pendingSession && (e.key === "Enter" || e.key === " ")) {
+                e.preventDefault();
                 handleSelectSession(session);
               }
             }}
+            aria-disabled={isGenerating || Boolean(pendingSession)}
             role="button"
-            tabIndex={0}
+            tabIndex={isGenerating || pendingSession ? -1 : 0}
           >
             <div className="session-item-left">
               <span className="session-item-icon">
@@ -618,11 +664,13 @@ export function ScribeDashboard({
             </div>
             <div className="session-item-right">
               <span className="session-item-time" suppressHydrationWarning>
+                {formatSessionDate(session.date)} · {" "}
                 {session.time}
               </span>
               <button
                 aria-label={`Options for ${session.patientName}`}
                 className="session-item-menu"
+                disabled={isGenerating || Boolean(pendingSession)}
                 onClick={(e) => {
                   e.stopPropagation();
                   handleSelectSession(session);
@@ -641,7 +689,7 @@ export function ScribeDashboard({
             </span>
             <p className="roster-empty-title">No sessions yet</p>
             <p className="roster-empty-body">
-              Record a session above, or load the demo dataset, to see it here.
+              Record a session above to see it here.
             </p>
           </div>
         ) : null}
@@ -653,6 +701,7 @@ export function ScribeDashboard({
         <RecordSessionModal
           initialClientId={initialPatientId}
           initialClients={clients}
+          isClientsLoading={clientsLoading}
           isOpen
           onClose={() => setIsInPersonRecordModalOpen(false)}
           onComplete={handleRecordingComplete}
@@ -672,6 +721,7 @@ export function ScribeDashboard({
       {isAssignModalOpen ? (
         <AssignSessionModal
           clients={clients}
+          clientsLoading={clientsLoading}
           initialClientId={initialPatientId}
           deleteLabel={
             pendingSession?.sessionType === "manual"
@@ -682,9 +732,9 @@ export function ScribeDashboard({
           }
           isOpen
           onAssign={handleAssignClient}
+          onClientCreated={client=>setClients(previous=>[client, ...previous.filter(item=>item.patientId!==client.patientId)])}
           onClose={() => {
             setIsAssignModalOpen(false);
-            setPendingSession(null);
           }}
           onDelete={() => {
             setIsAssignModalOpen(false);
@@ -701,7 +751,7 @@ export function ScribeDashboard({
             pendingSession?.sessionType === "manual"
               ? "Manual Note"
               : pendingSession?.sessionType === "summary"
-                ? "Dictated Summary"
+                ? "Written Summary"
                 : pendingSession?.sessionType === "upload"
                   ? "Uploaded Recording"
                   : undefined

@@ -97,4 +97,25 @@ describe("retrieveApprovedEvidence", () => {
       reason: "no_relevant_evidence",
     });
   });
+
+  it("rejects ranked notes that contain no excerpt text", () => {
+    const result = retrieveApprovedEvidence({
+      patientId: "p1",
+      question: "When should she return?",
+      notes: [makeNote()],
+      rankNotes: (notes) => notes.map((note) => ({
+        noteId: note.id,
+        patientId: note.patient_id,
+        consultationDate: note.consultation_date,
+        excerpts: ["", "   "],
+        relevanceScore: 0.6,
+      })),
+    });
+
+    expect(result).toMatchObject({
+      kind: "no_supporting_record",
+      reason: "no_relevant_evidence",
+      message: "No record of that for this patient.",
+    });
+  });
 });

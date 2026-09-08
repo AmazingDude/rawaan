@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";
+import { LlmContextLimitError } from "@/lib/llm/errors";
 
 const GROQ_CHAT_COMPLETIONS_URL =
   "https://api.groq.com/openai/v1/chat/completions";
@@ -132,7 +133,9 @@ export function createGroqProvider(
       );
 
       if (!response.ok) {
+        if (response.status === 413) throw new LlmContextLimitError();
         const errorText = await response.text().catch(() => "");
+        if (response.status === 400 && /context.{0,30}(?:length|window|limit)|maximum.{0,30}tokens|too many tokens/i.test(errorText)) throw new LlmContextLimitError();
         throw new Error(`LLM provider returned ${response.status}: ${errorText || response.statusText}`);
       }
 

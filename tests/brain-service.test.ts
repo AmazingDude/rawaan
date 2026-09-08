@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import { queryPatientRecord } from "@/lib/actions/brain";
-import type { LlmCompletionProvider } from "@/lib/llm/provider";
 import type { ApprovedNote } from "@/lib/notes/schema";
 
 function makeNote(overrides: Partial<ApprovedNote>): ApprovedNote {
@@ -25,19 +24,12 @@ function makeNote(overrides: Partial<ApprovedNote>): ApprovedNote {
   };
 }
 
-const explodingProvider: LlmCompletionProvider = {
-  async complete() {
-    throw new Error("provider must not be called");
-  },
-};
-
 describe("queryPatientRecord", () => {
-  it("refuses treatment requests end-to-end without retrieval-side LLM use", async () => {
+  it("refuses treatment requests before retrieval", async () => {
     const result = await queryPatientRecord({
       patientId: "p1",
       question: "What medication should we prescribe?",
       notes: [makeNote({ symptoms: ["chest pain"] })],
-      provider: explodingProvider,
     });
 
     expect(result).toEqual({
@@ -48,7 +40,7 @@ describe("queryPatientRecord", () => {
     });
   });
 
-  it("returns no_supporting_record for unrecorded questions without calling the provider", async () => {
+  it("returns no_supporting_record for unrecorded questions", async () => {
     const result = await queryPatientRecord({
       patientId: "p1",
       question: "What was her blood pressure in March?",
@@ -58,7 +50,6 @@ describe("queryPatientRecord", () => {
           raw_transcript: "Patient reported knee swelling after a long walk.",
         }),
       ],
-      provider: explodingProvider,
     });
 
     expect(result).toEqual({
@@ -68,16 +59,7 @@ describe("queryPatientRecord", () => {
     });
   });
 
-  it("returns supported with source dates when evidence and provider agree", async () => {
-    const provider: LlmCompletionProvider = {
-      async complete() {
-        return JSON.stringify({
-          answer: "Yes — chest pain was documented on exertion.",
-          cited_note_ids: ["note-chest"],
-        });
-      },
-    };
-
+  it("returns the retrieved excerpts verbatim with their source dates", async () => {
     const result = await queryPatientRecord({
       patientId: "p1",
       question: "Has this patient mentioned chest pain before?",
@@ -88,12 +70,11 @@ describe("queryPatientRecord", () => {
           raw_transcript: "Patient reported chest pain when climbing stairs.",
         }),
       ],
-      provider,
     });
 
     expect(result).toEqual({
       status: "supported",
-      answer: "Yes — chest pain was documented on exertion.",
+      answer: "Symptoms: chest pain\nPatient reported chest pain when climbing stairs.",
       sources: [{ noteId: "note-chest", consultationDate: "2026-06-01" }],
     });
   });

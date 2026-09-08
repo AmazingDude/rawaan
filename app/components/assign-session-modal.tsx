@@ -1,17 +1,21 @@
-"use client";
+﻿"use client";
 
-import { Sprout, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ChevronDown, Sprout, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 import { createClientAction, type ClientRecord } from "@/app/actions";
+import { RequestStatus } from "@/app/components/request-status";
+import { useAccessibleDialog } from "@/app/components/use-accessible-dialog";
 
 interface AssignSessionModalProps {
+  clientsLoading?: boolean;
   clients: ClientRecord[];
   deleteLabel?: string;
   /** Deep-linked client (e.g. /record?patient=<id>) preselected in the list. */
   initialClientId?: string;
   isOpen: boolean;
   onAssign: (client: ClientRecord) => void;
+  onClientCreated?: (client: ClientRecord) => void;
   onClose: () => void;
   onDelete: () => void;
   recordingSubtitle?: string;
@@ -20,10 +24,12 @@ interface AssignSessionModalProps {
 
 export function AssignSessionModal({
   clients = [],
+  clientsLoading = false,
   deleteLabel,
   initialClientId,
   isOpen,
   onAssign,
+  onClientCreated,
   onClose,
   onDelete,
   recordingSubtitle,
@@ -42,6 +48,11 @@ export function AssignSessionModal({
   const [mobileNumber, setMobileNumber] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const clientSelectorRef = useRef<HTMLDivElement>(null);
+  const clientSelectorTriggerRef = useRef<HTMLButtonElement>(null);
+
+  useAccessibleDialog(dialogRef, onClose, isOpen);
 
   // Deep-linked arrival preselects the client once the list is available.
   // The clinician can still change the selection before continuing.
@@ -57,6 +68,33 @@ export function AssignSessionModal({
       return () => window.clearTimeout(id);
     }
   }, [isOpen, initialClientId, selectedClient, createdClients, clients]);
+
+  useEffect(() => {
+    if (!isDropdownOpen) return;
+    function handleOutsidePointer(event: PointerEvent) {
+      if (event.target instanceof Node && !clientSelectorRef.current?.contains(event.target)) setIsDropdownOpen(false);
+    }
+    document.addEventListener("pointerdown", handleOutsidePointer);
+    return () => document.removeEventListener("pointerdown", handleOutsidePointer);
+  }, [isDropdownOpen]);
+
+  function handleSelectorKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (!isDropdownOpen) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      setIsDropdownOpen(false);
+      clientSelectorTriggerRef.current?.focus();
+      return;
+    }
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+    const options = Array.from(clientSelectorRef.current?.querySelectorAll<HTMLButtonElement>('[role="option"]') ?? []);
+    if (!options.length) return;
+    event.preventDefault();
+    const index = options.findIndex(option => option === document.activeElement);
+    const next = index < 0 ? event.key === "ArrowDown" ? 0 : options.length - 1 : (index + (event.key === "ArrowDown" ? 1 : -1) + options.length) % options.length;
+    options[next]?.focus();
+  }
 
   if (!isOpen) return null;
 
@@ -88,6 +126,7 @@ export function AssignSessionModal({
     setIsSubmitting(true);
     setErrorMessage(null);
 
+    try {
     const res = await createClientAction({
       email,
       firstName,
@@ -95,11 +134,13 @@ export function AssignSessionModal({
       mobileNumber,
     });
 
-    setIsSubmitting(false);
 
     if (res.ok) {
       setCreatedClients((prev) => [res.client, ...prev]);
+      onClientCreated?.(res.client);
       setSelectedClient(res.client);
+      setIsDropdownOpen(false);
+      setSearchQuery("");
       setFirstName("");
       setLastName("");
       setEmail("");
@@ -108,6 +149,8 @@ export function AssignSessionModal({
     } else {
       setErrorMessage(res.message);
     }
+    } catch { setErrorMessage("Could not create this client. Please retry."); }
+    finally { setIsSubmitting(false); }
   }
 
   function handleNext() {
@@ -117,10 +160,18 @@ export function AssignSessionModal({
   }
 
   return (
-    <div className="modal-backdrop" onClick={onClose} role="dialog" aria-modal="true">
+    <div
+      className="modal-backdrop"
+      onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}
+    >
       <div
+        aria-label="Assign Session"
+        aria-modal="true"
         className="assign-session-modal-card"
         onClick={(e) => e.stopPropagation()}
+        ref={dialogRef}
+        role="dialog"
+        tabIndex={-1}
       >
         {view === "create" ? (
           /* ===================================================================
@@ -247,7 +298,7 @@ export function AssignSessionModal({
                 <h2>Assign Session</h2>
               </div>
               <button
-                aria-label="Close"
+                aria-label="Close modal"
                 className="btn-close-modal"
                 onClick={onClose}
                 type="button"
@@ -311,7 +362,11 @@ export function AssignSessionModal({
               <span className="assign-section-label">Assign to Client or Group</span>
               <button
                 className="btn-create-new-client-link"
-                onClick={() => setView("create")}
+                onClick={() => {
+                  setIsDropdownOpen(false);
+                  setSearchQuery("");
+                  setView("create");
+                }}
                 type="button"
               >
                 + Create New
@@ -319,12 +374,19 @@ export function AssignSessionModal({
             </div>
 
             {/* Searchable Client Dropdown */}
-            <div className="client-search-field-container">
-              <div
+            <div
+              className="client-search-field-container"
+              onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setIsDropdownOpen(false); }}
+              onKeyDown={handleSelectorKeyDown}
+              ref={clientSelectorRef}
+            >
+              <button
+                aria-expanded={isDropdownOpen}
+                aria-haspopup="listbox"
                 className={`client-search-pill-box ${isDropdownOpen ? "is-open" : ""}`}
                 onClick={() => setIsDropdownOpen((prev) => !prev)}
-                role="button"
-                tabIndex={0}
+                ref={clientSelectorTriggerRef}
+                type="button"
               >
                 <svg
                   aria-hidden="true"
@@ -344,14 +406,15 @@ export function AssignSessionModal({
                 <span className="search-field-text">
                   {selectedClient ? selectedClient.displayName : "Search for your client"}
                 </span>
-                <span className="search-field-caret">⌄</span>
-              </div>
+                <ChevronDown aria-hidden="true" className="search-field-caret" size={16} />
+              </button>
 
               {isDropdownOpen ? (
                 <div className="client-search-results-menu">
                   <div className="dropdown-search-box">
                     <input
                       autoFocus
+                      aria-label="Filter existing clients"
                       className="dropdown-input"
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Type client name, email or phone…"
@@ -360,32 +423,38 @@ export function AssignSessionModal({
                     />
                   </div>
 
-                  <ul className="results-list">
+                  <ul aria-label="Clients" className="results-list" role="listbox">
                     {filteredClients.map((client) => (
-                      <li
-                        key={client.patientId}
-                        className={`result-item ${selectedClient?.patientId === client.patientId ? "is-active" : ""}`}
-                        onClick={() => {
-                          setSelectedClient(client);
-                          setIsDropdownOpen(false);
-                        }}
-                      >
-                        <div className="result-name">{client.displayName}</div>
-                        {client.mobileNumber || client.email ? (
-                          <div className="result-meta">
-                            {client.mobileNumber} {client.email ? `• ${client.email}` : ""}
-                          </div>
-                        ) : null}
+                      <li key={client.patientId}>
+                        <button
+                          aria-selected={selectedClient?.patientId === client.patientId}
+                          className={`client-option-item ${selectedClient?.patientId === client.patientId ? "is-selected" : ""}`}
+                          onClick={() => {
+                            setSelectedClient(client);
+                            setSearchQuery("");
+                            setIsDropdownOpen(false);
+                            clientSelectorTriggerRef.current?.focus();
+                          }}
+                          role="option"
+                          type="button"
+                        >
+                          <span className="option-name">
+                            <span className="result-name">{client.displayName}</span>
+                            {client.mobileNumber || client.email ? <span className="result-meta">{[client.mobileNumber, client.email].filter(Boolean).join(" · ")}</span> : null}
+                          </span>
+                          <span className="option-meta">{client.noteCount} {client.noteCount === 1 ? "session" : "sessions"}</span>
+                          <span className="client-option-type">Individual</span>
+                        </button>
                       </li>
                     ))}
-
-                    {filteredClients.length === 0 ? (
+                    {clientsLoading ? <RequestStatus label="Loading clients…"/> : filteredClients.length === 0 ? (
                       <li className="result-empty-state">
                         <p>No client found matching &quot;{searchQuery}&quot;</p>
                         <button
                           className="btn-create-inline-prompt"
                           onClick={() => {
                             setFirstName(searchQuery);
+                            setIsDropdownOpen(false);
                             setView("create");
                           }}
                           type="button"

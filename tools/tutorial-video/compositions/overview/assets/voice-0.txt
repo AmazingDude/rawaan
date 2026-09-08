@@ -1,0 +1,6 @@
+file 'D:/Rawaan/tools/tutorial-video/audio-cache/29f31a4230e2224e94e3.wav'
+file 'D:/Rawaan/tools/tutorial-video/audio-cache/baeafc0d64b4d0897762.wav'
+file 'D:/Rawaan/tools/tutorial-video/audio-cache/1a01062c015c3e5ab24e.wav'
+file 'D:/Rawaan/tools/tutorial-video/audio-cache/d4ba43b739022c59cf37.wav'
+file 'D:/Rawaan/tools/tutorial-video/audio-cache/d6e33f1578ec2b50fa9c.wav'
+file 'D:/Rawaan/tools/tutorial-video/audio-cache/c06f0e1f96be4b71187c.wav'

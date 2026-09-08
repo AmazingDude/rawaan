@@ -1,0 +1,11 @@
+Welcome to Rawaan. Start in Record. This is where a conversation becomes a note you can review. Choose Record in-person for session audio. Already have written notes? Choose Write a summary. You do not need to create a client before recording.
+
+Choose the microphone you want to use, then press Check. Allow microphone access if your browser asks. You can select an existing client now, or leave the client unassigned and add them after recording.
+
+Make sure everyone is ready and has agreed to the recording. Press Start recording, and focus on the conversation. When you are finished, press Stop recording. Rawaan transcribes the audio after you stop. Keep the page open while it works. The recording shown here uses a fictional training conversation.
+
+If you did not select a client earlier, Assign Session opens next. Choose an existing client, or press Create New and complete their details. Select the client and press Next. Rawaan now creates a draft from the transcript. Creating a client alone does not approve the note.
+
+Check the draft against the original conversation. Open Transcript to review the words captured, especially names and clinical terms. Return to Notes and choose Edit note to correct anything that needs changing. The draft is yours to review; approval should wait until it accurately reflects the session.
+
+When you are satisfied, choose Approve and Save Note. The approved note becomes part of that client's record. To return to it, open Clients, choose the client, and open Sessions. Approved notes are read-only. That is the complete flow: record, assign, review, and save.

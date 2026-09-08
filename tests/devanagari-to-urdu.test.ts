@@ -6,26 +6,24 @@ import {
   sanitizeTranscript,
 } from "@/lib/transcription/devanagari-to-urdu";
 
-describe("Devanagari to Urdu script sanitizer", () => {
-  it("detects Devanagari characters accurately", () => {
+describe("transcript preservation helpers", () => {
+  it("detects Devanagari characters without changing the input", () => {
     expect(hasDevanagari("Hello world")).toBe(false);
     expect(hasDevanagari("یہ ایک اردو جملہ ہے۔")).toBe(false);
     expect(hasDevanagari("मुझे सीने में दर्द है।")).toBe(true);
-    expect(hasDevanagari("अजय को प्रक्तों पनाश्च दिन से")).toBe(true);
   });
 
-  it("transliterates Hindi Devanagari transcript to Urdu script", () => {
-    const hindi = "अजय को प्रक्तों पनाश्च दिन से मिले लोर अब्डोमन में पेन नहीं था लेकर आजस्था इस्ता उता होता किया اب جب میں وہکر تو ہوں";
-    const result = devanagariToUrdu(hindi);
-    expect(hasDevanagari(result)).toBe(false);
-    expect(result).toContain("عاشر");
-    expect(result).toContain("لوئر");
-    expect(result).toContain("ایبڈومن");
+  it("preserves names, verbs, negation, and Devanagari digits verbatim", () => {
+    const transcript = "अजय ने दवा नहीं ली; उसने दर्द बताया ०१२३४५६७८९";
+
+    expect(devanagariToUrdu(transcript)).toBe(transcript);
+    expect(sanitizeTranscript(transcript)).toBe(transcript);
   });
 
-  it("preserves English words mixed with Urdu", () => {
+  it("preserves mixed English and Urdu without normalizing whitespace", () => {
     const mixed = "I have a lot of pain in my body. سر میں درد ہے۔";
-    const result = sanitizeTranscript(mixed);
-    expect(result).toBe(mixed);
+
+    expect(sanitizeTranscript(mixed)).toBe(mixed);
+    expect(sanitizeTranscript("  " + mixed + "  ")).toBe("  " + mixed + "  ");
   });
 });

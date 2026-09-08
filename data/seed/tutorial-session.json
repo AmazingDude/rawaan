@@ -1,0 +1,72 @@
+{
+  "label": "Fictional training example — no real client data",
+  "clinicName": "Training Clinic",
+  "client": {
+    "patientId": "tutorial-client",
+    "displayName": "Mina Rahman",
+    "firstName": "Mina",
+    "lastName": "Rahman",
+    "email": "",
+    "mobileNumber": "",
+    "noteCount": 1,
+    "firstSessionDate": "2026-10-08",
+    "lastSessionDate": "2026-10-08"
+  },
+  "draft": {
+    "patient_id": "tutorial-client",
+    "patient_display_name": "Mina Rahman",
+    "first_name": "Mina",
+    "last_name": "Rahman",
+    "consultation_date": "2026-10-08",
+    "chief_complaint": "Stress during a busy study week",
+    "summary": "Mina described stress during a busy study week and difficulty settling to sleep. The session focused on her study routine and ways to unwind in the evening.",
+    "history": [
+      "The client described a busy week of study and assignments.",
+      "She reported difficulty settling to sleep on study nights."
+    ],
+    "symptoms": [
+      "Feeling stressed",
+      "Difficulty settling to sleep"
+    ],
+    "assessment_discussed": [
+      "The conversation explored how the study schedule affects evening rest."
+    ],
+    "plan_discussed": [
+      "Keep a brief sleep and study journal until the next session.",
+      "Review the evening routine together at follow-up."
+    ],
+    "medications_mentioned": [],
+    "follow_up": "Review the journal at the next session.",
+    "uncertainties": [],
+    "raw_transcript": "Clinician: How has your week been?\nClient: I have been stressed with assignments. It is harder to settle to sleep after studying late.\nClinician: Let us look at your evening routine. Would you be comfortable keeping a brief sleep and study journal until our next session?\nClient: Yes, that sounds useful.\nClinician: We will review the journal together at follow-up.",
+    "approval_status": "draft",
+    "session_info": {
+      "session_type": "in-person",
+      "duration_seconds": 35,
+      "recording_device": "Default microphone",
+      "recorded_at": "2026-10-08T09:00:00.000Z",
+      "transcript_source": "Whisper Large v3"
+    }
+  },
+  "generalQuestion": "How can I prepare for a follow-up conversation?",
+  "generalAnswer": "Review the previous session, note any agreed follow-up, and invite the client to share what has changed. Keep your questions open and check your understanding with them.",
+  "recordsQuestion": "What follow-up was documented?",
+  "recordExcerpt": "Review the journal at the next session.",
+  "planQuestion": "Draft a discussion plan for the next session.",
+  "planAnswer": "Here is a proposed discussion plan for your review [N1]. Check it against the saved session and the client’s current needs.",
+  "plan": {
+    "title": "Follow-up discussion plan",
+    "goals": [
+      "Understand changes since the last session"
+    ],
+    "next_steps": [
+      "Invite the client to describe their week.",
+      "Review the sleep and study journal together."
+    ],
+    "monitoring": [
+      "Discuss any changes in sleep and stress."
+    ],
+    "follow_up": "Agree next steps with the client.",
+    "red_flags": []
+  }
+}

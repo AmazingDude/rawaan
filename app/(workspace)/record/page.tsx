@@ -1,7 +1,6 @@
-import { join } from "node:path";
-
 import { ScribeDashboard } from "@/app/components/scribe-dashboard";
 import { createNoteRepository } from "@/lib/notes/repository";
+import { requireUserStorage } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
@@ -11,9 +10,8 @@ export default async function RecordPage({
   searchParams: Promise<{ patient?: string }>;
 }) {
   const { patient } = await searchParams;
-  const notesStoragePath = join(process.cwd(), "data", "notes.json");
-  const noteRepository = createNoteRepository(notesStoragePath);
-  const notes = await noteRepository.listAll().catch(() => []);
+  const { ownerId, getClient } = await requireUserStorage();
+  const notes = await createNoteRepository(ownerId, getClient).listAll();
 
-  return <ScribeDashboard initialNotes={notes} initialPatientId={patient} />;
+  return <ScribeDashboard key={ownerId} ownerId={ownerId} initialNotes={notes} initialPatientId={patient} />;
 }

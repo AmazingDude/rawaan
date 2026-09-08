@@ -90,6 +90,81 @@ describe("rankNotes", () => {
       ranked[1]!.relevanceScore,
     );
   });
+
+  it("includes structured plan and follow-up text that supplied the retrieval match", () => {
+    const note = makeNote({
+      id: "note-plan-only",
+      plan_discussed: [],
+      follow_up: "Return after the next examination block if headaches increase.",
+      raw_transcript: "The clinician discussed the appointment.",
+    });
+
+    const ranked = rankNotes(
+      [note],
+      "When should she return if headaches increase?",
+    );
+
+    expect(ranked).toHaveLength(1);
+    expect(ranked[0]?.excerpts).toContain(
+      "Follow-up: Return after the next examination block if headaches increase.",
+    );
+    expect(ranked[0]?.excerpts.every((excerpt) => excerpt.trim().length > 0)).toBe(true);
+  });
+
+  it("matches a recorded two-letter clinical acronym without matching absent acronyms", () => {
+    const note = makeNote({
+      id: "note-bp",
+      raw_transcript: "BP was 120/80.",
+    });
+
+    expect(rankNotes([note], "What was BP?")).toHaveLength(1);
+    expect(rankNotes([note], "What was ECG?")).toHaveLength(0);
+  });
+
+  it("uses numeric tokens to retrieve a recorded measurement", () => {
+    const note = makeNote({
+      id: "note-dose",
+      medications_mentioned: ["Metformin 500 mg"],
+      raw_transcript: "Metformin 500 mg was mentioned.",
+    });
+
+    expect(rankNotes([note], "Was 500 mg mentioned?")).toHaveLength(1);
+    expect(rankNotes([note], "Was 750 mg mentioned?")).toHaveLength(0);
+  });
+
+  it("preserves one-digit pain scores while still requiring exact numeric values", () => {
+    const note = makeNote({
+      id: "note-pain-score",
+      symptoms: ["Pain score 7/10"],
+      raw_transcript: "Pain score was 7/10.",
+    });
+
+    expect(rankNotes([note], "Was the pain score 7/10?")).toHaveLength(1);
+    expect(rankNotes([note], "Was the pain score 8/10?")).toHaveLength(0);
+  });
+
+  it("matches a pure Urdu question to Urdu text in approved fields", () => {
+    const note = makeNote({
+      id: "note-urdu",
+      symptoms: ["سر میں درد"],
+      raw_transcript: "مریض نے سر میں درد بتایا۔",
+    });
+
+    const ranked = rankNotes([note], "کیا مریض کو سر میں درد تھا؟");
+
+    expect(ranked).toHaveLength(1);
+    expect(ranked[0]?.excerpts).toContain("Symptoms: سر میں درد");
+  });
+
+  it("does not create Urdu evidence when the requested symptom is absent", () => {
+    const note = makeNote({
+      id: "note-urdu-no-fever",
+      symptoms: ["سر میں درد"],
+      raw_transcript: "مریض نے سر میں درد بتایا۔",
+    });
+
+    expect(rankNotes([note], "کیا مریض کو بخار تھا؟")).toHaveLength(0);
+  });
 });
 
 describe("rankNotes name-token exclusion", () => {

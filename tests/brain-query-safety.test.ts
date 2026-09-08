@@ -33,4 +33,18 @@ describe("classifyQuerySafety", () => {
       normalizedQuestion: "Did her knee swelling come up in the last session?",
     });
   });
+
+  it("treats documented side-effect history as a record query", () => {
+    expect(classifyQuerySafety("Were any side effects documented?")).toEqual({
+      kind: "record_query",
+      normalizedQuestion: "Were any side effects documented?",
+    });
+  });
+
+  it("continues refusing general side-effect questions", () => {
+    expect(classifyQuerySafety("What are common side effects?")).toMatchObject({
+      kind: "refused",
+      reason: "general_medical",
+    });
+  });
 });

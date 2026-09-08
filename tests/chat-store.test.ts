@@ -1,38 +1,10 @@
-/**
- * Chat history store contract (2026-09-04 client detail page work).
- *
- * The store persists per-patient Brain chat entries to local JSON and groups
- * them into threads on read. Hard rules:
- *  - Entries are DISPLAY ONLY — they must never feed back into the Brain
- *    query pipeline (grounding rule, PRD §5.5/§8/§10).
- *  - Per-patient isolation: listThreads only ever returns the requested
- *    patient's threads.
- *  - Missing storage file reads as empty (local-first convention, same as
- *    lib/db/patients.ts and lib/notes/repository.ts).
- */
-
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
+import { createTestDatabase } from "./helpers/supabase";
 
 import {
   createChatStore,
   type StoredChatEntry,
 } from "@/lib/db/chats";
-
-let dir: string;
-let storagePath: string;
-
-beforeEach(async () => {
-  dir = await mkdtemp(join(tmpdir(), "chat-store-"));
-  storagePath = join(dir, "chats.json");
-});
-
-afterEach(async () => {
-  await rm(dir, { recursive: true, force: true });
-});
 
 function entry(partial: Partial<StoredChatEntry>): StoredChatEntry {
   return {
@@ -46,13 +18,17 @@ function entry(partial: Partial<StoredChatEntry>): StoredChatEntry {
 }
 
 describe("createChatStore", () => {
-  it("returns no threads when the file does not exist", async () => {
-    const store = createChatStore(storagePath);
+  it("returns no threads when Supabase has no rows", async () => {
+    const db = createTestDatabase();
+    db.tables.patients.push({ id: "p1", owner_user_id: "user-test" }, { id: "p2", owner_user_id: "user-test" });
+    const store = createChatStore("user-test", () => db.client);
     await expect(store.listThreads("p1")).resolves.toEqual([]);
   });
 
   it("appends entries and groups them into threads per patient", async () => {
-    const store = createChatStore(storagePath);
+    const db = createTestDatabase();
+    db.tables.patients.push({ id: "p1", owner_user_id: "user-test" }, { id: "p2", owner_user_id: "user-test" });
+    const store = createChatStore("user-test", () => db.client);
     await store.append(
       entry({
         id: "a",
@@ -91,7 +67,9 @@ describe("createChatStore", () => {
   });
 
   it("keeps patients isolated from each other", async () => {
-    const store = createChatStore(storagePath);
+    const db = createTestDatabase();
+    db.tables.patients.push({ id: "p1", owner_user_id: "user-test" }, { id: "p2", owner_user_id: "user-test" });
+    const store = createChatStore("user-test", () => db.client);
     await store.append(entry({ id: "a", patientId: "p1" }));
     await store.append(entry({ id: "b", patientId: "p2" }));
 
@@ -100,7 +78,9 @@ describe("createChatStore", () => {
   });
 
   it("round-trips every response variant verbatim", async () => {
-    const store = createChatStore(storagePath);
+    const db = createTestDatabase();
+    db.tables.patients.push({ id: "p1", owner_user_id: "user-test" }, { id: "p2", owner_user_id: "user-test" });
+    const store = createChatStore("user-test", () => db.client);
     const variants: StoredChatEntry["response"][] = [
       {
         status: "supported",

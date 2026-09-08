@@ -14,6 +14,14 @@ out/
 *.log
 *.tsbuildinfo
 
-# local patient fallback store (per-machine runtime data)
+# Legacy clinical files are migration inputs only, never runtime storage.
+data/notes.json
 data/patients.json
 data/chats.json
+data/legacy-json/
+
+# Reproducible tutorial production caches; delivery media is in public/tutorials.
+tools/tutorial-video/audio-cache/
+tools/tutorial-video/captures/
+tools/tutorial-video/compositions/**/renders/
+tools/tutorial-video/compositions/**/.hyperframes/

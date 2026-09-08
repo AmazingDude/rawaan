@@ -4,14 +4,14 @@ All patients and notes in this document are **fictional, team-authored demo mate
 
 ## Load and reset
 
-Run the following commands from the repository root before and after a local demo rehearsal.
+Run the following commands from the repository root before and after a demo rehearsal against your configured Supabase project. Apply supabase/schema.sql first. Reset deletes only canonical demo note IDs, preserving other records.
 
 ```bash
 npm run seed:demo
 npm run seed:reset
 ```
 
-The load command validates the fixture against the existing approved-note schema and writes the eight fictional approved notes to `data/notes.json`. The reset command restores that live store to exactly `[]`. Do not commit `data/notes.json` with demo data loaded.
+The load command validates the fixture against the approved-note schema and inserts missing fictional records into Supabase. Conflicting existing IDs stop the import rather than overwrite records. Reset deletes only canonical demo note IDs; it preserves patients, chats, and other notes.
 
 ## Fictional patient and note list
 
@@ -59,4 +59,4 @@ Select the stated current patient before asking each question. A result must not
 
 ## Demo discipline
 
-The visible source dates must match the cited approved note. A `no_supporting_record` response is a successful demo outcome when the question probes one of the deliberately absent facts; do not substitute a general answer. Keep the existing safety disclosure visible and reset `data/notes.json` immediately after the rehearsal.
+The visible source dates must match the cited approved note. A `no_supporting_record` response is a successful demo outcome when the question probes one of the deliberately absent facts; do not substitute a general answer. Keep the existing safety disclosure visible and run `npm run seed:reset` after the rehearsal.

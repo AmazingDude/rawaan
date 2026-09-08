@@ -34,7 +34,9 @@ export function retrieveApprovedEvidence(input: {
     };
   }
 
-  const evidence = rankNotes(approvedOnly, question);
+  const evidence = rankNotes(approvedOnly, question).filter((item) =>
+    item.excerpts.some((excerpt) => excerpt.trim().length > 0),
+  );
   if (evidence.length === 0) {
     return {
       kind: "no_supporting_record",

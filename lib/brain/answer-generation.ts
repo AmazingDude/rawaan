@@ -1,81 +1,20 @@
-import { z } from "zod";
-
 import type { BrainResponse, RetrievalResult } from "@/lib/brain/types";
-import type { LlmCompletionProvider } from "@/lib/llm/provider";
-import { BRAIN_ANSWER_SYSTEM_PROMPT_V1 } from "@/lib/llm/prompts/brain-answer";
-
-const brainAnswerSchema = z.object({
-  answer: z.string(),
-  cited_note_ids: z.array(z.string()),
-});
 
 type RetrievedEvidence = Extract<RetrievalResult, { kind: "evidence" }>;
 
-function buildEvidenceUserMessage(evidence: RetrievedEvidence): string {
-  return JSON.stringify({
-    question: evidence.question,
-    evidence: evidence.evidence.map((note) => ({
-      noteId: note.noteId,
-      consultationDate: note.consultationDate,
-      excerpts: note.excerpts,
-    })),
-  });
-}
+export function generateGroundedAnswer(evidence: RetrievedEvidence): BrainResponse {
+  const excerpts: string[] = [];
+  const citedDates = new Map<string, string>();
 
-function parseBrainAnswer(completion: string): z.infer<typeof brainAnswerSchema> {
-  // Defensive parsing: strip reasoning tokens, markdown fences, and extract
-  // the JSON object between the first `{` and last `}`. This protects against
-  // models that emit `<think>` blocks or markdown wrappers before the actual
-  // JSON response (observed with qwen3.8-27b on Groq).
-  let cleaned = completion.replace(/<think>[\s\S]*?<\/think>/gi, "");
-  if (cleaned.includes("<think>")) {
-    cleaned = cleaned.replace(/<think>[\s\S]*$/gi, "");
-  }
-  cleaned = cleaned
-    .replace(/^```(?:json)?\s*/i, "")
-    .replace(/\s*```$/i, "")
-    .trim();
-
-  const firstBrace = cleaned.indexOf("{");
-  const lastBrace = cleaned.lastIndexOf("}");
-  if (firstBrace !== -1 && lastBrace > firstBrace) {
-    cleaned = cleaned.slice(firstBrace, lastBrace + 1);
+  for (const note of evidence.evidence) {
+    for (const excerpt of note.excerpts) {
+      if (!excerpt.trim()) continue;
+      excerpts.push(excerpt);
+      citedDates.set(note.noteId, note.consultationDate);
+    }
   }
 
-  let parsed: unknown;
-
-  try {
-    parsed = JSON.parse(cleaned);
-  } catch {
-    throw new Error("Brain answer response was invalid.");
-  }
-
-  const result = brainAnswerSchema.safeParse(parsed);
-  if (!result.success) {
-    throw new Error("Brain answer response was invalid.");
-  }
-
-  return result.data;
-}
-
-export async function generateGroundedAnswer(
-  evidence: RetrievedEvidence,
-  provider: LlmCompletionProvider,
-): Promise<BrainResponse> {
-  const completion = await provider.complete({
-    system: BRAIN_ANSWER_SYSTEM_PROMPT_V1,
-    user: buildEvidenceUserMessage(evidence),
-  });
-  const answer = parseBrainAnswer(completion);
-
-  if (answer.answer.length === 0 && answer.cited_note_ids.length > 0) {
-    throw new Error("Brain answer cannot cite evidence without an answer.");
-  }
-
-  // An empty answer is the model declining because the retrieved excerpts do
-  // not support the question — surface that as "no record", never as a
-  // "supported" response with blank text.
-  if (answer.answer.trim().length === 0) {
+  if (excerpts.length === 0) {
     return {
       status: "no_supporting_record",
       reason: "no_relevant_evidence",
@@ -83,23 +22,12 @@ export async function generateGroundedAnswer(
     };
   }
 
-  const datesByNoteId = new Map(
-    evidence.evidence.map((note) => [note.noteId, note.consultationDate]),
-  );
-  const hasUnretrievedCitation = answer.cited_note_ids.some(
-    (noteId) => !datesByNoteId.has(noteId),
-  );
-
-  if (hasUnretrievedCitation) {
-    throw new Error("Brain answer cited evidence that was not retrieved.");
-  }
-
   return {
     status: "supported",
-    answer: answer.answer,
-    sources: answer.cited_note_ids.map((noteId) => ({
+    answer: excerpts.join("\n"),
+    sources: [...citedDates].map(([noteId, consultationDate]) => ({
       noteId,
-      consultationDate: datesByNoteId.get(noteId)!,
+      consultationDate,
     })),
   };
 }

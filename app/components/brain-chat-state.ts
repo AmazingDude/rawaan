@@ -1,8 +1,9 @@
 import type { BrainResponse } from "@/lib/brain/types";
+import type { AgentResponse } from "@/lib/agent/schema";
 
 export type BrainChatEntry = {
   question: string;
-  response: BrainResponse | { message: string; status: "error" };
+  response: BrainResponse | AgentResponse | { message: string; status: "error" };
   timestamp: string;
 };
 
@@ -80,24 +81,9 @@ export function brainChatReducer(
 
 export function isFollowUpQuery(question: string): boolean {
   const q = question.trim().toLowerCase();
-  // Common follow-up / elaboration / clarification starters
-  if (
-    /^(in\s+detail|details?\s+please|more\s+details?|elaborate|tell\s+me\s+more|expand|explain\s+further|(why|how)(\?|\b\s*$)|what\s+else\??|can\s+you\s+elaborate|can\s+you\s+explain|give\s+more\s+details?|summarize\s+in\s+detail|provide\s+more\s+detail|expand\s+on\s+this|expand\s+on\s+that|what\s+about\b|describe\s+in\s+detail|tell\s+me\s+in\s+detail|break\s+it\s+down)/i.test(
-      q,
-    )
-  ) {
-    return true;
-  }
-  // Short phrases (< 45 chars) containing follow-up keywords
-  if (
-    q.length < 45 &&
-    /\b(in detail|details?\s+please|elaborate|tell me more|what about|how about|how so|what else|expand|explain further|more info|more information|specifics)\b/i.test(
-      q,
-    )
-  ) {
-    return true;
-  }
-  return false;
+  // Only clear ellipses inherit the previous supported question. A question
+  // that names a field or subject (for example, blood pressure) is independent.
+  return /^(?:in detail(?: please)?|tell me more|can you elaborate\??|explain further\??|why\??|how\??|and then\??|what else\??|(?:what|how) about (?:it|that|those|the same)(?: part)?[?.]?)$/.test(q);
 }
 
 export function findRootQuestion(history: BrainChatEntry[]): string | undefined {
@@ -116,7 +102,7 @@ export function buildContextualQuery(
   currentQuestion: string,
   baseQuestion: string,
 ): string {
-  return `${baseQuestion} (Follow-up: ${currentQuestion})`;
+  return `${baseQuestion}\n${currentQuestion}`;
 }
 
 export type RunQueryInput = {
@@ -128,9 +114,9 @@ export type RunQueryInput = {
 };
 
 /**
- * Runs one conversational turn. If the turn is a follow-up or elaboration,
- * it contextualizes the query against the previous supported clinical topic so
- * that retrieval and generation can answer in detail while preserving strict grounding.
+ * Runs one conversational turn. Only a strict ellipsis may include the prior
+ * supported question for context. Independent questions are never retried as
+ * another clinical field, and the entry always retains the user's question.
  */
 export async function runBrainChatQuery({
   patientId,
@@ -149,23 +135,6 @@ export async function runBrainChatQuery({
     );
   } else {
     result = await query(patientId, question);
-    // If standalone query returned no supporting record, retry with conversation context
-    if (
-      result.ok &&
-      result.response.status === "no_supporting_record" &&
-      rootQuestion
-    ) {
-      const contextualResult = await query(
-        patientId,
-        buildContextualQuery(question, rootQuestion),
-      );
-      if (
-        contextualResult.ok &&
-        contextualResult.response.status === "supported"
-      ) {
-        result = contextualResult;
-      }
-    }
   }
 
   const response = result.ok

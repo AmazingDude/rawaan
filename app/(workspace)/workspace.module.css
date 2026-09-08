@@ -1,0 +1,6 @@
+.storageError { display: grid; min-height: 100dvh; place-items: center; padding: 24px; background: #f3f4f1; color: #243833; }
+.storageErrorCard { width: min(100%, 560px); border: 1px solid #e0e6e2; border-radius: 16px; padding: clamp(24px, 5vw, 40px); background: #fff; box-shadow: 0 10px 34px rgb(28 48 41 / 7%); }
+.storageErrorCard h1 { margin: 8px 0 12px; color: #173330; font-size: clamp(24px, 4vw, 32px); line-height: 1.2; }
+.storageErrorCard p:not(.settings-eyebrow) { margin: 0 0 20px; color: #596a64; font-size: 14px; line-height: 1.65; }
+.storageErrorCard code { color: #234b43; font-size: .92em; }
+.storageErrorCard a { display: inline-flex; text-decoration: none; }

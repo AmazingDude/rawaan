@@ -1,0 +1,15 @@
+{
+  "name": "rawaan-tutorial-production",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "capture": "node capture.mjs",
+    "posters": "node render.mjs --posters-only",
+    "produce": "node --env-file-if-exists=../../.env.local produce.mjs",
+    "render": "node render.mjs"
+  },
+  "devDependencies": {
+    "hyperframes": "0.8.141",
+    "gsap": "3.13.0"
+  }
+}

@@ -424,7 +424,9 @@ describe("Conversational follow-up query support", () => {
     expect(isFollowUpQuery("Tell me more")).toBe(true);
     expect(isFollowUpQuery("Explain further")).toBe(true);
     expect(isFollowUpQuery("Why?")).toBe(true);
-    expect(isFollowUpQuery("What about his pain?")).toBe(true);
+    expect(isFollowUpQuery("What about his pain?")).toBe(false);
+    expect(isFollowUpQuery("What about that?")).toBe(true);
+    expect(isFollowUpQuery("How about it?")).toBe(true);
     expect(isFollowUpQuery("What else?")).toBe(true);
 
     // Standalone clinical questions are not follow-up phrases
@@ -469,7 +471,7 @@ describe("Conversational follow-up query support", () => {
       "What symptoms were reported in the documented visits?",
     );
     expect(contextual).toBe(
-      "What symptoms were reported in the documented visits? (Follow-up: In detail please)",
+      "What symptoms were reported in the documented visits?\nIn detail please",
     );
   });
 
@@ -508,11 +510,11 @@ describe("Conversational follow-up query support", () => {
       now: () => NOW,
     });
 
-    // The query called the underlying provider with contextualized question
+    // The query action received the contextualized question
     expect(calls).toEqual([
       [
         "patient-1",
-        "What symptoms were reported in the documented visits? (Follow-up: In detail please)",
+        "What symptoms were reported in the documented visits?\nIn detail please",
       ],
     ]);
     // The entry returned keeps the user's exact question and timestamp
@@ -520,23 +522,13 @@ describe("Conversational follow-up query support", () => {
     expect(entry.response.status).toBe("supported");
   });
 
-  it("falls back to context when standalone query yields no supporting record", async () => {
+  it("does not retry a contextualized question after an explicit follow-up declines", async () => {
     const calls: Array<[string, string]> = [];
     const spy = async (
       patientId: string,
       question: string,
     ): Promise<ChatQueryResult> => {
       calls.push([patientId, question]);
-      if (question.includes("Follow-up")) {
-        return {
-          ok: true,
-          response: {
-            status: "supported",
-            answer: "Duration was 5 days.",
-            sources: [{ noteId: "n1", consultationDate: "2026-08-31" }],
-          },
-        };
-      }
       return {
         ok: true,
         response: {
@@ -559,19 +551,48 @@ describe("Conversational follow-up query support", () => {
 
     const entry = await runBrainChatQuery({
       patientId: "patient-1",
-      question: "How long has he had it?",
+      question: "In detail please",
       history: [priorEntry],
       query: spy,
       now: () => NOW,
     });
 
-    expect(calls).toHaveLength(2);
-    expect(calls[0]).toEqual(["patient-1", "How long has he had it?"]);
-    expect(calls[1]).toEqual([
-      "patient-1",
-      "What symptoms were reported in the documented visits? (Follow-up: How long has he had it?)",
+    expect(calls).toEqual([
+      ["patient-1", "What symptoms were reported in the documented visits?\nIn detail please"],
     ]);
-    expect(entry.response.status).toBe("supported");
+    expect(entry.question).toBe("In detail please");
+    expect(entry.response.status).toBe("no_supporting_record");
+  });
+
+  it("keeps a standalone absent blood-pressure question declined after supported symptoms", async () => {
+    const calls: Array<[string, string]> = [];
+    const symptoms: BrainChatEntry = {
+      question: "What symptoms were documented?",
+      response: {
+        status: "supported",
+        answer: "Headache was documented.",
+        sources: [{ noteId: "n1", consultationDate: "2026-08-31" }],
+      },
+      timestamp: NOW,
+    };
+    const entry = await runBrainChatQuery({
+      patientId: "patient-1",
+      question: "What was her blood pressure?",
+      history: [symptoms],
+      query: async (patientId, question) => {
+        calls.push([patientId, question]);
+        return ok({
+          status: "no_supporting_record",
+          reason: "no_relevant_evidence",
+          message: "No record of that for this patient.",
+        });
+      },
+      now: () => NOW,
+    });
+
+    expect(calls).toEqual([["patient-1", "What was her blood pressure?"]]);
+    expect(entry.question).toBe("What was her blood pressure?");
+    expect(entry.response.status).toBe("no_supporting_record");
   });
 });
 

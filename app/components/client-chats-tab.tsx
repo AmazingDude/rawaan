@@ -6,18 +6,20 @@ import { useEffect, useState } from "react";
 
 import { listChatThreadsAction } from "@/app/actions";
 import { ChatEntryCard } from "@/app/components/brain-chat-entry-card";
+import { STORAGE_ERROR_MESSAGE } from "@/lib/db/errors";
 import type { ChatThread } from "@/lib/db/chats";
 
 export function ClientChatsTab({ patientId }: { patientId: string }) {
   const router = useRouter();
   const [threads, setThreads] = useState<ChatThread[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [expandedThreadId, setExpandedThreadId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     void listChatThreadsAction(patientId).then((result) => {
-      if (!cancelled) setThreads(result);
-    });
+      if (!cancelled) { setThreads(result); setLoadError(null); }
+    }).catch(() => { if (!cancelled) setLoadError(STORAGE_ERROR_MESSAGE); });
     return () => {
       cancelled = true;
     };
@@ -42,7 +44,7 @@ export function ClientChatsTab({ patientId }: { patientId: string }) {
         </button>
       </div>
 
-      {threads === null ? (
+      {loadError ? <p role="alert">{loadError}</p> : threads === null ? (
         <p className="brain-chat-loading">Loading chats…</p>
       ) : threads.length === 0 ? (
         <div className="brain-chat-empty">
@@ -99,6 +101,8 @@ export function ClientChatsTab({ patientId }: { patientId: string }) {
                     {thread.entries.map((entry, index) => (
                       <ChatEntryCard
                         entry={entry}
+                        patientId={patientId}
+                        reviewContext={{patientId,threadId:thread.threadId,entryTimestamp:entry.timestamp}}
                         key={`${entry.timestamp}-${index}`}
                       />
                     ))}

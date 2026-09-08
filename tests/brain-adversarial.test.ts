@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import { queryPatientRecord } from "@/lib/actions/brain";
-import type { LlmCompletionProvider } from "@/lib/llm/provider";
 import type { ApprovedNote } from "@/lib/notes/schema";
 
 const patientId = "fictional-ada-rahman";
@@ -47,38 +46,21 @@ const patientNotes = [
   }),
 ];
 
-const explodingProvider: LlmCompletionProvider = {
-  async complete() {
-    throw new Error("provider must not be called");
-  },
-};
-
-function supportingProvider(
-  answer: string,
-  citedNoteId: string,
-): LlmCompletionProvider {
-  return {
-    async complete() {
-      return JSON.stringify({ answer, cited_note_ids: [citedNoteId] });
-    },
-  };
-}
-
 describe("Brain adversarial integration cases", () => {
-  it("supports a prior documented symptom with its exact cited note date", async () => {
+  it("returns excerpts for a documented symptom with their exact source date", async () => {
     const result = await queryPatientRecord({
       patientId,
       question: "Has Fictional Ada Rahman reported recurring headaches?",
       notes: patientNotes,
-      provider: supportingProvider(
-        "Yes, recurring headaches were documented.",
-        "ada-headache-2026-04-10",
-      ),
     });
 
     expect(result).toEqual({
       status: "supported",
-      answer: "Yes, recurring headaches were documented.",
+      answer: [
+        "Chief complaint: Recurring headaches.",
+        "History: Recurring headaches after long workdays.",
+        "Symptoms: recurring headaches",
+      ].join("\n"),
       sources: [
         {
           noteId: "ada-headache-2026-04-10",
@@ -93,7 +75,6 @@ describe("Brain adversarial integration cases", () => {
       patientId,
       question: "What was the blood pressure?",
       notes: patientNotes,
-      provider: explodingProvider,
     });
 
     expect(result).toMatchObject({
@@ -108,7 +89,6 @@ describe("Brain adversarial integration cases", () => {
       patientId,
       question: "Has the patient been diagnosed with diabetes?",
       notes: patientNotes,
-      provider: explodingProvider,
     });
 
     expect(result).toMatchObject({
@@ -123,7 +103,6 @@ describe("Brain adversarial integration cases", () => {
       patientId,
       question: "What medication should we prescribe?",
       notes: patientNotes,
-      provider: explodingProvider,
     });
 
     expect(result).toMatchObject({
@@ -138,7 +117,6 @@ describe("Brain adversarial integration cases", () => {
       patientId,
       question: "Has the patient reported migraines with aura?",
       notes: patientNotes,
-      provider: explodingProvider,
     });
 
     expect(result).toMatchObject({
@@ -153,7 +131,6 @@ describe("Brain adversarial integration cases", () => {
       patientId,
       question: "What causes migraines?",
       notes: patientNotes,
-      provider: explodingProvider,
     });
 
     expect(result).toMatchObject({
@@ -165,7 +142,7 @@ describe("Brain adversarial integration cases", () => {
   it("returns no_supporting_record for a short name + unrecorded-vital question on a name-dense note", async () => {
     // The transcript repeats the patient's first name, so without the ranker
     // name-exclusion the single name token alone would cross the relevance
-    // threshold and trigger the exploding provider (a false "supported").
+    // threshold and produce a false supported result.
     const nameDenseNotes = [
       makeNote({
         id: "ada-name-dense-2026-06-01",
@@ -178,7 +155,6 @@ describe("Brain adversarial integration cases", () => {
       patientId,
       question: "What was Ada's weight?",
       notes: nameDenseNotes,
-      provider: explodingProvider,
     });
 
     expect(result).toMatchObject({

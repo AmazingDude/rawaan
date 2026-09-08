@@ -1,0 +1,159 @@
+{
+  "title": "Find a past session",
+  "total": 52.418,
+  "chapters": [
+    {
+      "id": "find",
+      "title": "Find your client",
+      "start": 0,
+      "duration": 15.369,
+      "audioDuration": 14.319
+    },
+    {
+      "id": "sessions",
+      "title": "Open a saved session",
+      "start": 15.369,
+      "duration": 16,
+      "audioDuration": 12.8
+    },
+    {
+      "id": "explore",
+      "title": "Explore the session",
+      "start": 31.369,
+      "duration": 21.049,
+      "audioDuration": 19.999
+    }
+  ],
+  "scenes": [
+    {
+      "id": "clients",
+      "start": 0,
+      "duration": 15.369,
+      "title": "Find your client",
+      "number": 1,
+      "focus": {
+        "x": 343,
+        "y": 364.453125,
+        "width": 89.640625,
+        "height": 18
+      }
+    },
+    {
+      "id": "sessions",
+      "start": 15.369,
+      "duration": 8,
+      "title": "Open a saved session",
+      "number": 2,
+      "focus": {
+        "x": 332,
+        "y": 351.609375,
+        "width": 110.96875,
+        "height": 33.9375
+      }
+    },
+    {
+      "id": "saved-note",
+      "start": 23.369,
+      "duration": 8,
+      "title": "Open a saved session",
+      "number": 2,
+      "focus": {
+        "x": 77,
+        "y": 74.3125,
+        "width": 53.65625,
+        "height": 38.078125
+      }
+    },
+    {
+      "id": "transcript",
+      "start": 31.369,
+      "duration": 10.525,
+      "title": "Explore the session",
+      "number": 3,
+      "focus": {
+        "x": 381.78125,
+        "y": 74.3125,
+        "width": 84.578125,
+        "height": 38.078125
+      }
+    },
+    {
+      "id": "session-info",
+      "start": 41.894,
+      "duration": 10.525,
+      "title": "Explore the session",
+      "number": 3,
+      "focus": {
+        "x": 491.609375,
+        "y": 74.3125,
+        "width": 158.578125,
+        "height": 38.078125
+      }
+    }
+  ],
+  "cues": [
+    {
+      "start": 0.35,
+      "end": 4.99,
+      "text": "You do not have to search through loose notes before a follow-up."
+    },
+    {
+      "start": 4.99,
+      "end": 8.03,
+      "text": "Open Clients and search for the client's name."
+    },
+    {
+      "start": 8.03,
+      "end": 11.389,
+      "text": "Select the client to open their individual record."
+    },
+    {
+      "start": 11.389,
+      "end": 14.669,
+      "text": "Your records belong to your account."
+    },
+    {
+      "start": 15.719,
+      "end": 18.519,
+      "text": "Choose Sessions to see their approved notes."
+    },
+    {
+      "start": 18.519,
+      "end": 22.839,
+      "text": "Find the consultation date you need, then open the session."
+    },
+    {
+      "start": 22.839,
+      "end": 28.518,
+      "text": "The note stays connected to its original transcript, so you can check what was actually recorded."
+    },
+    {
+      "start": 31.719,
+      "end": 35.799,
+      "text": "Move between Notes, Transcript, and Session Information."
+    },
+    {
+      "start": 35.799,
+      "end": 39.719,
+      "text": "You can also explore the other session tabs."
+    },
+    {
+      "start": 39.719,
+      "end": 44.198,
+      "text": "Treatment Plan includes recorded next steps and separately reviewed plans."
+    },
+    {
+      "start": 44.198,
+      "end": 47.878,
+      "text": "Return to Clients whenever you need another session."
+    },
+    {
+      "start": 47.878,
+      "end": 51.718,
+      "text": "If nothing is listed yet, approve and save a note first."
+    }
+  ],
+  "voice": "hannah",
+  "model": "canopylabs/orpheus-v1-english",
+  "narrated": true
+}

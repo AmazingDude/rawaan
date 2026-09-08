@@ -1,17 +1,21 @@
-"use client";
+﻿"use client";
 
-import { Mic, Sprout, X } from "lucide-react";
+import { ChevronDown, Mic, Sprout, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
-  createClientAction,
   getPatientInsightsAction,
   listClientsAction,
   type ClientRecord,
 } from "@/app/actions";
+import { RequestStatus } from "@/app/components/request-status";
+import { STORAGE_ERROR_MESSAGE } from "@/lib/db/errors";
 import type { PatientSessionInsights } from "@/lib/notes/insights";
+import { useAccessibleDialog } from "@/app/components/use-accessible-dialog";
+import { formatSessionDate, localConsultationDate } from "@/app/components/session-date";
 
 interface RecordSessionModalProps {
+  isClientsLoading?: boolean;
   initialClientId?: string;
   initialClients?: ClientRecord[];
   isOpen: boolean;
@@ -29,21 +33,23 @@ interface RecordSessionModalProps {
 
 export function RecordSessionModal({
   initialClientId,
-  initialClients = [],
+  initialClients,
+  isClientsLoading = false,
   isOpen,
   onClose,
   onComplete,
   requestTranscription,
 }: RecordSessionModalProps) {
-  const [clients, setClients] = useState<ClientRecord[]>(initialClients);
+  const [loadedClients, setClients] = useState<ClientRecord[]>(initialClients ?? []);
+  const clients = initialClients ?? loadedClients;
   const [selectedClient, setSelectedClient] = useState<ClientRecord | null>(null);
   const [clientSearchQuery, setClientSearchQuery] = useState("");
   const [isClientDropdownOpen, setIsClientDropdownOpen] = useState(false);
-  const [isCreatingClient, setIsCreatingClient] = useState(false);
-  const [newClientName, setNewClientName] = useState("");
 
   const [insights, setInsights] = useState<PatientSessionInsights | null>(null);
   const [isLoadingInsights, setIsLoadingInsights] = useState(false);
+  const selectedClientIdRef = useRef<string | null>(null);
+  const insightRequestIdRef = useRef(0);
 
   // Audio Device Setup
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
@@ -52,6 +58,7 @@ export function RecordSessionModal({
   // Mic Tester State
   const [isTestingMic, setIsTestingMic] = useState(false);
   const [audioLevels, setAudioLevels] = useState<number[]>(new Array(18).fill(10));
+  const micTestRequestIdRef = useRef(0);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
@@ -64,65 +71,99 @@ export function RecordSessionModal({
   const recordedChunksRef = useRef<Blob[]>([]);
   const recordingStreamRef = useRef<MediaStream | null>(null);
   const isCaptureAbandonedRef = useRef(false);
+  const captureRequestIdRef = useRef(0);
+  const recordingStartedAtRef = useRef<number | null>(null);
   const timerIntervalRef = useRef<number | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const isMountedRef = useRef(true);
+  const clientSelectorRef = useRef<HTMLDivElement>(null);
+  const clientSelectorTriggerRef = useRef<HTMLButtonElement>(null);
+  const initialClientSelectionResolvedRef = useRef(false);
 
-  const handleSelectClient = useCallback(
-    (client: ClientRecord | null) => {
-      // If clicking the already selected client, toggle off (unselect)
-      if (
-        selectedClient &&
-        client &&
-        selectedClient.patientId === client.patientId
-      ) {
-        setSelectedClient(null);
+  const handleSelectClient = useCallback((client: ClientRecord | null) => {
+    const selected = client;
+    initialClientSelectionResolvedRef.current = true;
+    setClientSearchQuery("");
+    const requestId = ++insightRequestIdRef.current;
+    selectedClientIdRef.current = selected?.patientId ?? null;
+    setSelectedClient(selected);
+    setInsights(null);
+    setIsLoadingInsights(false);
+    setIsClientDropdownOpen(false);
+    if (!selected) return;
+
+    setIsLoadingInsights(true);
+    void getPatientInsightsAction(selected.patientId)
+      .then((data) => {
+        if (requestId !== insightRequestIdRef.current || selectedClientIdRef.current !== selected.patientId) return;
+        setInsights(data);
+      })
+      .catch(() => {
+        if (requestId !== insightRequestIdRef.current || selectedClientIdRef.current !== selected.patientId) return;
         setInsights(null);
-        setIsClientDropdownOpen(false);
-        return;
-      }
-
-      setSelectedClient(client);
-      setIsClientDropdownOpen(false);
-      if (!client) {
-        setInsights(null);
-        return;
-      }
-
-      setIsLoadingInsights(true);
-      void getPatientInsightsAction(client.patientId)
-        .then((data) => {
-          setInsights(data);
-        })
-        .catch(() => {
-          setInsights(null);
-        })
-        .finally(() => {
+        setStatusMessage(STORAGE_ERROR_MESSAGE);
+      })
+      .finally(() => {
+        if (requestId === insightRequestIdRef.current && selectedClientIdRef.current === selected.patientId) {
           setIsLoadingInsights(false);
-        });
-    },
-    [selectedClient],
-  );
+        }
+      });
+  }, []);
+
+  useEffect(() => {
+    if (!isClientDropdownOpen) return;
+    function handleOutsidePointer(event: PointerEvent) {
+      if (event.target instanceof Node && !clientSelectorRef.current?.contains(event.target)) {
+        setIsClientDropdownOpen(false);
+      }
+    }
+    document.addEventListener("pointerdown", handleOutsidePointer);
+    return () => document.removeEventListener("pointerdown", handleOutsidePointer);
+  }, [isClientDropdownOpen]);
+
+  function handleClientSelectorKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (!isClientDropdownOpen) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      setIsClientDropdownOpen(false);
+      clientSelectorTriggerRef.current?.focus();
+      return;
+    }
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+    const options = Array.from(
+      clientSelectorRef.current?.querySelectorAll<HTMLButtonElement>('[role="option"]') ?? [],
+    );
+    if (!options.length) return;
+    event.preventDefault();
+    const index = options.findIndex((option) => option === document.activeElement);
+    const nextIndex = index < 0
+      ? event.key === "ArrowDown" ? 0 : options.length - 1
+      : (index + (event.key === "ArrowDown" ? 1 : -1) + options.length) % options.length;
+    options[nextIndex]?.focus();
+  }
 
   // Load clients if none passed
   useEffect(() => {
-    if (isOpen && clients.length === 0) {
+    if (isOpen && initialClients === undefined && clients.length === 0) {
       void listClientsAction().then((loaded) => {
         if (loaded.length > 0) {
           setClients(loaded);
         }
-      });
+      }).catch(() => setStatusMessage(STORAGE_ERROR_MESSAGE));
     }
-  }, [isOpen, clients.length]);
+  }, [isOpen, initialClients, clients.length]);
 
   // Preselect initial client if provided
   useEffect(() => {
-    if (!isOpen || !initialClientId || selectedClient) return;
+    if (!isOpen || !initialClientId || initialClientSelectionResolvedRef.current) return;
     const match = clients.find((c) => c.patientId === initialClientId);
     if (match) {
       const id = window.setTimeout(() => handleSelectClient(match), 0);
       return () => window.clearTimeout(id);
     }
-  }, [isOpen, initialClientId, clients, selectedClient, handleSelectClient]);
+  }, [isOpen, initialClientId, clients, handleSelectClient]);
 
   // Enumerate Audio Devices
   useEffect(() => {
@@ -146,10 +187,28 @@ export function RecordSessionModal({
     void getDevices();
   }, [isOpen, selectedDeviceId]);
 
+  function handleClose() {
+    ++insightRequestIdRef.current;
+    ++micTestRequestIdRef.current;
+    selectedClientIdRef.current = null;
+    stopMicTest();
+    stopCapture();
+    onClose();
+  }
+
+  useAccessibleDialog(dialogRef, handleClose, isOpen);
+
   // Cleanup on close or unmount
+  function invalidateOutstandingRequests() {
+    ++insightRequestIdRef.current;
+    ++micTestRequestIdRef.current;
+  }
+
   useEffect(() => {
     return () => {
-      stopMicTest();
+      isMountedRef.current = false;
+      invalidateOutstandingRequests();
+      stopMicTest(false);
       stopCapture();
     };
   }, []);
@@ -158,6 +217,8 @@ export function RecordSessionModal({
   // capture that is torn down mid-flight can never report back into the UI.
   function stopCapture() {
     isCaptureAbandonedRef.current = true;
+    ++captureRequestIdRef.current;
+    recordingStartedAtRef.current = null;
 
     if (timerIntervalRef.current) {
       clearInterval(timerIntervalRef.current);
@@ -185,7 +246,8 @@ export function RecordSessionModal({
     setStatusMessage(null);
   }
 
-  function stopMicTest() {
+  function stopMicTest(updateState = true) {
+    ++micTestRequestIdRef.current;
     if (animFrameRef.current) {
       cancelAnimationFrame(animFrameRef.current);
       animFrameRef.current = null;
@@ -198,8 +260,10 @@ export function RecordSessionModal({
       void audioContextRef.current.close();
       audioContextRef.current = null;
     }
-    setIsTestingMic(false);
-    setAudioLevels(new Array(18).fill(10));
+    if (updateState && isMountedRef.current) {
+      setIsTestingMic(false);
+      setAudioLevels(new Array(18).fill(10));
+    }
   }
 
   async function handleToggleMicTest() {
@@ -207,6 +271,10 @@ export function RecordSessionModal({
       stopMicTest();
       return;
     }
+
+    const requestId = ++micTestRequestIdRef.current;
+    let acquiredStream: MediaStream | null = null;
+    let audioContext: AudioContext | null = null;
 
     try {
       const constraints: MediaStreamConstraints = {
@@ -216,17 +284,22 @@ export function RecordSessionModal({
       };
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      acquiredStream = stream;
+      if (requestId !== micTestRequestIdRef.current || !isOpen) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
       micStreamRef.current = stream;
 
       const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      const audioCtx = new AudioCtx();
-      audioContextRef.current = audioCtx;
+      audioContext = new AudioCtx();
+      audioContextRef.current = audioContext;
 
-      const analyser = audioCtx.createAnalyser();
+      const analyser = audioContext.createAnalyser();
       analyser.fftSize = 64;
       analyserRef.current = analyser;
 
-      const source = audioCtx.createMediaStreamSource(stream);
+      const source = audioContext.createMediaStreamSource(stream);
       source.connect(analyser);
 
       setIsTestingMic(true);
@@ -252,30 +325,14 @@ export function RecordSessionModal({
 
       updateMeter();
     } catch {
-      setStatusMessage("Microphone access denied or unavailable.");
+      acquiredStream?.getTracks().forEach((track) => track.stop());
+      if (audioContext && audioContext.state !== "closed") void audioContext.close();
+      if (micStreamRef.current === acquiredStream) micStreamRef.current = null;
+      if (audioContextRef.current === audioContext) audioContextRef.current = null;
+      if (requestId === micTestRequestIdRef.current && isMountedRef.current) {
+        setStatusMessage("Microphone access denied or unavailable.");
+      }
     }
-  }
-
-  async function handleCreateClientSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!newClientName.trim()) return;
-
-    // Persist through the server action so the client is stored
-    // (Supabase + local fallback) instead of living only in this modal.
-    const result = await createClientAction({
-      firstName: newClientName.trim(),
-      lastName: "",
-    });
-
-    if (!result.ok) {
-      setStatusMessage(result.message);
-      return;
-    }
-
-    setClients((prev) => [result.client, ...prev]);
-    handleSelectClient(result.client);
-    setNewClientName("");
-    setIsCreatingClient(false);
   }
 
   function startRecordingTimer() {
@@ -305,6 +362,8 @@ export function RecordSessionModal({
     setStatusMessage(null);
     recordedChunksRef.current = [];
     isCaptureAbandonedRef.current = false;
+    const requestId = ++captureRequestIdRef.current;
+    let acquiredStream: MediaStream | null = null;
 
     try {
       const constraints: MediaStreamConstraints = {
@@ -314,6 +373,11 @@ export function RecordSessionModal({
       };
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      acquiredStream = stream;
+      if (requestId !== captureRequestIdRef.current || !isOpen) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
       recordingStreamRef.current = stream;
 
       let preferredMimeType = "audio/webm";
@@ -333,17 +397,22 @@ export function RecordSessionModal({
       mediaRecorderRef.current = recorder;
 
       recorder.ondataavailable = (event) => {
-        if (event.data && event.data.size > 0) {
+        if (requestId === captureRequestIdRef.current && event.data && event.data.size > 0) {
           recordedChunksRef.current.push(event.data);
         }
       };
 
       recorder.onstop = () => {
         stream.getTracks().forEach((t) => t.stop());
-        if (isCaptureAbandonedRef.current) {
+        if (requestId !== captureRequestIdRef.current || isCaptureAbandonedRef.current) {
           recordedChunksRef.current = [];
           return;
         }
+        const startedAt = recordingStartedAtRef.current;
+        const durationSeconds = startedAt === null
+          ? 0
+          : Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+        recordingStartedAtRef.current = null;
         const actualMime = recorder.mimeType || preferredMimeType || "audio/webm";
         const cleanMime = actualMime.split(";")[0] || "audio/webm";
         const audioBlob = new Blob(recordedChunksRef.current, { type: cleanMime });
@@ -356,14 +425,20 @@ export function RecordSessionModal({
                 ? "wav"
                 : "webm";
         const audioFile = new File([audioBlob], `consultation-recording.${ext}`, { type: cleanMime });
-        void processRecording(audioFile);
+        void processRecording(audioFile, durationSeconds, requestId);
       };
 
+      recordingStartedAtRef.current = Date.now();
       recorder.start(500);
       setPhase("recording");
       startRecordingTimer();
     } catch {
-      setStatusMessage("Could not start recording. Check microphone permissions.");
+      acquiredStream?.getTracks().forEach((track) => track.stop());
+      if (recordingStreamRef.current === acquiredStream) recordingStreamRef.current = null;
+      if (requestId === captureRequestIdRef.current && isMountedRef.current) {
+        isCaptureAbandonedRef.current = true;
+        setStatusMessage("Could not start recording. Check microphone permissions.");
+      }
     }
   }
 
@@ -375,18 +450,18 @@ export function RecordSessionModal({
     }
   }
 
-  async function processRecording(file: File) {
+  async function processRecording(file: File, durationSeconds: number, requestId: number) {
     try {
       const result = await requestTranscription(file);
-      if (isCaptureAbandonedRef.current) return;
+      if (requestId !== captureRequestIdRef.current || isCaptureAbandonedRef.current) return;
       if (result.ok && result.transcript) {
         const selectedDevice = audioDevices.find((d) => d.deviceId === selectedDeviceId);
         onComplete({
-          consultationDate: new Date().toISOString().slice(0, 10),
-          patientDisplayName: selectedClient ? selectedClient.displayName : "Walk-in Consultation",
-          patientId: selectedClient ? selectedClient.patientId : `patient-guest-${Date.now().toString().slice(-4)}`,
+          consultationDate: localConsultationDate(),
+          patientDisplayName: selectedClient?.displayName ?? "",
+          patientId: selectedClient?.patientId ?? "",
           recordingDevice: selectedDevice?.label || "Default Microphone",
-          recordingDurationSeconds: elapsedSeconds,
+          recordingDurationSeconds: durationSeconds,
           transcript: result.transcript,
         });
       } else {
@@ -394,10 +469,25 @@ export function RecordSessionModal({
         setPhase("setup");
       }
     } catch {
-      if (isCaptureAbandonedRef.current) return;
+      if (requestId !== captureRequestIdRef.current || isCaptureAbandonedRef.current) return;
       setStatusMessage("Transcription service error. Please try again.");
       setPhase("setup");
     }
+  }
+
+  function renderInsightSource(sourceNoteId: string) {
+    const source = insights?.timeline.find((note) => note.noteId === sourceNoteId);
+    const label = source ? "Source: " + formatSessionDate(source.date) : "View source note";
+    if (!selectedClient) return <span className="insight-source-note">{label}</span>;
+
+    return (
+      <a
+        className="insight-source-note"
+        href={"/clients/" + encodeURIComponent(selectedClient.patientId) + "/sessions/" + encodeURIComponent(sourceNoteId)}
+      >
+        {label}
+      </a>
+    );
   }
 
   if (!isOpen) return null;
@@ -405,12 +495,24 @@ export function RecordSessionModal({
   const filteredClients = clients.filter(
     (c) =>
       c.displayName.toLowerCase().includes(clientSearchQuery.toLowerCase()) ||
-      c.patientId.toLowerCase().includes(clientSearchQuery.toLowerCase()),
+      c.email?.toLowerCase().includes(clientSearchQuery.toLowerCase()) ||
+      c.mobileNumber?.includes(clientSearchQuery),
   );
 
   return (
-    <div className="modal-backdrop" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="record-session-modal" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="modal-backdrop"
+      onClick={(event) => { if (event.target === event.currentTarget) handleClose(); }}
+    >
+      <div
+        aria-label="Record an In-Person Session"
+        aria-modal="true"
+        className="record-session-modal"
+        onClick={(e) => e.stopPropagation()}
+        ref={dialogRef}
+        role="dialog"
+        tabIndex={-1}
+      >
         {/* Header matching Image 1 */}
         <header className="modal-header">
           <div className="modal-title-lockup">
@@ -421,21 +523,9 @@ export function RecordSessionModal({
           </div>
           <div className="modal-window-actions">
             <button
-              aria-label="Expand"
-              className="modal-icon-btn"
-              type="button"
-            >
-              <svg aria-hidden="true" fill="none" height="15" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="15">
-                <polyline points="15 3 21 3 21 9" />
-                <polyline points="9 21 3 21 3 15" />
-                <line x1="21" x2="14" y1="3" y2="10" />
-                <line x1="3" x2="10" y1="21" y2="14" />
-              </svg>
-            </button>
-            <button
               aria-label="Close modal"
               className="modal-icon-btn"
-              onClick={onClose}
+              onClick={handleClose}
               type="button"
             >
               <X size={16} />
@@ -475,7 +565,7 @@ export function RecordSessionModal({
                 onClick={handleStopRecording}
                 type="button"
               >
-                Stop & Generate Note
+                Stop recording
               </button>
               <button
                 className="ghost-button"
@@ -500,116 +590,100 @@ export function RecordSessionModal({
             <div className="modal-left-column">
               {/* 1. Selected Client */}
               <div className="setup-block">
-                <label className="setup-label">Selected Client</label>
-                <div className="client-search-select-wrapper">
-                  <div
-                    className="client-select-input-box"
-                    onClick={() => setIsClientDropdownOpen((prev) => !prev)}
-                    role="button"
-                    tabIndex={0}
+                <span className="setup-label" id="record-client-label">Selected Client</span>
+                <div
+                  className="client-search-select-wrapper"
+                  onBlur={(event) => {
+                    if (!event.currentTarget.contains(event.relatedTarget)) setIsClientDropdownOpen(false);
+                  }}
+                  onKeyDown={handleClientSelectorKeyDown}
+                  ref={clientSelectorRef}
+                >
+                  <button
+                    aria-controls="record-client-options"
+                    aria-expanded={isClientDropdownOpen}
+                    aria-haspopup="listbox"
+                    aria-labelledby="record-client-label record-client-value"
+                    className={isClientDropdownOpen ? "client-select-input-box is-open" : "client-select-input-box"}
+                    onClick={() => {
+                      setClientSearchQuery("");
+                      setIsClientDropdownOpen((open) => !open);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                        event.preventDefault();
+                        setIsClientDropdownOpen(true);
+                      }
+                    }}
+                    ref={clientSelectorTriggerRef}
+                    type="button"
                   >
-                    <svg className="search-input-icon" fill="none" height="16" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="16">
+                    <svg aria-hidden="true" className="search-input-icon" fill="none" height="18" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="18">
                       <circle cx="11" cy="11" r="8" />
                       <line x1="21" x2="16.65" y1="21" y2="16.65" />
                     </svg>
-                    <span className="selected-client-display">
-                      {selectedClient ? selectedClient.displayName : "Search for a client or group…"}
+                    <span className="selected-client-display" id="record-client-value">
+                      {selectedClient?.displayName || "Search for an existing client…"}
                     </span>
-                    {selectedClient ? (
-                      <button
-                        aria-label="Unselect client"
-                        className="btn-unselect-client"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleSelectClient(null);
-                        }}
-                        type="button"
-                      >
-                        <X size={14} />
-                      </button>
-                    ) : (
-                      <span className="dropdown-caret">⌄</span>
-                    )}
-                  </div>
+                    <ChevronDown aria-hidden="true" className="dropdown-caret" size={18} />
+                  </button>
 
                   {isClientDropdownOpen ? (
                     <div className="client-dropdown-menu">
                       <div className="dropdown-search-row">
                         <input
+                          aria-label="Search existing clients"
                           autoFocus
                           className="dropdown-filter-input"
-                          onChange={(e) => setClientSearchQuery(e.target.value)}
-                          placeholder="Type client name or ID…"
-                          type="text"
+                          onChange={(event) => setClientSearchQuery(event.target.value)}
+                          placeholder="Search clients by name…"
+                          type="search"
                           value={clientSearchQuery}
                         />
                       </div>
-                      <ul className="client-options-list">
-                        {selectedClient ? (
-                          <li
-                            className="client-option-item is-clear-option"
-                            onClick={() => handleSelectClient(null)}
-                          >
-                            <span className="option-name">
-                              <X size={14} /> Clear selection (No client)
-                            </span>
-                          </li>
-                        ) : null}
+                      <ul aria-label="Existing clients" className="client-options-list" id="record-client-options" role="listbox">
                         {filteredClients.map((client) => (
-                          <li
-                            key={client.patientId}
-                            className={`client-option-item ${selectedClient?.patientId === client.patientId ? "is-selected" : ""}`}
-                            onClick={() => handleSelectClient(client)}
-                          >
-                            <span className="option-name">{client.displayName}</span>
-                            <span className="option-meta">ID: {client.patientId}</span>
+                          <li key={client.patientId} role="presentation">
+                            <button
+                              aria-selected={selectedClient?.patientId === client.patientId}
+                              className={selectedClient?.patientId === client.patientId ? "client-option-item is-selected" : "client-option-item"}
+                              onClick={() => {
+                                handleSelectClient(client);
+                                clientSelectorTriggerRef.current?.focus();
+                              }}
+                              role="option"
+                              type="button"
+                            >
+                              <span className="option-name">{client.displayName}</span>
+                              <span className="option-meta">{client.noteCount} {client.noteCount === 1 ? "session" : "sessions"}</span>
+                              <span className="client-option-type">Individual</span>
+                            </button>
                           </li>
                         ))}
-                      </ul>
-
-                      {filteredClients.length === 0 ? (
-                        <div className="dropdown-empty-row">
-                          <p>No matching client found.</p>
+                        <li role="presentation">
                           <button
-                            className="btn-create-inline"
+                            aria-selected={!selectedClient}
+                            className="client-option-item is-unassigned-option"
                             onClick={() => {
-                              setNewClientName(clientSearchQuery);
-                              setIsCreatingClient(true);
+                              handleSelectClient(null);
+                              clientSelectorTriggerRef.current?.focus();
                             }}
+                            role="option"
                             type="button"
                           >
-                            + Create &quot;{clientSearchQuery || "New Client"}&quot;
+                            <span className="option-name">No client selected</span>
+                            <span className="option-meta">Assign after recording</span>
                           </button>
-                        </div>
+                        </li>
+                      </ul>
+                      {isClientsLoading ? <RequestStatus label="Loading clients…"/> : filteredClients.length === 0 ? (
+                        <p className="dropdown-empty-row" role="status">
+                          No matching clients. You can record now and create a client on the next screen.
+                        </p>
                       ) : null}
                     </div>
                   ) : null}
                 </div>
-
-                {isCreatingClient ? (
-                  <form className="inline-client-form" onSubmit={handleCreateClientSubmit}>
-                    <input
-                      autoFocus
-                      className="form-input"
-                      onChange={(e) => setNewClientName(e.target.value)}
-                      placeholder="Enter new patient name…"
-                      type="text"
-                      value={newClientName}
-                    />
-                    <div className="inline-form-actions">
-                      <button className="primary-button btn-sm" type="submit">
-                        Save Client
-                      </button>
-                      <button
-                        className="ghost-button btn-sm"
-                        onClick={() => setIsCreatingClient(false)}
-                        type="button"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </form>
-                ) : null}
               </div>
 
               {/* 2. Setup Session - Mic Device Selector */}
@@ -680,33 +754,40 @@ export function RecordSessionModal({
                   <div className="insights-content-populated">
                     <div className="insight-section">
                       <span className="insight-section-title">Summary</span>
-                      <p className="insight-text">{insights.summary}</p>
+                      <p className="insight-text">{insights.summary?.text || "Not documented"}</p>
+                      {insights.summary ? renderInsightSource(insights.summary.sourceNoteId) : null}
                     </div>
 
                     <div className="insight-section">
                       <span className="insight-section-title">Previous Action Items</span>
                       <ul className="insight-bullets">
-                        {insights.previousActionItems.map((item, idx) => (
-                          <li key={idx}>{item}</li>
-                        ))}
+                        {insights.previousActionItems.length ? insights.previousActionItems.map((item, idx) => (
+                          <li key={`${item.sourceNoteId}-${idx}`}>
+                            {item.text}{renderInsightSource(item.sourceNoteId)}
+                          </li>
+                        )) : <li>Not documented</li>}
                       </ul>
                     </div>
 
                     <div className="insight-section">
-                      <span className="insight-section-title">Interesting Questions</span>
+                      <span className="insight-section-title">Items needing review</span>
                       <ul className="insight-bullets">
-                        {insights.interestingQuestions.map((item, idx) => (
-                          <li key={idx}>{item}</li>
-                        ))}
+                        {insights.interestingQuestions.length ? insights.interestingQuestions.map((item, idx) => (
+                          <li key={`${item.sourceNoteId}-${idx}`}>
+                            {item.text}{renderInsightSource(item.sourceNoteId)}
+                          </li>
+                        )) : <li>Not documented</li>}
                       </ul>
                     </div>
 
                     <div className="insight-section">
                       <span className="insight-section-title">Plan for This Session</span>
                       <ul className="insight-bullets">
-                        {insights.planForThisSession.map((item, idx) => (
-                          <li key={idx}>{item}</li>
-                        ))}
+                        {insights.planForThisSession.length ? insights.planForThisSession.map((item, idx) => (
+                          <li key={`${item.sourceNoteId}-${idx}`}>
+                            {item.text}{renderInsightSource(item.sourceNoteId)}
+                          </li>
+                        )) : <li>Not documented</li>}
                       </ul>
                     </div>
                   </div>

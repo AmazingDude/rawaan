@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 import { getGroqApiKeyFromDisk } from "@/lib/llm/provider";
-import { sanitizeTranscript } from "@/lib/transcription/devanagari-to-urdu";
 import type { TranscriptionProvider } from "@/lib/transcription/types";
 
 const GROQ_TRANSCRIPTIONS_URL =
@@ -29,6 +28,8 @@ export function createGroqWhisperProvider(): TranscriptionProvider {
       formData.append("file", audio);
       formData.append("model", GROQ_WHISPER_MODEL);
       formData.append("response_format", "json");
+      // Urdu speech is frequently auto-detected as Hindi; request its actual language.
+      formData.append("language", "ur");
       formData.append(
         "prompt",
         "Clinical consultation, medical examination, doctor and patient conversation in Urdu or English. طبی معائنہ اور مشاورت، ڈاکٹر اور مریض کے درمیان گفتگو۔ Transcribe in Urdu (اردو) or English as spoken.",
@@ -57,7 +58,7 @@ export function createGroqWhisperProvider(): TranscriptionProvider {
       }
 
       return {
-        transcript: sanitizeTranscript(payload.data.text),
+        transcript: payload.data.text,
       };
     },
   };

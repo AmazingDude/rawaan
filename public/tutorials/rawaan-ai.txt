@@ -1,0 +1,7 @@
+Open Rawaan AI whenever you need help with a question. In Assistant mode, you can start a general conversation without selecting a client. Type your question and send it. Earlier conversations are available in Chat history. Select a client only when you want their records included.
+
+For questions about what actually happened in a session, select the client and switch to Records only. Ask what was documented. Rawaan shows matching passages from approved notes, with dated source links. Open the source to check the context. If there is no relevant record, it says so.
+
+Switch back to Assistant for explanations and clinical considerations. Suggestions are different from recorded facts. Confirm current clinical context when Rawaan asks for it. Web search can bring in references when available. Check the references and use your own clinical judgment; generated content does not change a saved session note.
+
+A proposed treatment plan is a draft for clinician review. Choose Review and save plan, read the references, and edit the content. Use Confirm review and save only after that review. The saved plan appears in Treatment Plan separately from the original session note. You remain in control of what enters the record.

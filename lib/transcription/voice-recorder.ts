@@ -95,6 +95,7 @@ export class VoiceCaptureController {
   private captureRevision = 0;
   private clearTimer: (() => void) | null = null;
   private currentState: VoiceCaptureState = defaultState;
+  private pendingStart = false;
   private recorder: VoiceRecorder | null = null;
   private resolveAudioFile: ((audio: File) => void) | null = null;
   private stream: VoiceMediaStream | null = null;
@@ -106,13 +107,17 @@ export class VoiceCaptureController {
   }
 
   async start(hasConsent: boolean): Promise<void> {
-    if (!hasConsent || this.currentState.phase !== "idle") {
+    if (
+      !hasConsent ||
+      this.pendingStart ||
+      this.currentState.phase !== "idle"
+    ) {
       return;
     }
 
     if (!this.dependencies.isRecorderSupported()) {
       this.setFallback(
-        "Recording is not supported in this demo browser. Type or paste the transcript manually.",
+        "Recording is not supported in this browser. Write a summary instead.",
       );
       return;
     }
@@ -124,11 +129,23 @@ export class VoiceCaptureController {
       return;
     }
 
-    try {
-      const stream = await this.dependencies.getUserMedia();
-      const recorder = this.dependencies.createRecorder(stream);
+    const captureRevision = ++this.captureRevision;
+    this.pendingStart = true;
+    let stream: VoiceMediaStream | null = null;
 
-      this.captureRevision += 1;
+    try {
+      stream = await this.dependencies.getUserMedia();
+      if (captureRevision !== this.captureRevision) {
+        this.stopTracks(stream);
+        return;
+      }
+
+      const recorder = this.dependencies.createRecorder(stream);
+      if (captureRevision !== this.captureRevision) {
+        this.stopTracks(stream);
+        return;
+      }
+
       this.stream = stream;
       this.recorder = recorder;
       this.audioChunks = [];
@@ -168,11 +185,25 @@ export class VoiceCaptureController {
       }, 1000);
       recorder.start();
     } catch (error) {
+      if (captureRevision !== this.captureRevision) {
+        if (stream && this.stream !== stream) {
+          this.stopTracks(stream);
+        }
+        return;
+      }
+
+      if (stream && this.stream !== stream) {
+        this.stopTracks(stream);
+      }
       this.setFallback(
         errorName(error) === "NotAllowedError"
           ? "Microphone permission was not granted. Type or paste the transcript manually."
           : "Recording could not start. Type or paste the transcript manually.",
       );
+    } finally {
+      if (captureRevision === this.captureRevision) {
+        this.pendingStart = false;
+      }
     }
   }
 
@@ -243,6 +274,7 @@ export class VoiceCaptureController {
 
   reset(): void {
     this.captureRevision += 1;
+    this.pendingStart = false;
     this.clearRecordingTimer();
 
     if (this.currentState.phase === "recording") {
@@ -278,7 +310,7 @@ export class VoiceCaptureController {
     this.dependencies.onStateChange?.(state);
   }
 
-  private stopTracks(): void {
-    this.stream?.getTracks().forEach((track) => track.stop());
+  private stopTracks(stream: VoiceMediaStream | null = this.stream): void {
+    stream?.getTracks().forEach((track) => track.stop());
   }
 }

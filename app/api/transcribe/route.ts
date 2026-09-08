@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { AuthenticationError, requireUserId } from "@/lib/auth/session";
 
 import { createGroqWhisperProvider } from "@/lib/transcription/groq-whisper";
 import type {
@@ -26,6 +27,8 @@ const missingAudioFailure: TranscriptionFailure = {
     "Select one completed recording or type/paste the transcript manually.",
 };
 
+const DEFAULT_TRANSCRIPTION_TIMEOUT_MS = 30_000;
+
 function resultResponse(
   result: TranscriptionResult,
   status: number,
@@ -36,6 +39,7 @@ function resultResponse(
 export function createTranscriptionPost(
   provider: TranscriptionProvider,
   translator?: TranscriptTranslator,
+  timeoutMs = DEFAULT_TRANSCRIPTION_TIMEOUT_MS,
 ) {
   return async function POST(request: Request): Promise<NextResponse<TranscriptionResult>> {
     let formData: FormData;
@@ -59,7 +63,11 @@ export function createTranscriptionPost(
     }
 
     try {
-      const transcription = await provider.transcribe({ audio });
+      const signal = AbortSignal.any([
+        request.signal,
+        AbortSignal.timeout(timeoutMs),
+      ]);
+      const transcription = await provider.transcribe({ audio, signal });
       const translatedTranscript = translator
         ? await translator.translate(transcription.transcript)
         : transcription.transcript;
@@ -72,6 +80,15 @@ export function createTranscriptionPost(
   };
 }
 
-export const POST = createTranscriptionPost(
-  createGroqWhisperProvider(),
-);
+const transcribe = createTranscriptionPost(createGroqWhisperProvider());
+
+export async function POST(request: Request) {
+  try { await requireUserId(); }
+  catch (error) {
+    if (error instanceof AuthenticationError) {
+      return NextResponse.json({ ok: false, code: "unauthorized", message: "Sign in to transcribe a consultation." }, { status: 401 });
+    }
+    throw error;
+  }
+  return transcribe(request);
+}

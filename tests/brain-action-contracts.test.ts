@@ -9,7 +9,7 @@
  *  - No import from lib/brain, lib/llm, or lib/notes inside a client component.
  *    These tests verify the SERVER ACTION boundary only — the client sees only
  *    BrainActionResult and BrainPatient.
- *  - Refusal and no-record paths must NOT reach the provider.
+ *  - Supported answers contain only returned note excerpts and matching citations.
  *  - Safe action-level error maps to { ok: false, message: string }.
  *  - Roster counts and dates come from approved notes only.
  */
@@ -21,7 +21,6 @@ import type {
   BrainPatient,
 } from "@/app/actions";
 import { queryPatientRecord } from "@/lib/actions/brain";
-import type { LlmCompletionProvider } from "@/lib/llm/provider";
 import type { ApprovedNote } from "@/lib/notes/schema";
 
 // ---------------------------------------------------------------------------
@@ -49,12 +48,6 @@ function makeNote(overrides: Partial<ApprovedNote> = {}): ApprovedNote {
   };
 }
 
-const explodingProvider: LlmCompletionProvider = {
-  async complete() {
-    throw new Error("provider must not be called on this path");
-  },
-};
-
 // ---------------------------------------------------------------------------
 // Section 1 — BrainActionResult shape contracts
 //
@@ -64,16 +57,7 @@ const explodingProvider: LlmCompletionProvider = {
 // ---------------------------------------------------------------------------
 
 describe("BrainActionResult shape contracts", () => {
-  it("supported: ok true with answer and sources array", async () => {
-    const provider: LlmCompletionProvider = {
-      async complete() {
-        return JSON.stringify({
-          answer: "Chest pain was documented on exertion.",
-          cited_note_ids: ["note-cp"],
-        });
-      },
-    };
-
+  it("supported: answer contains retrieved excerpts and citations map to their notes", async () => {
     const response = await queryPatientRecord({
       patientId: "p1",
       question: "Has this patient mentioned chest pain?",
@@ -86,7 +70,6 @@ describe("BrainActionResult shape contracts", () => {
           consultation_date: "2026-07-15",
         }),
       ],
-      provider,
     });
 
     // This is the exact shape the client must render for the supported branch.
@@ -95,10 +78,8 @@ describe("BrainActionResult shape contracts", () => {
       ok: true,
       response: {
         status: "supported",
-        answer: expect.any(String),
-        sources: expect.arrayContaining([
-          { noteId: "note-cp", consultationDate: "2026-07-15" },
-        ]),
+        answer: "Symptoms: chest pain\nPatient reported chest pain climbing stairs.",
+        sources: [{ noteId: "note-cp", consultationDate: "2026-07-15" }],
       },
     });
   });
@@ -114,7 +95,6 @@ describe("BrainActionResult shape contracts", () => {
           raw_transcript: "Patient presented with knee swelling.",
         }),
       ],
-      provider: explodingProvider,
     });
 
     const actionResult: BrainActionResult = { ok: true, response };
@@ -133,7 +113,6 @@ describe("BrainActionResult shape contracts", () => {
       patientId: "p1",
       question: "What medication should we prescribe?",
       notes: [makeNote({ patient_id: "p1" })],
-      provider: explodingProvider,
     });
 
     const actionResult: BrainActionResult = { ok: true, response };
@@ -153,7 +132,6 @@ describe("BrainActionResult shape contracts", () => {
       patientId: "p1",
       question: "What is the standard treatment for hypertension?",
       notes: [makeNote({ patient_id: "p1" })],
-      provider: explodingProvider,
     });
 
     const actionResult: BrainActionResult = { ok: true, response };
@@ -187,59 +165,6 @@ describe("BrainActionResult shape contracts", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Section 2 — Refusal and no-record paths are provider-free
-//
-// These tests prove the provider is never invoked on the two paths the client
-// renders without an answer.  This is both a grounding requirement and a cost
-// guard for the free-tier provider.
-// ---------------------------------------------------------------------------
-
-describe("provider isolation on non-answer paths", () => {
-  it("treatment refusal does not invoke the provider", async () => {
-    let providerCalled = false;
-    const trackingProvider: LlmCompletionProvider = {
-      async complete() {
-        providerCalled = true;
-        return "{}";
-      },
-    };
-
-    await queryPatientRecord({
-      patientId: "p1",
-      question: "Which antibiotic should we prescribe?",
-      notes: [makeNote({ patient_id: "p1" })],
-      provider: trackingProvider,
-    });
-
-    expect(providerCalled).toBe(false);
-  });
-
-  it("no-record result does not invoke the provider", async () => {
-    let providerCalled = false;
-    const trackingProvider: LlmCompletionProvider = {
-      async complete() {
-        providerCalled = true;
-        return "{}";
-      },
-    };
-
-    await queryPatientRecord({
-      patientId: "p1",
-      question: "Did the patient report fever last week?",
-      notes: [
-        makeNote({
-          patient_id: "p1",
-          symptoms: ["knee pain"],
-          raw_transcript: "Patient presented with knee pain.",
-        }),
-      ],
-      provider: trackingProvider,
-    });
-
-    expect(providerCalled).toBe(false);
-  });
-});
-
 // ---------------------------------------------------------------------------
 // Section 3 — BrainPatient roster summary derivation
 //

@@ -1,0 +1,36 @@
+{
+  "first-session": {
+    "durationSeconds": 135.849,
+    "chapters": {
+      "start": 0,
+      "microphone": 21.849,
+      "record": 38.849,
+      "assign": 64.849,
+      "review": 85.849,
+      "save": 109.849
+    }
+  },
+  "past-sessions": {
+    "durationSeconds": 52.418,
+    "chapters": {
+      "find": 0,
+      "sessions": 15.369,
+      "explore": 31.369
+    }
+  },
+  "rawaan-ai": {
+    "durationSeconds": 96,
+    "chapters": {
+      "general": 0,
+      "records": 22,
+      "assistant": 46,
+      "plan": 70
+    }
+  },
+  "overview": {
+    "durationSeconds": 25,
+    "chapters": {
+      "overview": 0
+    }
+  }
+}

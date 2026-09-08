@@ -1,0 +1,1 @@
+Welcome to Rawaan. Start in Record. You do not need to create a client before recording. Check the draft against the original conversation. When you are satisfied, choose Approve and Save Note. The approved note becomes part of that client's record.

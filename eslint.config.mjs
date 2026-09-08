@@ -12,5 +12,6 @@ export default defineConfig([
     "inspo/**",
     "node_modules/**",
     "coverage/**",
+    "tools/tutorial-video/compositions/**/assets/gsap.min.js",
   ]),
 ]);

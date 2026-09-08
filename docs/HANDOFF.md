@@ -1,5 +1,7 @@
 # Handoff
 
+> Historical checkpoint from 2026-09-02. This file describes an earlier branch and implementation state; consult `docs/PRD.md` and current runbooks for active requirements. The offline Urdu dictionary fallback and Devanagari transcript rewriting described below were retired on 2026-10-06.
+
 ## Current checkpoint — 2026-09-02
 
 - On `feat/urdu-translation-and-workspace-ux`, merged upstream PR #15 (record entry flows, manual summary modals, and e2e test utilities) and completed full Urdu clinical translation, document attachment, and workspace UI modernization.

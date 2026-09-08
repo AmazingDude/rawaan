@@ -1,0 +1,15 @@
+.document { display: flex; flex-direction: column; gap: 18px; }
+.sourceRow { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.sourceChip { border: 1px solid #dfe8e3; border-radius: 999px; padding: 6px 11px; color: #4f625b; background: #f7faf8; font-size: 12px; font-weight: 550; }
+.sourceLink { color: #276257; font-size: 13px; font-weight: 600; text-decoration: none; }
+.sourceLink:hover { text-decoration: underline; }
+.fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.field { min-width: 0; border: 1px solid #e4e9e6; border-radius: 11px; padding: 15px; background: #fff; }
+.field h3 { margin: 0 0 10px; color: #394c46; font-size: 13px; font-weight: 650; }
+.field p, .field ul { margin: 0; color: #4f5e59; font-size: 14px; line-height: 1.55; }
+.field ul { display: grid; gap: 6px; padding-left: 19px; }
+.empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 40px 20px; border: 1px dashed #d9e2dd; border-radius: 14px; color: #60716a; text-align: center; }
+.empty > svg { color: #51786d; }
+.empty h3 { margin: 0; color: #2b433c; font-size: 18px; }
+.empty p { margin: 0 0 8px; font-size: 14px; }
+@media (max-width: 640px) { .fields { grid-template-columns: minmax(0, 1fr); } }

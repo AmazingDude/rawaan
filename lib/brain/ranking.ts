@@ -10,13 +10,20 @@ const STOP_WORDS = new Set([
   // Conversational filler common in Brain questions; these dilute scores.
   "were", "are", "documented", "visit", "visits", "recall", "summarize", "tell",
   "detail", "details", "please", "more", "elaborate", "explain", "follow",
+  // Common Urdu function words; clinical content terms remain searchable.
+  "کیا", "کو", "کی", "کا", "کے", "میں", "سے", "تھا", "تھی", "تھے",
+  "ہے", "ہیں", "اور", "نے", "یہ", "وہ", "اس", "ان", "پر", "ایک",
+  "مریض", "کبھی", "کوئی",
 ]);
 
 function tokenize(text: string): string[] {
   return text
+    .normalize("NFKC")
     .toLowerCase()
-    .split(/[^a-z\u00C0-\u024F]+/)
-    .filter((token) => token.length > 2 && !STOP_WORDS.has(token));
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((token) =>
+      (token.length > 1 || /^\p{N}+$/u.test(token)) && !STOP_WORDS.has(token),
+    );
 }
 
 function noteText(note: ApprovedNote): string {
@@ -39,10 +46,19 @@ function extractExcerpts(
   terms: Set<string>,
   intentMatches: string[],
 ): string[] {
-  const sentences = note.raw_transcript.split(/(?<=[.!?])\s+/).concat(
-    [...note.symptoms, ...note.history, ...(note.summary ? [note.summary] : [])].map((entry) => `${entry}.`),
-  );
-  const matches = sentences.filter((sentence) =>
+  const structuredFields = [
+    ...(note.summary ? [["Summary", note.summary] as const] : []),
+    ...(note.chief_complaint ? [["Chief complaint", note.chief_complaint] as const] : []),
+    ...note.history.map((value) => ["History", value] as const),
+    ...note.symptoms.map((value) => ["Symptoms", value] as const),
+    ...note.assessment_discussed.map((value) => ["Assessment discussed", value] as const),
+    ...note.plan_discussed.map((value) => ["Plan discussed", value] as const),
+    ...note.medications_mentioned.map((value) => ["Medications mentioned", value] as const),
+    ...(note.follow_up ? [["Follow-up", note.follow_up] as const] : []),
+    ...note.uncertainties.map((value) => ["Uncertainty", value] as const),
+  ].map(([label, value]) => `${label}: ${value}`);
+  const transcriptSentences = note.raw_transcript.split(/(?<=[.!?])\s+/);
+  const matches = [...structuredFields, ...transcriptSentences].filter((sentence) =>
     tokenize(sentence).some((token) => terms.has(token)),
   );
   return [...new Set([...intentMatches, ...matches.slice(0, 3)])].slice(0, 6);
@@ -55,28 +71,33 @@ function extractExcerpts(
 // for that field, so questions about undocumented facts still decline.
 const FIELD_INTENTS: Array<{
   pattern: RegExp;
+  label: string;
   pick: (note: ApprovedNote) => string[];
 }> = [
-  { pattern: /\bsymptoms?\b/i, pick: (note) => note.symptoms },
+  { pattern: /\bsymptoms?\b/i, label: "Symptoms", pick: (note) => note.symptoms },
   {
     pattern: /\b(medications?|medicines?|drugs?|prescri\w*)\b/i,
+    label: "Medications mentioned",
     pick: (note) => note.medications_mentioned,
   },
-  { pattern: /\b(plan|treatment|manag\w*)\b/i, pick: (note) => note.plan_discussed },
+  { pattern: /\b(plan|treatment|manag\w*)\b/i, label: "Plan discussed", pick: (note) => note.plan_discussed },
   {
     pattern: /\bfollow[- ]?up\b/i,
+    label: "Follow-up",
     pick: (note) => (note.follow_up ? [note.follow_up] : []),
   },
-  { pattern: /\bhistory\b/i, pick: (note) => note.history },
+  { pattern: /\bhistory\b/i, label: "History", pick: (note) => note.history },
   {
     // Deliberately excludes "diagnos*": "diagnosed with diabetes?" asks
     // about a specific condition, not the assessment category, and must
     // decline when that condition is undocumented (adversarial money shot).
     pattern: /\b(assessment|impression)\b/i,
+    label: "Assessment discussed",
     pick: (note) => note.assessment_discussed,
   },
   {
     pattern: /\b(chief complaint|complaint|summary|summarize|overview)\b/i,
+    label: "Summary",
     pick: (note) =>
       [note.summary, note.chief_complaint].filter(Boolean) as string[],
   },
@@ -84,7 +105,7 @@ const FIELD_INTENTS: Array<{
 
 function intentMatchesFor(note: ApprovedNote, question: string): string[] {
   return FIELD_INTENTS.filter(({ pattern }) => pattern.test(question)).flatMap(
-    ({ pick }) => pick(note),
+    ({ pick, label }) => pick(note).filter((value) => value.trim()).map((value) => `${label}: ${value}`),
   );
 }
 
@@ -122,6 +143,10 @@ export function rankNotes(
         return { note, score: 0, termsMatched: new Set<string>() };
       }
       const uniqueTokens = new Set(tokens);
+      const numericQuestionTerms = [...questionTerms].filter((term) => /^\p{N}+$/u.test(term));
+      if (numericQuestionTerms.some((term) => !uniqueTokens.has(term))) {
+        return { note, score: 0, termsMatched: new Set<string>() };
+      }
       let matched = 0;
       const termsMatched = new Set<string>();
       for (const term of questionTerms) {

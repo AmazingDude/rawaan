@@ -204,6 +204,58 @@ describe("Task 4 consent-gated recorder state", () => {
     });
   });
 
+  it("stops a microphone stream that resolves after reset and ignores duplicate starts", async () => {
+    let resolveStream!: (stream: { getTracks(): Array<{ stop(): void }> }) => void;
+    let getUserMediaCalls = 0;
+    let stoppedTracks = 0;
+    const delayedStream = new Promise<{ getTracks(): Array<{ stop(): void }> }>(
+      (resolve) => {
+        resolveStream = resolve;
+      },
+    );
+    const harness = createHarness({
+      getUserMedia: () => {
+        getUserMediaCalls += 1;
+        return delayedStream;
+      },
+    });
+
+    const start = harness.controller.start(true);
+    await harness.controller.start(true);
+    expect(getUserMediaCalls).toBe(1);
+
+    harness.controller.reset();
+    resolveStream({
+      getTracks: () => [{ stop: () => { stoppedTracks += 1; } }],
+    });
+    await start;
+
+    expect(stoppedTracks).toBe(1);
+    expect(harness.recorder.started).toBe(false);
+    expect(harness.controller.state.phase).toBe("idle");
+  });
+
+  it("stops the acquired stream when recorder construction throws", async () => {
+    let stoppedTracks = 0;
+    const harness = createHarness({
+      createRecorder: () => {
+        throw new Error("MediaRecorder construction failed");
+      },
+      getUserMedia: async () => ({
+        getTracks: () => [{ stop: () => { stoppedTracks += 1; } }],
+      }),
+    });
+
+    await harness.controller.start(true);
+
+    expect(stoppedTracks).toBe(1);
+    expect(harness.controller.state).toMatchObject({
+      fallbackMessage:
+        "Recording could not start. Type or paste the transcript manually.",
+      phase: "idle",
+    });
+  });
+
   it("shows a manual fallback after microphone permission is denied", async () => {
     const harness = createHarness({
       getUserMedia: async () => {
@@ -228,7 +280,7 @@ describe("Task 4 consent-gated recorder state", () => {
     await harness.controller.start(true);
 
     expect(harness.controller.state.fallbackMessage).toBe(
-      "Recording is not supported in this demo browser. Type or paste the transcript manually.",
+      "Recording is not supported in this browser. Write a summary instead.",
     );
   });
 

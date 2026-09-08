@@ -56,7 +56,7 @@ export function validateAudioUpload(audio: File): TranscriptionFailure | null {
 
   if (audio.size > MAX_AUDIO_UPLOAD_BYTES) {
     return invalidAudio(
-      "Recording is larger than the 25 MB demo limit. Please record a shorter consultation or type/paste the transcript manually.",
+      "Recording is larger than the 25 MB upload limit. Please record a shorter consultation or write a summary instead.",
     );
   }
 
@@ -66,14 +66,14 @@ export function validateAudioUpload(audio: File): TranscriptionFailure | null {
   if (baseMime) {
     if (!supportedAudioMimeTypes.has(baseMime)) {
       return invalidAudio(
-        "This audio format is not supported. Please try the demo browser or type/paste the transcript manually.",
+        "This audio format is not supported. Upload an MP3, WAV, M4A or WebM file, or write a summary instead.",
       );
     }
   } else {
     const extMatch = audio.name ? audio.name.split(".").pop()?.toLowerCase() : null;
     if (!extMatch || !supportedAudioExtensions.has(extMatch)) {
       return invalidAudio(
-        "This audio format is not supported. Please try the demo browser or type/paste the transcript manually.",
+        "This audio format is not supported. Upload an MP3, WAV, M4A or WebM file, or write a summary instead.",
       );
     }
   }

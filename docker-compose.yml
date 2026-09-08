@@ -1,6 +1,6 @@
 # ==============================================================================
 # Rawaan Patient Context Engine - Docker Compose for Hackathon Judges
-# Run with: docker compose up --build
+# Run with: docker compose --env-file .env.local up --build
 # ==============================================================================
 
 services:
@@ -8,6 +8,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:?Set the Clerk publishable key; use docker compose --env-file .env.local up --build}
     container_name: rawaan-app
     ports:
       - "3000:3000"
@@ -15,16 +17,7 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - HOSTNAME=0.0.0.0
-      # Groq LLM & Whisper credentials
-      - GROQ_API_KEY=${GROQ_API_KEY:-}
-      - LLM_MODEL=${LLM_MODEL:-qwen/qwen3.8-27b}
-      # Supabase cloud sync (optional - falls back to local data automatically)
-      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL:-}
-      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}
     env_file:
       - path: .env.local
-        required: false
-    volumes:
-      # Mount data folder to persist approved notes and conversation logs on host
-      - ./data:/app/data
+        required: true
     restart: unless-stopped

@@ -1,12 +1,17 @@
 import type { ApprovedNote } from "@/lib/notes/schema";
 
+export interface SourcedInsight {
+  text: string;
+  sourceNoteId: string;
+}
+
 export interface PatientSessionInsights {
   hasInsights: boolean;
-  interestingQuestions: string[];
+  interestingQuestions: SourcedInsight[];
   lastSessionDate: string | null;
-  planForThisSession: string[];
-  previousActionItems: string[];
-  summary: string;
+  planForThisSession: SourcedInsight[];
+  previousActionItems: SourcedInsight[];
+  summary: SourcedInsight | null;
   timeline: Array<{ chiefComplaint: string; date: string; noteId: string }>;
 }
 
@@ -20,7 +25,7 @@ export function extractPatientSessionInsights(
       lastSessionDate: null,
       planForThisSession: [],
       previousActionItems: [],
-      summary: "",
+      summary: null,
       timeline: [],
     };
   }
@@ -31,29 +36,19 @@ export function extractPatientSessionInsights(
   );
   const latestNote = sortedNotes[0]!;
 
-  const summary =
-    latestNote.chief_complaint ||
-    (latestNote.symptoms.length > 0
-      ? `Consultation focused on ${latestNote.symptoms.join(", ")}.`
-      : "Previous consultation record available.");
+  const summary = latestNote.summary?.trim() ?? "";
 
-  const previousActionItems =
-    latestNote.plan_discussed.length > 0
-      ? latestNote.plan_discussed
-      : ["Continue monitoring symptoms and daily lifestyle diary."];
+  const withSource = (items: string[]): SourcedInsight[] =>
+    items.filter((item) => item.trim()).map((text) => ({
+      text,
+      sourceNoteId: latestNote.id,
+    }));
 
-  const interestingQuestions =
-    latestNote.uncertainties.length > 0
-      ? latestNote.uncertainties
-      : latestNote.history.length > 0
-        ? latestNote.history
-        : ["Review any trigger variations since last session."];
-
-  const planForThisSession = latestNote.follow_up
-    ? [latestNote.follow_up]
-    : [
-        "Follow up on symptom response and progress toward discussed goals.",
-      ];
+  const previousActionItems = withSource(latestNote.plan_discussed);
+  const interestingQuestions = withSource(latestNote.uncertainties);
+  const planForThisSession = withSource(
+    latestNote.follow_up ? [latestNote.follow_up] : [],
+  );
 
   const timeline = sortedNotes.map((note) => ({
     chiefComplaint: note.chief_complaint || note.summary || "Consultation note",
@@ -67,7 +62,7 @@ export function extractPatientSessionInsights(
     lastSessionDate: latestNote.consultation_date,
     planForThisSession,
     previousActionItems,
-    summary,
+    summary: summary ? { text: summary, sourceNoteId: latestNote.id } : null,
     timeline,
   };
 }

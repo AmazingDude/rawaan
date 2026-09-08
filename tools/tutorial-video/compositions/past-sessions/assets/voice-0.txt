@@ -1,0 +1,4 @@
+file 'D:/Rawaan/tools/tutorial-video/audio-cache/0a0790a9a59ed2c781f0.wav'
+file 'D:/Rawaan/tools/tutorial-video/audio-cache/c763ca5a449e3e6bcf64.wav'
+file 'D:/Rawaan/tools/tutorial-video/audio-cache/a83085d8b3b2e1bc7e33.wav'
+file 'D:/Rawaan/tools/tutorial-video/audio-cache/2790adc28b2e1a9fbbf6.wav'

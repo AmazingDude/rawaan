@@ -1,7 +1,9 @@
+import Link from "next/link";
 import type { BrainChatEntry } from "@/app/components/brain-chat-state";
-import { Sparkles } from "lucide-react";
+import { RawaanLogo } from "@/app/components/rawaan-logo";
+import { AgentAnswer, type PlanReviewContext } from "@/app/components/agent-answer";
 
-export function ChatEntryCard({ entry }: { entry: BrainChatEntry }) {
+export function ChatEntryCard({ entry, patientId, reviewContext }: { entry: BrainChatEntry; patientId?: string; reviewContext?: PlanReviewContext }) {
   const response = entry.response;
 
   return (
@@ -16,20 +18,23 @@ export function ChatEntryCard({ entry }: { entry: BrainChatEntry }) {
       {/* Assistant message row */}
       <div className="chatgpt-message-row is-assistant">
         <div className="chatgpt-assistant-avatar" aria-hidden="true">
-          <Sparkles size={16} />
+          <RawaanLogo className="rawaan-message-logo" decorative />
         </div>
         <div className="chatgpt-assistant-content">
-          {response.status === "supported" ? (
+          {response.status === "agent" ? <AgentAnswer response={response} patientId={patientId} reviewContext={reviewContext}/> : response.status === "supported" ? (
             <div className="brain-chat-body is-supported chatgpt-card-supported">
               <p className="brain-chat-answer">{response.answer}</p>
               <div className="brain-chat-citations">
                 {response.sources.map((source, index) => (
-                  <span
+                  <Link
+                    prefetch={false}
+                    href={`/clients/${encodeURIComponent(patientId ?? "")}/sessions/${encodeURIComponent(source.noteId)}`}
                     className="brain-chat-citation-chip"
+                    data-source-note-id={source.noteId}
                     key={`${source.noteId}-${source.consultationDate}-${index}`}
                   >
-                    {source.consultationDate} · {source.noteId}
-                  </span>
+                    {source.consultationDate} · Source {index + 1}
+                  </Link>
                 ))}
               </div>
             </div>

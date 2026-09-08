@@ -1,5 +1,7 @@
 # PRD: Patient Context Engine ("Clinical Scribe + Brain")
 
+> **Historical planning draft — not authoritative.** Follow [`docs/PRD.md`](./docs/PRD.md) and `AGENTS.md` for the current approved product scope. This 22 August draft contains later CRM and architecture proposals that were not adopted; do not implement requirements from this archive unless the current PRD is updated.
+
 _AI Hackathon Pakistan 2026 — Healthcare Track_
 
 **Status:** Build-ready
@@ -14,12 +16,49 @@ _AI Hackathon Pakistan 2026 — Healthcare Track_
 
 ## 1. Problem Statement
 
+### Product direction amendment — 6 October 2026
+
+The owner replaced the demo-only, single-clinic direction with Clerk-authenticated, per-user patient records. See docs/PRD.md for the authoritative amendment and docs/CLERK-AUTH.md for ownership, setup, and verification. Documentation-only behavior, clinician review, approved-note retrieval, and verbatim source citations remain mandatory.
+
 Doctors and therapists in Pakistan — especially in high-volume public hospitals and clinics — see a large number of patients per day, and many patients return repeatedly over weeks, months, or years (chronic conditions, therapy, follow-ups). Two compounding problems result:
 
 1. **Documentation doesn't happen.** With minimal time per patient and mostly paper-based or no record-keeping, doctors rarely have time to write detailed notes during or after a consultation. What gets recorded is often a one-line scrawl, if anything.
 2. **Even when notes exist, they're not usable later.** A patient returning after 3 months, or seeing a different doctor/specialist, effectively starts from zero — there's no quick way for a clinician to recall "what did we try last time," "what's this patient's history with this symptom," or "has this come up before."
 
 For therapists specifically, this is worse: continuity of context across sessions (what was discussed last time, recurring themes, mood/symptom trends) is core to the quality of care itself, not just administrative record-keeping.
+
+
+### Product direction amendment — 7 October 2026
+
+The owner explicitly expanded Rawaan AI beyond the original retrieval-only hackathon scope. Assistant mode now supports general conversation, possible differential diagnoses, medication considerations, and proposed treatment plans for clinician review, optionally using internet search. The original no-diagnosis/no-treatment non-goal and documentation-only UI instructions below apply to the historical hackathon scope. They are superseded for Assistant mode. Records only remains deterministic, verbatim approved-note recall with an explicit no-record response; generated suggestions and earlier assistant messages never become confirmed source-note evidence.
+
+The existing authenticated clinic workspace is the intended audience. Each user's records and general conversations stay separate. Medical search uses anonymous fixed topic terms and authoritative sources. Clinical context must be explicitly reconfirmed within 24 hours to enable medication considerations; unknown fields remain unknown. Individualized dosing and treatment orders are excluded. Plans require a distinct clinician review/edit/save step and are stored separately from original session plans. The change is not a claim of clinical validation or production certification.
+
+### Product direction amendment — 8 October 2026
+
+The owner superseded the manual clinical-intake prerequisite and ten-recent-note
+limit in Assistant mode. Selecting a client automatically includes every owned
+approved session's full note and attached transcript when answering, refreshed
+from Supabase for each turn. The owner explicitly authorized sending that full
+history to the existing Groq provider. A focused saved session does not exclude
+the client's other sessions from Assistant context. Optional clinician-entered
+details supplement that history; completing demographics or reconfirming a form
+within 24 hours is no longer required to chat or draft a discussion plan.
+
+The assistant answers from the available records first, never invents unknown
+facts, and asks only for missing facts essential to the specific question.
+Historical observations remain dated and are not assumed to be current.
+Medication considerations require cited current references and remain discussion
+options for clinician review; individualized dosing and treatment orders remain
+excluded. Records only retains verbatim approved-note recall. Provider context
+limits must not be hidden by silently dropping older sessions.
+
+The owner reiterated that Assistant is for doctors and therapists. It should
+provide substantive clinical options and reasoning, address the treating
+clinician directly, and avoid blanket refusals or generic "consult a doctor"
+replies. Ordinary behavioral interventions and goals are permitted. A rejected
+clinical draft may receive one bounded rewrite against the same full history
+and references; source validation and the separate clinician plan review remain.
 
 ## 2. Goal
 

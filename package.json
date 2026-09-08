@@ -6,28 +6,36 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "seed:demo": "node data/seed/load-demo-seed.mjs",
-    "seed:reset": "node data/seed/load-demo-seed.mjs --reset",
+    "seed:demo": "node --env-file-if-exists=.env.local data/seed/load-demo-seed.mjs",
+    "seed:reset": "node --env-file-if-exists=.env.local data/seed/load-demo-seed.mjs --reset",
+    "storage:import": "node --env-file-if-exists=.env.local data/import-legacy.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:storage:e2e": "node tests/e2e-supabase.mjs",
+    "tutorials:capture": "node tools/tutorial-video/capture.mjs",
+    "tutorials:produce": "node --env-file-if-exists=.env.local tools/tutorial-video/produce.mjs",
+    "tutorials:render": "node tools/tutorial-video/render.mjs",
+    "test:guide:e2e": "node tools/tutorial-video/capture.mjs --verify-guide"
   },
   "dependencies": {
+    "@clerk/nextjs": "^7.9.11",
     "@supabase/supabase-js": "^2.112.4",
     "lucide-react": "^1.35.0",
-    "next": "16.3.2",
+    "next": "^16.3.8",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "zod": "4.4.3"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@playwright/test": "1.62.1",
     "@types/node": "24.12.0",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.4",
     "@vitejs/plugin-react": "5.1.4",
     "eslint": "9.39.5",
-    "eslint-config-next": "16.3.2",
+    "eslint-config-next": "^16.3.8",
     "typescript": "5.9.3",
     "vitest": "4.1.11"
   }

@@ -1,11 +1,8 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { createNoteRepository } from "@/lib/notes/repository";
 import { noteDraftSchema, noteSchema } from "@/lib/notes/schema";
+import { createTestDatabase } from "./helpers/supabase";
 
 const draftNote = {
   patient_id: "patient-amina-001",
@@ -24,16 +21,6 @@ const draftNote = {
     "Patient reports a headache for three days and light sensitivity. Clinician discussed monitoring triggers and keeping a symptom diary. Return in two weeks.",
 };
 
-const temporaryDirectories: string[] = [];
-
-afterEach(async () => {
-  await Promise.all(
-    temporaryDirectories.splice(0).map((directory) =>
-      rm(directory, { force: true, recursive: true }),
-    ),
-  );
-});
-
 describe("note schemas", () => {
   it("accepts a complete structured draft with unresolved items retained", () => {
     const result = noteDraftSchema.safeParse(draftNote);
@@ -42,6 +29,27 @@ describe("note schemas", () => {
     expect(result.data?.uncertainties).toEqual([
       "Duration of each headache episode was not clarified",
     ]);
+  });
+
+  it.each([
+    "2026-99-99",
+    "2026-02-29",
+    "2025-02-29",
+    "2026-04-31",
+  ])("rejects impossible consultation date %s", (consultation_date) => {
+    expect(noteDraftSchema.safeParse({ ...draftNote, consultation_date }).success).toBe(false);
+  });
+
+  it.each(["2024-02-29", "2026-04-30", "2026-12-31"])(
+    "accepts real consultation date %s",
+    (consultation_date) => {
+      expect(noteDraftSchema.safeParse({ ...draftNote, consultation_date }).success).toBe(true);
+    },
+  );
+
+  it("preserves an optional stable draft id when parsing", () => {
+    expect(noteDraftSchema.parse({ ...draftNote, draft_id: "draft-123" }).draft_id).toBe("draft-123");
+    expect(noteDraftSchema.parse(draftNote).draft_id).toBeUndefined();
   });
 
   it("rejects a note missing the raw transcript provenance", () => {
@@ -62,10 +70,8 @@ describe("note schemas", () => {
 
 describe("note repository", () => {
   it("rejects draft notes and persists an approved note with its raw transcript", async () => {
-    const directory = await mkdtemp(join(tmpdir(), "rawaan-notes-"));
-    temporaryDirectories.push(directory);
-    const storagePath = join(directory, "notes.json");
-    const repository = createNoteRepository(storagePath);
+    const db = createTestDatabase();
+    const repository = createNoteRepository("user-test", () => db.client);
 
     await expect(repository.save(draftNote)).rejects.toThrow(
       "Only approved notes can be persisted",
@@ -83,7 +89,6 @@ describe("note repository", () => {
       approvedNote,
     ]);
 
-    const persistedData = await readFile(storagePath, "utf8");
-    expect(persistedData).toContain(draftNote.raw_transcript);
+    expect(db.tables.notes[0].raw_transcript).toBe(draftNote.raw_transcript);
   });
 });
