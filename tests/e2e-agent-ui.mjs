@@ -20,7 +20,7 @@ export async function listClientsAction(){window.apiCalls.push("capture-clients"
 export async function getPatientInsightsAction(){throw Error("Unexpected insights request");}
 export async function getClientDetailAction(){throw Error("Unexpected timeline request");}
 export async function createClientAction(input){return {ok:true,client:{...training.client,...input}};}
-export async function generateDraftAction(input){window.apiCalls.push({generate:input});await new Promise(resolve=>setTimeout(resolve,600));if(window.failGeneration)return {ok:false,message:"Generation failed; please retry."};return {ok:true,draft:{...training.draft,patient_id:input.patient_id,patient_display_name:input.patient_display_name,raw_transcript:input.transcript}};}
+export async function generateDraftAction(input){window.apiCalls.push({generate:input});if(window.holdGeneration)await new Promise(resolve=>{window.finishGeneration=resolve});else await new Promise(resolve=>setTimeout(resolve,600));if(window.failGeneration)return {ok:false,message:"Generation failed; please retry."};return {ok:true,draft:{...training.draft,session_info:input.session_info,patient_id:input.patient_id,patient_display_name:input.patient_display_name,raw_transcript:input.transcript}};}
 export async function approveDraftAction(note){window.apiCalls.push({approve:note});return {ok:true,noteId:"workflow-note-"+window.apiCalls.length,approvedAt:new Date().toISOString()};}
 export async function modifyNoteAction(input){window.apiCalls.push({modify:input});await new Promise(resolve=>{window.completeRefinement=resolve});return {ok:true,assistantReply:"Draft refined",updatedNote:{...input.note,summary:training.draft.summary}};}
 export async function translateTranscriptToUrduAction(){throw Error("Unexpected translation request");}
@@ -117,8 +117,9 @@ try{
  await page.getByRole("button",{name:"Create New Client",exact:true}).click();
  await page.evaluate(()=>{window.failGeneration=true});
  await page.getByRole("button",{name:"Next",exact:true}).click();
- await expect(page.getByRole("button",{name:/Create empty note/})).toBeDisabled();
- await expect(page.getByRole("button",{name:"Upload",exact:true})).toBeDisabled();
+ await expect(page.getByRole("status").filter({hasText:"Putting your note together..."})).toBeVisible();
+ await expect(page.getByRole("button",{name:/Create empty note/})).toHaveCount(0);
+ await expect(page.getByRole("button",{name:"Upload",exact:true})).toHaveCount(0);
  await expect(page.getByRole("dialog",{name:"Assign Session",exact:true})).toBeVisible();
  await page.getByRole("button",{name:"Close modal",exact:true}).click();
  await expect(page.getByRole("button",{name:"Resume captured session",exact:true})).toBeVisible();
@@ -170,6 +171,57 @@ try{
  await page.getByRole("button",{name:/Record in-person/}).click();
  await page.getByRole("button",{name:/Search for an existing client/}).click();
  await expect(page.getByRole("option",{name:new RegExp(training.client.displayName)})).toBeVisible();
+ // Exercise native MediaRecorder with synthetic audio, never the user's microphone.
+ await page.keyboard.press("Escape");
+ await page.evaluate(()=>{
+   window.captureStreams=[];
+   Object.defineProperty(navigator.mediaDevices,"getUserMedia",{value:async()=>{
+     const context=new AudioContext();const destination=context.createMediaStreamDestination();
+     const source=context.createOscillator();source.connect(destination);source.start();
+     window.captureStreams.push(destination.stream);return destination.stream;
+   }});
+   const NativeRecorder=window.MediaRecorder;
+   window.MediaRecorder=class extends NativeRecorder{constructor(...args){super(...args);window.testRecorder=this;this.addEventListener("dataavailable",event=>{window.recordedBytes=(window.recordedBytes||0)+event.data.size});}};
+ });
+ let transcriptionRoute;
+ await page.route("**/api/transcribe",route=>{transcriptionRoute=route;});
+ const approvalsBeforeRecording=await page.evaluate(()=>window.apiCalls.filter(call=>call.approve).length);
+ await page.getByRole("button",{name:"Start recording",exact:true}).click();
+ await expect.poll(()=>page.evaluate(()=>window.recordedBytes||0)).toBeGreaterThan(0);
+ await page.getByRole("button",{name:"Stop recording",exact:true}).click();
+ const transcribing=page.getByRole("status").filter({hasText:"Giving your keyboard a breather..."});
+ await expect(transcribing).toBeVisible();
+ await expect.poll(()=>page.evaluate(()=>window.captureStreams.every(stream=>stream.getTracks().every(track=>track.readyState==="ended")))).toBe(true);
+ await expect.poll(()=>Boolean(transcriptionRoute)).toBe(true);
+ expect(await page.locator("body").innerText()).not.toContain("Whisper");
+ await page.screenshot({path:"plans/2026-10-23-recording-loading/transcribing-desktop.png"});
+ await page.setViewportSize({width:390,height:844});
+ await page.emulateMedia({reducedMotion:"reduce"});
+ await expect(transcribing).toBeVisible();
+ expect(await transcribing.locator("svg").evaluate(element=>getComputedStyle(element).animationName)).toBe("none");
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await page.screenshot({path:"plans/2026-10-23-recording-loading/transcribing-mobile.png"});
+ await transcriptionRoute.fulfill({contentType:"application/json",body:JSON.stringify({ok:true,transcript:training.draft.raw_transcript})});
+ await expect(page.getByRole("dialog",{name:"Assign Session",exact:true})).toBeVisible();
+ await page.getByRole("button",{name:/Search for your client/}).click();
+ await page.getByRole("option",{name:/Fixture Client/}).click();
+ await page.evaluate(()=>{window.holdGeneration=true});
+ await page.getByRole("button",{name:"Next",exact:true}).click();
+ const generating=page.getByRole("status").filter({hasText:"Putting your note together..."});
+ await expect(generating).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Record",exact:true})).toHaveCount(0);
+ await page.screenshot({path:"plans/2026-10-23-recording-loading/generating-mobile.png"});
+ await page.setViewportSize({width:1440,height:900});
+ await page.screenshot({path:"plans/2026-10-23-recording-loading/generating-desktop.png"});
+ await page.evaluate(()=>window.finishGeneration());
+ await expect(page.getByRole("button",{name:"Approve & Save Note",exact:true})).toBeEnabled();
+ await page.getByRole("tab",{name:"Transcript",exact:true}).click();
+ await expect(page.getByText("Your words, without the writer's cramp.",{exact:true})).toBeVisible();
+ expect(await page.locator("body").innerText()).not.toContain("Whisper");
+ await page.getByRole("tab",{name:"Session Information",exact:true}).click();
+ await expect(page.getByText("The conversation, now on paper",{exact:true})).toBeVisible();
+ expect(await page.locator("body").innerText()).not.toContain("Whisper");
+ expect(await page.evaluate(()=>window.apiCalls.filter(call=>call.approve).length)).toBe(approvalsBeforeRecording);
  expect(errors).toEqual([]);
  console.log("PASS: actual assistant UI, optional context, history/source links/reviewed plans/mobile; Scribe failed-generation recovery, navigation restore, approval/refinement/translation exclusion, approved translation cache and new-client next-capture selection. APIs mocked; no hosted writes.");
 }finally{await browser.close();}

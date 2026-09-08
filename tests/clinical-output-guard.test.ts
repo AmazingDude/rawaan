@@ -1,11 +1,27 @@
 import { describe, expect, it } from "vitest";
 import fixture from "@/data/seed/clinical-guard-cases.json";
+import followUp from "@/data/seed/follow-up-discussion.json";
 import { assertClinicalProposal } from "@/lib/clinical/output-guard";
 import type { AgentResponse } from "@/lib/agent/schema";
 
 const clinical: NonNullable<AgentResponse["clinical"]> = { differential: [], medication_options: [], missing_information: [], plan: null };
 
 describe("clinical effects versus medication orders", () => {
+  it.each(followUp.unclassified)("distinguishes unknown action intent from a known medication order: %s", answer => {
+    expect(() => assertClinicalProposal({answer,clinical:null},true,false)).toThrow(expect.objectContaining({reason:"ambiguous_action"}));
+    expect(() => assertClinicalProposal({answer,clinical:null},true,false,true)).not.toThrow();
+  });
+  it("keeps explicit medication, dosing and reference checks after intent review",()=>{
+    expect(()=>assertClinicalProposal({answer:"Start medication.",clinical:null},true,false,true)).toThrow(expect.objectContaining({reason:"medication_order"}));
+    expect(()=>assertClinicalProposal({answer:"Take zolpidem 5 mg.",clinical:null},true,false,true)).toThrow(expect.objectContaining({reason:"dosing"}));
+    expect(()=>assertClinicalProposal({answer:followUp.unclassified[0],clinical:{...clinical,medication_options:[{name:"Training option",considerations:"No cited source"}]}},true,true,true)).toThrow(expect.objectContaining({reason:"missing_references"}));
+  });
+  it.each(followUp.allowed)("allows follow-up discussion without a topic noun whitelist: %s", answer => {
+    expect(() => assertClinicalProposal({ answer, clinical: null }, true, false)).not.toThrow();
+  });
+  it.each(followUp.blocked)("rejects medication instructions attached to discussion wording: %s", answer => {
+    expect(() => assertClinicalProposal({ answer, clinical }, true, true)).toThrow();
+  });
   it.each(fixture.allowed)("allows medical discussion: %s", answer => {
     expect(() => assertClinicalProposal({ answer, clinical: null }, true, false)).not.toThrow();
   });

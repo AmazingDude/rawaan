@@ -846,7 +846,7 @@ export function SessionWorkspaceView({
                 <div className="transcript-heading-row">
                   <div>
                     <h2 className="section-title">{currentNote.session_info?.session_type === "manual" ? "Manual note source" : "Session transcript"}</h2>
-                    <p className="transcript-hint">{currentNote.session_info?.transcript_source || "Transcript source not recorded"}</p>
+                    <p className="transcript-hint">{currentNote.session_info?.session_type === "manual" ? "Written by you. Ready for your review." : "Your words, without the writer's cramp."}</p>
                   </div>
                   <div className="transcript-actions">
                     <button aria-label="Copy transcript" disabled={displayedTranscript === null} className="secondary-button" onClick={handleCopyTranscript} type="button"><Clipboard aria-hidden="true" size={14} /> Copy</button>

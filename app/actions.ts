@@ -540,7 +540,7 @@ export async function sendAgentMessageAction(candidate: unknown): Promise<
     const failure=describeAgentFailure(error);
     // Only fixed error categories and schema paths: never log clinical content,
     // user/client IDs, credentials, raw provider errors, or model replies.
-    console.error("[Rawaan AI] request failed",{stage,...failure.diagnostic});
+    console.error("[Rawaan AI] request failed",JSON.stringify({stage,...failure.diagnostic}));
     return {ok:false,message:failure.message};
   }
 }

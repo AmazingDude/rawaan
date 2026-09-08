@@ -9,6 +9,7 @@ import {
   type ClientRecord,
 } from "@/app/actions";
 import { RequestStatus } from "@/app/components/request-status";
+import { SessionProcessing } from "@/app/components/session-processing";
 import { STORAGE_ERROR_MESSAGE } from "@/lib/db/errors";
 import type { PatientSessionInsights } from "@/lib/notes/insights";
 import { useAccessibleDialog } from "@/app/components/use-accessible-dialog";
@@ -578,11 +579,7 @@ export function RecordSessionModal({
           </div>
         ) : phase === "transcribing" ? (
           /* Transcribing Loading State */
-          <div className="modal-transcribing-view">
-            <div className="transcribing-spinner" />
-            <h3>Transcribing audio with Whisper Large v3…</h3>
-            <p>Extracting conversation and preparing clinical note draft.</p>
-          </div>
+          <SessionProcessing stage="transcribing" />
         ) : (
           /* Setup & Overview 2-Column State matching Image 1 */
           <div className="modal-body-two-column">

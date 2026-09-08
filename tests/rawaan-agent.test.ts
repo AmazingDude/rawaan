@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import seed from "@/data/seed/demo-patients.json";
 import scopeFixture from "@/data/seed/assistant-scope.json";
 import guardFixture from "@/data/seed/clinical-guard-cases.json";
+import followUp from "@/data/seed/follow-up-discussion.json";
 import { noteSchema } from "@/lib/notes/schema";
 import { runRawaanAgent } from "@/lib/llm/rawaan-agent";
 import { clinicalContextSchema } from "@/lib/clinical/schema";
@@ -26,6 +27,61 @@ describe("Assistant output-budget configuration",()=>{
 });
 
 describe("bounded Rawaan agent",()=>{
+  it("fails explicitly on an invalid action review instead of assuming it cleared the draft",async()=>{
+    const llm={complete:vi.fn().mockResolvedValueOnce(JSON.stringify({in_scope:true,clinical:true,needs_search:false,search_query:""}))
+      .mockResolvedValueOnce(JSON.stringify({...answer,answer:followUp.unclassified[0],clinical}))
+      .mockResolvedValueOnce(JSON.stringify({unexpected:false}))};
+    await expect(runRawaanAgent({question:followUp.question,notes:[],history:[],webEnabled:false},llm)).rejects.toThrow();
+    expect(llm.complete).toHaveBeenCalledTimes(3);
+  });
+  it("bounds action review to one call and never reuses a clearance for a changed rewrite",async()=>{
+    const llm={complete:vi.fn().mockResolvedValueOnce(JSON.stringify({in_scope:true,clinical:true,needs_search:false,search_query:""}))
+      .mockResolvedValueOnce(JSON.stringify({...answer,answer:"Start zolpidem.",clinical}))
+      .mockResolvedValueOnce(JSON.stringify({has_medication_orders:true}))
+      .mockResolvedValueOnce(JSON.stringify({...answer,answer:"Start warfarin.",clinical}))};
+    await expect(runRawaanAgent({question:followUp.question,notes:[],history:[],webEnabled:false},llm)).rejects.toMatchObject({reason:"ambiguous_action"});
+    expect(llm.complete).toHaveBeenCalledTimes(4);
+  });
+  it.each(followUp.unclassified)("checks ambiguous follow-up intent instead of calling unfamiliar wording a medication order: %s",async text=>{
+    const note=noteSchema.parse(seed[0]);
+    const output={...answer,answer:text+" Context [N1].",note_source_indices:[0],clinical};
+    const llm={complete:vi.fn().mockResolvedValueOnce(JSON.stringify({in_scope:true,clinical:true,needs_search:false,search_query:""}))
+      .mockResolvedValueOnce(JSON.stringify(output)).mockResolvedValueOnce(JSON.stringify({has_medication_orders:false}))};
+    const result=await runRawaanAgent({question:"What should be the follow up of this conversation?",notes:[note],history:[],webEnabled:false},llm);
+    expect(result.answer).toBe(output.answer);
+    expect(result.sources).toMatchObject([{kind:"note",noteId:note.id}]);
+    expect(llm.complete).toHaveBeenCalledTimes(3);
+    expect(llm.complete.mock.calls[2][0].maxTokens).toBe(96);
+    expect(JSON.parse(llm.complete.mock.calls[2][0].user)).not.toHaveProperty("approved_notes");
+  });
+  it("repairs an unknown drug order when the intent check identifies it",async()=>{
+    const llm={complete:vi.fn().mockResolvedValueOnce(JSON.stringify({in_scope:true,clinical:true,needs_search:false,search_query:""}))
+      .mockResolvedValueOnce(JSON.stringify({...answer,answer:"Start zolpidem.",clinical}))
+      .mockResolvedValueOnce(JSON.stringify({has_medication_orders:true}))
+      .mockResolvedValueOnce(JSON.stringify({...answer,answer:"Discuss the sleep concerns at follow-up.",clinical}))};
+    const result=await runRawaanAgent({question:"What next?",notes:[],history:[],webEnabled:false},llm);
+    expect(result.answer).toBe("Discuss the sleep concerns at follow-up.");
+    expect(llm.complete).toHaveBeenCalledTimes(4);
+  });
+  it("does not let a non-medication intent result bypass an explicit drug order later in the reply",async()=>{
+    const output={...answer,answer:followUp.unclassified[0]+" Start medication.",clinical};
+    const llm={complete:vi.fn().mockResolvedValueOnce(JSON.stringify({in_scope:true,clinical:true,needs_search:false,search_query:""}))
+      .mockResolvedValueOnce(JSON.stringify(output)).mockResolvedValueOnce(JSON.stringify({has_medication_orders:false}))
+      .mockResolvedValueOnce(JSON.stringify(output))};
+    await expect(runRawaanAgent({question:"What next?",notes:[],history:[],webEnabled:false},llm)).rejects.toThrow();
+  });
+  it("answers proposed follow-up topics outside the notes without treating discussion verbs as medication orders",async()=>{
+    const note=noteSchema.parse(seed[0]);
+    const proposedPlan={...clinical.plan,next_steps:followUp.allowed,goals:["Identify priorities for the next session"]};
+    const response={...answer,answer:`Proposed topics, not recorded facts. ${followUp.allowed[0]} Context from the previous session [N1].`,note_source_indices:[0],clinical:{...clinical,plan:proposedPlan}};
+    const llm=provider({clinical:true,needs_search:false,search_query:""},response);
+    const result=await runRawaanAgent({question:followUp.question,notes:[note],history:[],webEnabled:false},llm);
+    expect(result.answer).toBe(response.answer);
+    expect(result.clinical?.plan?.next_steps).toEqual(followUp.allowed);
+    expect(result.sources).toMatchObject([{kind:"note",noteId:note.id}]);
+    expect(llm.complete).toHaveBeenCalledTimes(2);
+    expect(llm.complete.mock.calls[1][0].system).toContain("proposed topics");
+  });
   it("returns cited medication discussion with risk warnings without wasting a clinical rewrite",async()=>{
     const llm=provider({clinical:true,needs_search:true,search_query:"insomnia guidance"},{
       ...answer,answer:guardFixture.allowed[0],clinical:{...clinical,plan:null,
@@ -85,7 +141,7 @@ describe("bounded Rawaan agent",()=>{
   });
   it("uses the same bounded budget and full notes for a clinical rewrite",async()=>{
     const note=noteSchema.parse(seed[0]);
-    const llm=provider({clinical:true,needs_search:false,search_query:""},{...answer,answer:"Start warfarin.",clinical});
+    const llm=provider({clinical:true,needs_search:false,search_query:""},{...answer,answer:"Start medication.",clinical});
     llm.complete.mockResolvedValueOnce(JSON.stringify({...answer,answer:"Review the documented symptoms [N1].",clinical}));
     await runRawaanAgent({question:"Discuss treatment",notes:[note],history:[],webEnabled:false},llm);
     expect(llm.complete.mock.calls.map(call=>call[0].maxTokens)).toEqual([128,768,768]);
@@ -232,7 +288,7 @@ describe("bounded Rawaan agent",()=>{
   });
   it("repairs a medication-order draft once, retaining the full record and useful treatment plan",async()=>{
     const note=noteSchema.parse(seed[0]);
-    const llm=provider({clinical:true,needs_search:false,search_query:""},{...answer,answer:"Take warfarin daily.",clinical});
+    const llm=provider({clinical:true,needs_search:false,search_query:""},{...answer,answer:"Take medication daily.",clinical});
     llm.complete.mockResolvedValueOnce(JSON.stringify({...answer,answer:"Reduce stress and consider psychotherapy [N1].",note_source_indices:[0],clinical}));
     const result=await runRawaanAgent({question:"Suggest treatment",notes:[note],history:[],webEnabled:false},llm);
     expect(result.answer).toMatch(/psychotherapy/);

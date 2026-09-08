@@ -46,6 +46,7 @@ describe("private AI failure diagnostics",()=>{
   it.each([
     ["dosing","dosing instructions"],
     ["medication_order","medication orders"],
+    ["ambiguous_action","checking the proposed actions"],
     ["unverified_recommendation","unsupported patient-specific"],
     ["missing_references","references"],
   ] as const)("explains the actual %s failure rather than telling users to avoid medicines",(reason,detail)=>{

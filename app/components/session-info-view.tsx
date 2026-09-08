@@ -75,9 +75,11 @@ export function SessionInfoView({ note }: SessionInfoViewProps) {
 
       <div className="session-info-card is-wide">
         <div className="session-info-body">
-          <span className="session-info-label">Transcript Provenance</span>
+          <span className="session-info-label">Session text</span>
           <span className="session-info-value">
-            {info?.transcript_source || "Not recorded"}
+            {info?.session_type === "manual" || info?.session_type === "summary"
+              ? "Written by you"
+              : "The conversation, now on paper"}
           </span>
           <span className="session-info-meta">
             {transcriptWordCount.toLocaleString()} words captured

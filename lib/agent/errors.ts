@@ -9,6 +9,7 @@ const citationMessages=new Set(["The agent returned an invalid record citation."
 const clinicalFailureMessages:Record<ClinicalProposalError["reason"],string>={
   dosing:"The generated reply included dosing instructions and could not be shown. Please retry for a discussion of medication options.",
   medication_order:"The generated reply included medication orders instead of a clinical discussion. Please retry.",
+  ambiguous_action:"Rawaan could not finish checking the proposed actions. Please retry.",
   unverified_recommendation:"The generated reply made an unsupported patient-specific medication recommendation. Please retry for a referenced discussion.",
   missing_references:"Current references could not be verified for the medication options. Enable Web search or retry.",
 };

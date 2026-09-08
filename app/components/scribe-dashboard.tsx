@@ -4,7 +4,8 @@ import { STORAGE_ERROR_MESSAGE } from "@/lib/db/errors";
 
 import { ArrowUpRight, ChevronDown, Inbox, MoreVertical, X } from "lucide-react";
 import { RecordGuideEntry, RecordGuideLink } from "@/app/components/record-guide-entry";
-import { RequestStatus } from "@/app/components/request-status";
+import dynamic from "next/dynamic";
+import { SessionProcessing } from "@/app/components/session-processing";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -15,7 +16,6 @@ import {
 import { AssignSessionModal } from "@/app/components/assign-session-modal";
 import { ManualSummaryModal } from "@/app/components/manual-summary-modal";
 import { RecordSessionModal } from "@/app/components/record-session-modal";
-import { SessionWorkspaceView } from "@/app/components/session-workspace-view";
 import {
   formatSessionDate,
   formatSessionTime,
@@ -34,6 +34,11 @@ import {
 } from "@/app/components/session-note-editor-state";
 import type { ApprovedNote, NoteDraft } from "@/lib/notes/schema";
 import type { TranscriptionResult } from "@/lib/transcription/types";
+
+const SessionWorkspaceView = dynamic(
+  () => import("@/app/components/session-workspace-view").then(module => module.SessionWorkspaceView),
+  { loading: () => <SessionProcessing stage="opening" /> },
+);
 
 interface RecentSession {
   date: string;
@@ -380,7 +385,7 @@ export function ScribeDashboard({
 
     let transcript = "";
     if (file.type.startsWith("audio/")) {
-      setNotification("Transcribing audio file with Whisper Large v3…");
+      setNotification("Giving your keyboard a breather... Turning your audio into text.");
       const res = await requestTranscription(file);
       if (res.ok) {
         transcript = res.transcript;
@@ -402,6 +407,8 @@ export function ScribeDashboard({
     });
     setIsAssignModalOpen(true);
   }
+
+  if (isGenerating) return <SessionProcessing stage="generating" />;
 
   // If viewing a note workspace (Picture 3), render full Session Workspace View!
   if (activeWorkspaceDraft) {
@@ -429,7 +436,6 @@ export function ScribeDashboard({
 
   return (
     <div className="dashboard-layout" aria-busy={isGenerating}>
-      {isGenerating ? <RequestStatus label="Generating structured clinical note…" skeleton/> : null}
       {notification ? (
         <div className="dashboard-notification-banner" role="status">
           <span>{notification}</span>

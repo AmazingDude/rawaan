@@ -35,7 +35,8 @@ describe("server-generated agent conversations and plan provenance",()=>{
     try {
       const result=await sendAgentMessageAction({patientId:null,threadId:null,question:"Summarize",mode:"assistant",webEnabled:false});
       expect(result).toMatchObject({ok:false,message:expect.stringMatching(/output-token.*45 seconds/)});
-      expect(log).toHaveBeenCalledWith("[Rawaan AI] request failed",expect.objectContaining({stage:"assistant",code:"provider_rate_limit",kind:"output_tokens_per_minute",retryAfterSeconds:45}));
+      expect(log).toHaveBeenCalledWith("[Rawaan AI] request failed",expect.any(String));
+      expect(JSON.parse(log.mock.calls[0][1])).toMatchObject({stage:"assistant",code:"provider_rate_limit",kind:"output_tokens_per_minute",retryAfterSeconds:45});
       expect(db.tables.general_chats).toEqual([]);
     } finally {log.mockRestore();}
   });
@@ -46,7 +47,8 @@ describe("server-generated agent conversations and plan provenance",()=>{
     try {
       const result=await sendAgentMessageAction({patientId:null,threadId:null,question:"Summarize",mode:"assistant",webEnabled:false});
       expect(result).toMatchObject({ok:false,message:expect.stringMatching(/rate limit/)});
-      expect(log).toHaveBeenCalledWith("[Rawaan AI] request failed",{stage:"assistant",code:"provider_error",httpStatus:429});
+      expect(log).toHaveBeenCalledWith("[Rawaan AI] request failed",expect.any(String));
+      expect(JSON.parse(log.mock.calls[0][1])).toEqual({stage:"assistant",code:"provider_error",httpStatus:429});
       expect(JSON.stringify(log.mock.calls)).not.toContain("private-provider-body");
       expect(db.tables.general_chats).toEqual([]);
     } finally {log.mockRestore();}

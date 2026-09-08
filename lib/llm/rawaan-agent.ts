@@ -7,7 +7,7 @@ import type { ClinicalContext } from "@/lib/clinical/schema";
 import type { ApprovedNote } from "@/lib/notes/schema";
 import type { LlmCompletionProvider } from "@/lib/llm/provider";
 import { DEFAULT_AGENT_OUTPUT_TOKENS } from "@/lib/llm/agent-budget";
-import { RAWAAN_AGENT_PLANNER_PROMPT, RAWAAN_AGENT_ANSWER_PROMPT, RAWAAN_MEDICAL_SCOPE_REDIRECT } from "@/lib/llm/prompts/rawaan-agent";
+import { RAWAAN_AGENT_PLANNER_PROMPT, RAWAAN_AGENT_ANSWER_PROMPT, RAWAAN_AGENT_ACTION_REVIEW_PROMPT, RAWAAN_MEDICAL_SCOPE_REDIRECT } from "@/lib/llm/prompts/rawaan-agent";
 import type { WebSearchTool, WebResult } from "@/lib/tools/web-search";
 
 const plannerSchema = z.object({ in_scope: z.boolean(), clinical: z.boolean(), needs_search: z.boolean(), search_query: z.string().max(400) }).strict();
@@ -118,8 +118,25 @@ export async function runRawaanAgent(input: AgentInput, provider: LlmCompletionP
   };
   let output = answerSchema.parse(parseJson(await provider.complete(answerRequest)));
   reconcileCitations(output, notes, results);
+  let actionReviewUsed = false;
+  async function validateProposal(candidate: z.infer<typeof answerSchema>): Promise<void> {
+    const medicationAllowed = allowMedications && candidate.web_source_indices.length > 0;
+    try { assertClinicalProposal(candidate, clinical, medicationAllowed); }
+    catch (error) {
+      if (!(error instanceof ClinicalProposalError) || error.reason !== "ambiguous_action" || actionReviewUsed) throw error;
+      actionReviewUsed = true;
+      const review = z.object({has_medication_orders:z.boolean()}).strict().parse(parseJson(await provider.complete({
+        maxTokens:96, system:RAWAAN_AGENT_ACTION_REVIEW_PROMPT,
+        user:JSON.stringify({answer:candidate.answer,clinical:candidate.clinical}),
+      })));
+      if (review.has_medication_orders) throw new ClinicalProposalError("medication_order", "The response contains treatment orders.");
+      // The review exempts only unknown action wording in this exact draft.
+      // Run the entire guard again: doses, explicit orders and references still apply.
+      assertClinicalProposal(candidate, clinical, medicationAllowed, true);
+    }
+  }
   try {
-    assertClinicalProposal(output, clinical, allowMedications && output.web_source_indices.length > 0);
+    await validateProposal(output);
   } catch (error) {
     if (!(error instanceof ClinicalProposalError)) throw error;
     // One bounded rewrite uses the same complete record and fetched references.
@@ -129,10 +146,10 @@ export async function runRawaanAgent(input: AgentInput, provider: LlmCompletionP
       maxTokens: outputTokenBudget,
       system: RAWAAN_AGENT_ANSWER_PROMPT,
       user: JSON.stringify({...repairRequest, previous_output: output, revision_required: error.message,
-        revision_instruction: "Rewrite the reply as a substantive clinician discussion. Remove medication orders and doses; retain useful supported clinical options, non-medication interventions and the proposed plan. Include medications only with current supporting web references. Never invent or change patient facts or source positions."}),
+        revision_instruction: "Rewrite the reply as a substantive clinician discussion. Remove medication orders and doses; retain useful supported clinical options, non-medication interventions and the proposed plan. Phrase non-medication follow-up steps as topics to Discuss, Review or Explore. Include medications only with current supporting web references. Never invent or change patient facts or source positions."}),
     })));
     reconcileCitations(output, notes, results);
-    assertClinicalProposal(output, clinical, allowMedications && output.web_source_indices.length > 0);
+    await validateProposal(output);
   }
   const sources: AgentSource[] = [];
   for (const index of [...new Set(output.note_source_indices)]) {

@@ -1,10 +1,18 @@
 import type { AgentResponse } from "@/lib/agent/schema";
 
 export class ClinicalProposalError extends Error {
-  constructor(public readonly reason: "dosing" | "medication_order" | "unverified_recommendation" | "missing_references", message: string) {
+  constructor(public readonly reason: "dosing" | "medication_order" | "ambiguous_action" | "unverified_recommendation" | "missing_references", message: string) {
     super(message);
     this.name = "ClinicalProposalError";
   }
+}
+
+function describesDiscussionAction(verb: string, target: string): boolean {
+  if (!/^(?:start|begin|continue|resume|use|take)$/i.test(verb)) return false;
+  // Classify the clinician's activity, rather than whitelisting each topic
+  // they might ask about. Medication review can itself be a discussion topic.
+  return /^\s*(?:(?:by|with)\s+)?(?:asking|discussing|exploring|reviewing|checking|reflecting|clarifying|identifying|assessing|evaluating|planning|summari[sz]ing|listening|validating|revisiting|working|focusing|building|practi[cs]ing|addressing|considering|reassessing)\b/i.test(target) ||
+    /^\s*(?:(?:by|with)\s+)?(?:(?:a|an|the|some)\s+)?(?:(?:brief|open-ended|curious|non-judgmental|collaborative|supportive|reflective|structured|focused|gentle|follow-up|respectful|patient-centred|patient-centered)[\s,]+)*(?:questions?|check-ins?|conversations?|discussions?|approach|reflection|feedback)\b/i.test(target);
 }
 
 function describesClinicalEffect(prefix: string, verb: string, target: string): boolean {
@@ -29,7 +37,7 @@ function describesClinicalEffect(prefix: string, verb: string, target: string): 
 
 // This conservative check rejects dose instructions and treatment orders.
 // It is a release guard, not a guarantee of clinical correctness.
-export function assertClinicalProposal(output: { answer: string; clinical: AgentResponse["clinical"] }, clinical: boolean, medicationAllowed: boolean): void {
+export function assertClinicalProposal(output: { answer: string; clinical: AgentResponse["clinical"] }, clinical: boolean, medicationAllowed: boolean, nonMedicationActionsReviewed = false): void {
   const text = JSON.stringify(output);
   if (/\b\d+(?:\.\d+)?\s*(?:mg|mcg|µg|ug|ml|milligrams?|micrograms?|units?)\b/i.test(text) ||
       /\b(?:one|two|three|four|half|a|\d+)\s+(?:tablets?|capsules?|pills?|doses?|injections?)\b|\b(?:once|twice|three times)\s+(?:a\s+day|daily|weekly)\b/i.test(text) ||
@@ -72,13 +80,33 @@ export function assertClinicalProposal(output: { answer: string; clinical: Agent
           // A mechanism can link two effects without directing a drug change:
           // "may increase fall risk by reducing alertness".
           if (means && /^(?:increas|decreas|reduc)/i.test(means[1]) && describesClinicalEffect(prefix, action[0], target.slice(0, means.index)) && describesClinicalEffect(prefix, action[0], means[2])) continue;
-          if (means && (medicationTarget.test(means[2]) || medicationNames.some(name=>means[2].toLowerCase().includes(name)) || !behavioralTarget.test(means[2]))) {
+          if (means && (medicationTarget.test(means[2]) || medicationNames.some(name=>means[2].toLowerCase().includes(name)))) {
             throw new ClinicalProposalError("medication_order", "The response contains treatment orders.");
+          }
+          if (means && !behavioralTarget.test(means[2]) && !nonMedicationActionsReviewed) {
+            throw new ClinicalProposalError("ambiguous_action", "Unclear whether this action describes medication orders or a non-medication activity.");
+          }
+          if (describesDiscussionAction(action[0], target)) {
+            // A discussion prefix must not exempt later drug instructions.
+            // Keep this additional scan within the newly allowed discussion
+            // syntax; ordinary behavioral context retains its existing rules.
+            for (const embedded of target.matchAll(/\b(?:by|through|via|before|after)\s+(?:(?:gradually|slowly)\s+)?(prescrib\w*|administer\w*|inject\w*|titrat\w*|taper\w*|discontinu\w*|start\w*|stop\w*|tak\w*|giv\w*|begin\w*|resum\w*|continu\w*|increas\w*|decreas\w*|reduc\w*|switch\w*|us(?:e|ing))\s+(.*)/gi)) {
+              if (medicationTarget.test(embedded[2]) || medicationNames.some(name=>embedded[2].toLowerCase().includes(name))) {
+                throw new ClinicalProposalError("medication_order", "The response contains treatment orders.");
+              }
+              if (!behavioralTarget.test(embedded[2]) && !nonMedicationActionsReviewed) {
+                throw new ClinicalProposalError("ambiguous_action", "Unclear whether this action describes medication orders or a non-medication activity.");
+              }
+            }
+            continue;
           }
           if (!targetsMedication && /^reduce$/i.test(action[0]) && /^\s+reliance on pharmacological interventions\s*$/i.test(target)) continue;
           if (describesClinicalEffect(prefix, action[0], target)) continue;
-          if (/^(?:prescribe|administer|inject|titrate|taper|discontinue)$/i.test(action[0]) || targetsMedication || !behavioralTarget.test(target)) {
+          if (targetsMedication) {
             throw new ClinicalProposalError("medication_order", "The response contains treatment orders.");
+          }
+          if (!behavioralTarget.test(target) && !nonMedicationActionsReviewed) {
+            throw new ClinicalProposalError("ambiguous_action", "Unclear whether this action describes medication orders or a non-medication activity.");
           }
         }
       }
