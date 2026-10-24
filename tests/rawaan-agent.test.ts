@@ -4,13 +4,14 @@ import scopeFixture from "@/data/seed/assistant-scope.json";
 import guardFixture from "@/data/seed/clinical-guard-cases.json";
 import followUp from "@/data/seed/follow-up-discussion.json";
 import { noteSchema } from "@/lib/notes/schema";
-import { runRawaanAgent } from "@/lib/llm/rawaan-agent";
+import { medicationContextIsFresh, runRawaanAgent } from "@/lib/llm/rawaan-agent";
 import { clinicalContextSchema } from "@/lib/clinical/schema";
 import { createTavilySearch } from "@/lib/tools/web-search";
 import { agentOutputTokenBudget } from "@/lib/llm/agent-budget";
 
 const answer = { answer:"A helpful explanation.", note_source_indices:[], web_source_indices:[], clinical:null };
 const clinical = { differential:[{condition:"Anxiety",rationale:"Reported stress is compatible, but requires assessment."}], medication_options:[], missing_information:[], plan:{title:"Proposed review plan",goals:["Clarify current symptoms"],next_steps:["Discuss assessment with the clinician"],monitoring:["Review symptom changes"],follow_up:"Arrange clinician review",red_flags:[]} };
+const confirmedContext = () => clinicalContextSchema.parse({medication_context_confirmed:true,confirmed_at:new Date().toISOString()});
 function provider(plan:object, response:object) {
   return { complete:vi.fn().mockResolvedValue(JSON.stringify(response)).mockResolvedValueOnce(JSON.stringify({in_scope:true,...plan})).mockResolvedValueOnce(JSON.stringify(response)) };
 }
@@ -27,6 +28,27 @@ describe("Assistant output-budget configuration",()=>{
 });
 
 describe("bounded Rawaan agent",()=>{
+  it.each([
+    ["no context", undefined, false],
+    ["unconfirmed context", clinicalContextSchema.parse({confirmed_at:new Date().toISOString()}), false],
+    ["missing timestamp", clinicalContextSchema.parse({medication_context_confirmed:true}), false],
+    ["stale timestamp", clinicalContextSchema.parse({medication_context_confirmed:true,confirmed_at:"2026-10-22T00:00:00.000Z"}), false],
+    ["future timestamp", clinicalContextSchema.parse({medication_context_confirmed:true,confirmed_at:"2099-01-01T00:00:00.000Z"}), false],
+    ["recent confirmation", confirmedContext(), true],
+  ] as const)("enables medication options only with a fresh explicit confirmation (%s)",async(_label,context,expected)=>{
+    const llm=provider({clinical:true,needs_search:true,search_query:"clinical guidance"},{...answer,clinical});
+    await runRawaanAgent({question:"Discuss medication considerations",notes:[],context,history:[],webEnabled:true},llm,
+      {search:async()=>[{title:"Guideline",url:"https://www.who.int/health-topics",content:"Guidance"}]});
+    expect(medicationContextIsFresh(context)).toBe(expected);
+    expect(JSON.parse(llm.complete.mock.calls[1][0].user).allow_medication_options).toBe(expected);
+  });
+  it("accepts a confirmation exactly 24 hours old and rejects one a millisecond older",()=>{
+    const now=Date.parse("2026-10-24T12:00:00.000Z");
+    const atBoundary=clinicalContextSchema.parse({medication_context_confirmed:true,confirmed_at:new Date(now-24*60*60*1000).toISOString()});
+    const stale=clinicalContextSchema.parse({medication_context_confirmed:true,confirmed_at:new Date(now-24*60*60*1000-1).toISOString()});
+    expect(medicationContextIsFresh(atBoundary,now)).toBe(true);
+    expect(medicationContextIsFresh(stale,now)).toBe(false);
+  });
   it("fails explicitly on an invalid action review instead of assuming it cleared the draft",async()=>{
     const llm={complete:vi.fn().mockResolvedValueOnce(JSON.stringify({in_scope:true,clinical:true,needs_search:false,search_query:""}))
       .mockResolvedValueOnce(JSON.stringify({...answer,answer:followUp.unclassified[0],clinical}))
@@ -89,7 +111,7 @@ describe("bounded Rawaan agent",()=>{
       },
     });
     const search={search:vi.fn().mockResolvedValue([{title:"Clinical reference",url:"https://www.nhs.uk/conditions/insomnia/",content:"Reference text"}])};
-    const result=await runRawaanAgent({question:guardFixture.insomniaQuestion,notes:[],history:[],webEnabled:true},llm,search);
+    const result=await runRawaanAgent({question:guardFixture.insomniaQuestion,notes:[],context:confirmedContext(),history:[],webEnabled:true},llm,search);
     expect(llm.complete).toHaveBeenCalledTimes(2);
     expect(result.answer).toBe(guardFixture.allowed[0]);
     expect(result.clinical?.medication_options).toHaveLength(1);
@@ -238,8 +260,8 @@ describe("bounded Rawaan agent",()=>{
   ])("rejects forbidden orders across prose and plans, not only medication arrays",async output=>{
     await expect(runRawaanAgent({question:"Explain anxiety",notes:[],history:[],webEnabled:false},provider({clinical:true,needs_search:true,search_query:"warfarin"},output))).rejects.toThrow();
   });
-  it("allows reference-supported discussion options without requiring a completed context form",async()=>{
-    const context=clinicalContextSchema.parse({});
+  it("allows reference-supported discussion options after fresh context confirmation",async()=>{
+    const context=confirmedContext();
     const llm=provider({clinical:true,needs_search:true,search_query:"anxiety guidance"}, {...answer,web_source_indices:[0],clinical:{...clinical,medication_options:[{name:"Reference-supported discussion option",considerations:"Discuss contraindications and interactions with the clinician [W1]."}]}});
     const result=await runRawaanAgent({question:"Medication considerations",notes:[noteSchema.parse(seed[0])],context,history:[],webEnabled:true},llm,{search:async()=>[{title:"Guideline",url:"https://www.nice.org.uk/guidance",content:"Clinical guidance"}]});
     expect(result.clinical?.medication_options).toHaveLength(1);
@@ -307,15 +329,15 @@ describe("bounded Rawaan agent",()=>{
   it("requires a specific reference for each medication option and validates it against fetched sources",async()=>{
     const search={search:vi.fn().mockResolvedValue([{title:"Source",url:"https://www.nice.org.uk/guidance",content:"Guidance"}])};
     const llm=provider({clinical:true,needs_search:true,search_query:"anxiety"},{...answer,web_source_indices:[0],clinical:{...clinical,medication_options:[{name:"Discussion option",considerations:"Unreferenced consideration"}]}});
-    await expect(runRawaanAgent({question:"Medication considerations",notes:[],history:[],webEnabled:true},llm,search)).rejects.toThrow(/references/);
+    await expect(runRawaanAgent({question:"Medication considerations",notes:[],context:confirmedContext(),history:[],webEnabled:true},llm,search)).rejects.toThrow(/references/);
     expect(llm.complete).toHaveBeenCalledTimes(3);
     expect(search.search).toHaveBeenCalledTimes(1);
     const invalid=provider({clinical:true,needs_search:true,search_query:"anxiety"},{...answer,web_source_indices:[0],clinical:{...clinical,medication_options:[{name:"Discussion option",considerations:"Invented reference [W9]"}]}});
-    await expect(runRawaanAgent({question:"Medication considerations",notes:[],history:[],webEnabled:true},invalid,search)).rejects.toThrow(/unsupported citation/);
+    await expect(runRawaanAgent({question:"Medication considerations",notes:[],context:confirmedContext(),history:[],webEnabled:true},invalid,search)).rejects.toThrow(/unsupported citation/);
   });
   it("accepts a valid medication source omitted from the redundant arrays without a rewrite",async()=>{
     const llm=provider({clinical:true,needs_search:true,search_query:"anxiety"},{...answer,clinical:{...clinical,medication_options:[{name:"Discussion option",considerations:"Assess contraindications [W1]."}]}});
-    const result=await runRawaanAgent({question:"Medication considerations",notes:[],history:[],webEnabled:true},llm,{search:async()=>[{title:"Guideline",url:"https://www.nice.org.uk/guidance",content:"Guidance"}]});
+    const result=await runRawaanAgent({question:"Medication considerations",notes:[],context:confirmedContext(),history:[],webEnabled:true},llm,{search:async()=>[{title:"Guideline",url:"https://www.nice.org.uk/guidance",content:"Guidance"}]});
     expect(result.clinical?.medication_options).toHaveLength(1);
     expect(llm.complete).toHaveBeenCalledTimes(2);
     expect(result.sources).toMatchObject([{kind:"web",citation:"W1"}]);
@@ -323,10 +345,14 @@ describe("bounded Rawaan agent",()=>{
   it("does not block planning on stale or unknown optional context or append an intake checklist",async()=>{
     const context=clinicalContextSchema.parse({age:30,allergies:"not available",current_medications:"unknown currently",pregnancy_status:"not applicable",kidney_function:"unknown - needs test",liver_function:"normal",medication_context_confirmed:true,confirmed_at:"2020-01-01T00:00:00.000Z"});
     const llm=provider({clinical:true,needs_search:true,search_query:"anxiety"},{...answer,clinical});
-    const result=await runRawaanAgent({question:"Prepare the next session",notes:[noteSchema.parse(seed[0])],context,history:[],webEnabled:false},llm);
+    const result=await runRawaanAgent({question:"Prepare the next session",notes:[noteSchema.parse(seed[0])],context,history:[],webEnabled:true},llm,
+      {search:async()=>[{title:"Guideline",url:"https://www.who.int/health-topics",content:"Guidance"}]});
     expect(result.clinical?.plan).toEqual(clinical.plan);
     expect(result.clinical?.missing_information).toEqual([]);
     expect(llm.complete).toHaveBeenCalledTimes(2);
+    const request=JSON.parse(llm.complete.mock.calls[1][0].user);
+    expect(request.allow_medication_options).toBe(false);
+    expect(request.clinical_context_confirmed_at).toBeNull();
   });
 });
 

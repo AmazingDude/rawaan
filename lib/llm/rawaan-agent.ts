@@ -20,6 +20,13 @@ const answerSchema = z.object({
 export type AgentTurn = { question: string; answer: string };
 export type AgentInput = { question: string; notes: ApprovedNote[]; activeNoteId?: string; context?: ClinicalContext; privateIdentifiers?: string[]; history: AgentTurn[]; webEnabled: boolean; outputTokenBudget?: number };
 const clinicalQuestionPattern = /diagnos|medicine|medication|prescrib|treatment|dosage|differential|دوا|علاج|تشخیص/i;
+const MEDICATION_CONTEXT_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+export function medicationContextIsFresh(context: ClinicalContext | undefined, now = Date.now()): boolean {
+  if (context?.medication_context_confirmed !== true || !context.confirmed_at) return false;
+  const confirmedAt = Date.parse(context.confirmed_at);
+  return Number.isFinite(confirmedAt) && confirmedAt <= now && now - confirmedAt <= MEDICATION_CONTEXT_MAX_AGE_MS;
+}
 
 function parseJson(text: string): unknown {
   return JSON.parse(text.trim().replace(/^\x60\x60\x60(?:json)?\s*/i, "").replace(/\s*\x60\x60\x60$/, ""));
@@ -94,7 +101,8 @@ export async function runRawaanAgent(input: AgentInput, provider: LlmCompletionP
       }
     }
   }
-  const allowMedications = clinical && results.length > 0;
+  const medicationContextFresh = medicationContextIsFresh(input.context);
+  const allowMedications = clinical && results.length > 0 && medicationContextFresh;
   const recordData = notes.map(note => ({
     date: note.consultation_date, patient_display_name: note.patient_display_name,
     summary: note.summary, chief_complaint: note.chief_complaint,
@@ -110,7 +118,7 @@ export async function runRawaanAgent(input: AgentInput, provider: LlmCompletionP
       question, response_token_budget: outputTokenBudget, conversation: input.history.slice(-8).map(turn => ({question:turn.question.slice(0,2000),answer:turn.answer.slice(0,3000)})),
       patient_selected: input.notes.length > 0 || Boolean(input.context), approved_notes: recordData,
       clinical_context: context, web_results: results, tool_notice: notice,
-      clinical_context_confirmed_at: input.context?.confirmed_at ?? null,
+      clinical_context_confirmed_at: medicationContextFresh ? input.context?.confirmed_at ?? null : null,
       allow_medication_options: allowMedications,
       active_session_note_index: input.activeNoteId ? notes.findIndex(note=>note.id===input.activeNoteId) : null,
       approved_note_count: notes.length, current_date: new Date().toISOString().slice(0,10),
